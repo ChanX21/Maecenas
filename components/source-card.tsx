@@ -4,7 +4,7 @@ import type { Source } from "@/lib/types";
 
 export function SourceCard({ source }: { source: Source }) {
   return (
-    <article className="border border-white/10 bg-panel p-5">
+    <article className="roman-panel p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-2xl text-cream">{source.title}</h2>

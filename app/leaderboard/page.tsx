@@ -38,11 +38,11 @@ export default async function LeaderboardPage() {
         <LeaderboardStats metrics={metrics} />
       </div>
       <div className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <section className="border border-white/10 bg-panel p-5">
+        <section className="roman-panel p-5">
           <h2 className="font-display text-3xl text-cream">Top Earning Sources</h2>
           <div className="mt-5 space-y-3">
             {topSources.map(({ source, citations, earned }) => (
-              <div key={source.id} className="border border-white/8 bg-ink-2 p-4">
+              <div key={source.id} className="border border-marble/10 bg-ink-2 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="font-display text-xl text-cream">{source.title}</h3>

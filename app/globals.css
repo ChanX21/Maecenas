@@ -4,7 +4,7 @@
 
 :root {
   color-scheme: dark;
-  background: #050503;
+  background: #030201;
 }
 
 * {
@@ -13,16 +13,19 @@
 
 html {
   min-height: 100%;
-  background: #050503;
+  background: #030201;
 }
 
 body {
   min-height: 100%;
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(242, 193, 78, 0.08), transparent 32rem),
-    linear-gradient(180deg, #080704 0%, #050503 42%, #050503 100%);
-  color: #f4efe2;
+    radial-gradient(circle at 42% 0%, rgba(175, 123, 49, 0.14), transparent 34rem),
+    radial-gradient(circle at 78% 24%, rgba(216, 207, 191, 0.05), transparent 28rem),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(180deg, #080604 0%, #030201 48%, #030201 100%);
+  background-size: auto, auto, 96px 96px, auto;
+  color: #efe4cf;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -38,14 +41,301 @@ a {
 
 .coin-surface {
   background:
-    radial-gradient(circle at 35% 30%, rgba(255, 241, 177, 0.32), transparent 0.9rem),
-    radial-gradient(circle at 70% 72%, rgba(143, 107, 31, 0.45), transparent 1.2rem),
-    linear-gradient(135deg, #f2c14e 0%, #8f6b1f 100%);
+    radial-gradient(circle at 34% 28%, rgba(255, 230, 159, 0.42), transparent 0.8rem),
+    radial-gradient(circle at 68% 70%, rgba(86, 48, 22, 0.5), transparent 1.3rem),
+    linear-gradient(135deg, #d9a24a 0%, #7d4b22 100%);
 }
 
 .terminal-grid {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 24px 24px;
+    linear-gradient(rgba(216, 207, 191, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(216, 207, 191, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.roman-hero {
+  background:
+    linear-gradient(90deg, rgba(175, 123, 49, 0.16) 1px, transparent 1px),
+    linear-gradient(rgba(216, 207, 191, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at 72% 38%, rgba(175, 123, 49, 0.18), transparent 26rem);
+  background-size: 1px 100%, 100% 32px, auto;
+}
+
+.roman-panel {
+  position: relative;
+  border: 1px solid rgba(216, 207, 191, 0.14);
+  background:
+    linear-gradient(180deg, rgba(216, 207, 191, 0.04), rgba(216, 207, 191, 0.01)),
+    #120e09;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 28px 90px rgba(0, 0, 0, 0.45);
+}
+
+.roman-panel::before,
+.roman-panel::after {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(175, 123, 49, 0.72), transparent);
+}
+
+.roman-panel::before {
+  top: 0.65rem;
+}
+
+.roman-panel::after {
+  bottom: 0.65rem;
+}
+
+.roman-rule {
+  border-color: rgba(175, 123, 49, 0.42);
+}
+
+.roman-button {
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.roman-inscription {
+  font-family: Georgia, Cambria, "Times New Roman", serif;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+}
+
+.roman-relic {
+  min-height: 34rem;
+  padding: 2rem 1.5rem;
+}
+
+.roman-relic__ring {
+  position: relative;
+  display: grid;
+  width: min(100%, 31rem);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  place-items: center;
+  border: 1px solid rgba(216, 207, 191, 0.16);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(216, 207, 191, 0.16) 0 23%, transparent 24%),
+    radial-gradient(circle at 50% 55%, rgba(175, 123, 49, 0.26) 0 43%, transparent 44%),
+    radial-gradient(circle at 48% 46%, #17120c 0 58%, #060402 59% 100%);
+  box-shadow:
+    inset 0 0 0 18px rgba(175, 123, 49, 0.06),
+    inset 0 0 0 20px rgba(216, 207, 191, 0.08),
+    0 38px 90px rgba(0, 0, 0, 0.72);
+}
+
+.roman-relic__ring::before {
+  position: absolute;
+  inset: 1rem;
+  border: 1px solid rgba(175, 123, 49, 0.38);
+  border-radius: inherit;
+  content: "";
+}
+
+.roman-relic__ring::after {
+  position: absolute;
+  inset: 2.3rem;
+  border: 1px dashed rgba(216, 207, 191, 0.14);
+  border-radius: inherit;
+  content: "";
+}
+
+.roman-relic__wreath {
+  position: absolute;
+  top: 22%;
+  width: 22%;
+  height: 48%;
+  border-color: rgba(175, 123, 49, 0.5);
+  border-style: solid;
+  opacity: 0.8;
+}
+
+.roman-relic__wreath--left {
+  left: 14%;
+  border-width: 0 0 0 2px;
+  border-radius: 70% 0 0 70%;
+  transform: rotate(-18deg);
+}
+
+.roman-relic__wreath--right {
+  right: 14%;
+  border-width: 0 2px 0 0;
+  border-radius: 0 70% 70% 0;
+  transform: rotate(18deg);
+}
+
+.roman-relic__wreath::before,
+.roman-relic__wreath::after {
+  position: absolute;
+  width: 0.55rem;
+  height: 1.8rem;
+  border-radius: 999px 0;
+  content: "";
+  background: linear-gradient(180deg, #c18b3c, #5f371d);
+  box-shadow:
+    0 3rem 0 #8e5d2a,
+    0 6rem 0 #b47a34,
+    0 9rem 0 #6c421f;
+}
+
+.roman-relic__wreath--left::before,
+.roman-relic__wreath--left::after {
+  left: -0.3rem;
+}
+
+.roman-relic__wreath--right::before,
+.roman-relic__wreath--right::after {
+  right: -0.3rem;
+  transform: scaleX(-1);
+}
+
+.roman-relic__wreath::after {
+  transform: translateX(1rem) rotate(38deg);
+}
+
+.roman-bust {
+  position: relative;
+  z-index: 2;
+  width: 44%;
+  height: 62%;
+  filter: drop-shadow(0 2rem 2rem rgba(0, 0, 0, 0.58));
+}
+
+.roman-bust__head {
+  position: absolute;
+  top: 5%;
+  left: 50%;
+  width: 43%;
+  height: 38%;
+  transform: translateX(-50%);
+  border-radius: 48% 45% 44% 46%;
+  background:
+    radial-gradient(circle at 34% 34%, rgba(255, 255, 255, 0.76), transparent 0.9rem),
+    radial-gradient(circle at 72% 72%, rgba(97, 84, 72, 0.34), transparent 1.7rem),
+    linear-gradient(135deg, #eee6d8 0%, #bcb0a0 48%, #72685f 100%);
+}
+
+.roman-bust__head::before,
+.roman-bust__head::after {
+  position: absolute;
+  top: 45%;
+  width: 8%;
+  height: 14%;
+  border-radius: 50%;
+  content: "";
+  background: #a99d90;
+}
+
+.roman-bust__head::before {
+  left: -4%;
+}
+
+.roman-bust__head::after {
+  right: -4%;
+}
+
+.roman-bust__hair {
+  position: absolute;
+  top: -7%;
+  height: 26%;
+  border-radius: 50% 50% 42% 42%;
+  background: linear-gradient(180deg, #d8cec1, #8e8172);
+}
+
+.roman-bust__hair--one {
+  left: 3%;
+  width: 35%;
+  transform: rotate(-18deg);
+}
+
+.roman-bust__hair--two {
+  left: 32%;
+  width: 40%;
+}
+
+.roman-bust__hair--three {
+  right: 2%;
+  width: 30%;
+  transform: rotate(18deg);
+}
+
+.roman-bust__brow,
+.roman-bust__nose,
+.roman-bust__mouth {
+  position: absolute;
+  left: 50%;
+  content: "";
+  background: rgba(88, 79, 70, 0.58);
+}
+
+.roman-bust__brow {
+  top: 39%;
+  width: 45%;
+  height: 2px;
+  transform: translateX(-50%);
+}
+
+.roman-bust__nose {
+  top: 41%;
+  width: 7%;
+  height: 28%;
+  transform: translateX(-10%) skewX(-8deg);
+  border-radius: 999px;
+}
+
+.roman-bust__mouth {
+  top: 73%;
+  width: 30%;
+  height: 2px;
+  transform: translateX(-50%);
+}
+
+.roman-bust__neck {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  width: 23%;
+  height: 26%;
+  transform: translateX(-50%);
+  background: linear-gradient(120deg, #ded4c7, #8f8377);
+}
+
+.roman-bust__shoulders {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 100%;
+  height: 48%;
+  transform: translateX(-50%);
+  border-radius: 52% 52% 14% 14%;
+  background:
+    linear-gradient(72deg, transparent 0 37%, rgba(255, 255, 255, 0.32) 38% 41%, transparent 42%),
+    linear-gradient(132deg, transparent 0 49%, rgba(75, 65, 55, 0.3) 50% 53%, transparent 54%),
+    linear-gradient(145deg, #e5dccf 0%, #aaa095 46%, #6d6259 100%);
+}
+
+.roman-bust__fold {
+  position: absolute;
+  top: 32%;
+  height: 54%;
+  width: 2px;
+  background: rgba(81, 70, 61, 0.45);
+}
+
+.roman-bust__fold--one {
+  left: 34%;
+  transform: rotate(20deg);
+}
+
+.roman-bust__fold--two {
+  left: 50%;
+  transform: rotate(-5deg);
+}
+
+.roman-bust__fold--three {
+  right: 35%;
+  transform: rotate(-22deg);
 }

@@ -9,16 +9,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#050503",
-        "ink-2": "#080704",
-        panel: "#11100b",
-        "panel-2": "#15130e",
-        gold: "#f2c14e",
-        "gold-soft": "#d9a92f",
-        "gold-deep": "#8f6b1f",
-        cream: "#f4efe2",
-        muted: "#8f8a7c",
-        dim: "#5d584d",
+        ink: "#030201",
+        "ink-2": "#080604",
+        panel: "#120e09",
+        "panel-2": "#191208",
+        gold: "#d9a24a",
+        "gold-soft": "#e7bd6c",
+        "gold-deep": "#7d4b22",
+        bronze: "#af7b31",
+        marble: "#d8cfbf",
+        cream: "#efe4cf",
+        muted: "#9b9182",
+        dim: "#62584b",
         success: "#75c78a",
         danger: "#d96c5f"
       },

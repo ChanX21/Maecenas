@@ -43,7 +43,7 @@ export function SourceRegistrationForm() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-      <form onSubmit={submit} className="border border-white/10 bg-panel p-5">
+      <form onSubmit={submit} className="roman-panel p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField label="Title" value={form.title} onChange={(value) => update("title", value)} required />
           <TextField label="Author name" value={form.authorName} onChange={(value) => update("authorName", value)} required />
@@ -59,13 +59,13 @@ export function SourceRegistrationForm() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-5 inline-flex items-center gap-2 rounded-md bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink transition hover:bg-gold-soft disabled:opacity-70"
+          className="roman-button mt-5 inline-flex items-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink transition hover:bg-gold-soft disabled:opacity-70"
         >
           <Save size={16} />
           Register Source
         </button>
       </form>
-      <aside className="border border-gold/20 bg-panel p-5">
+      <aside className="roman-panel p-5">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-gold">MVP note</p>
         <p className="mt-3 text-sm leading-6 text-muted">
           Mecenas does not verify academic ownership yet. This demo shows how agentic citation payments can work once

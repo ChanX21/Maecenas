@@ -24,7 +24,7 @@ export default async function ReceiptPage({ params }: PageProps) {
       <div className="mt-8">
         <PaymentReceiptCard receipt={receipt} />
       </div>
-      <div className="mt-6 border border-white/10 bg-panel p-5">
+      <div className="roman-panel mt-6 p-5">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Question</p>
         <p className="mt-3 text-lg leading-7 text-cream">{receipt.userPrompt}</p>
       </div>

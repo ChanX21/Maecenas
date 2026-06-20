@@ -3,11 +3,11 @@ import type { ScoredSource, TraceEvent } from "@/lib/types";
 export function AgentTrace({ events, scoredSources }: { events: TraceEvent[]; scoredSources?: ScoredSource[] }) {
   return (
     <div className="space-y-4">
-      <div className="border border-white/10 bg-panel p-5">
+      <div className="roman-panel p-5">
         <h2 className="font-display text-3xl text-cream">Agent Decision Trace</h2>
         <div className="mt-5 space-y-3">
           {events.map((event) => (
-            <div key={event.id} className="border border-white/8 bg-ink-2 p-4">
+            <div key={event.id} className="border border-marble/10 bg-ink-2 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="font-mono text-xs uppercase tracking-[0.16em] text-gold">{event.phase}</p>
                 <span className="font-mono text-[11px] uppercase text-muted">{event.status}</span>
@@ -19,7 +19,7 @@ export function AgentTrace({ events, scoredSources }: { events: TraceEvent[]; sc
         </div>
       </div>
       {scoredSources ? (
-        <div className="border border-white/10 bg-panel p-5">
+        <div className="roman-panel p-5">
           <h2 className="font-display text-3xl text-cream">Source Scores</h2>
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[760px] border-collapse font-mono text-xs">

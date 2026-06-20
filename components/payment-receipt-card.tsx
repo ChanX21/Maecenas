@@ -3,7 +3,7 @@ import type { CitationPayment } from "@/lib/types";
 
 export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
   return (
-    <article className="border border-gold/20 bg-panel p-5">
+    <article className="roman-panel p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-gold">Paid Citation Receipt</p>

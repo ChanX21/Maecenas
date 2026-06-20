@@ -8,10 +8,10 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
-  { href: "/ask", label: "Ask" },
-  { href: "/sources", label: "Sources" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/leaderboard", label: "Leaderboard" }
+  { href: "/ask", label: "Quaere" },
+  { href: "/sources", label: "Fontes" },
+  { href: "/dashboard", label: "Tabularium" },
+  { href: "/leaderboard", label: "Fasti" }
 ];
 
 export default function RootLayout({
@@ -23,25 +23,25 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="min-h-screen">
-          <header className="sticky top-0 z-40 border-b border-white/10 bg-ink/80 backdrop-blur">
+          <header className="sticky top-0 z-40 border-b border-marble/10 bg-ink/88 backdrop-blur">
             <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
               <Link href="/" className="flex items-center gap-3">
-                <span className="coin-surface flex h-9 w-9 items-center justify-center rounded-full text-sm font-black text-ink shadow-gold">
-                  M
+                <span className="coin-surface flex h-9 w-9 items-center justify-center rounded-full text-sm font-black text-ink shadow-gold ring-1 ring-bronze/40">
+                  V
                 </span>
                 <span>
-                  <span className="block font-display text-xl leading-5 text-cream">Mecenas</span>
-                  <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-muted">
-                    paid evidence terminal
+                  <span className="roman-inscription block text-xl leading-5 text-cream">Mecenas</span>
+                  <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-bronze">
+                    tabularium mercedis
                   </span>
                 </span>
               </Link>
-              <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-panel px-1 py-1 font-mono text-xs uppercase text-muted md:flex">
+              <nav className="hidden items-center gap-1 border border-marble/10 bg-panel px-1 py-1 font-mono text-xs uppercase text-muted md:flex">
                 {navItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="rounded-full px-4 py-2 transition hover:bg-white/5 hover:text-cream"
+                    className="px-4 py-2 transition hover:bg-bronze/10 hover:text-cream"
                   >
                     {item.label}
                   </Link>

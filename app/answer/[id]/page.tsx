@@ -35,15 +35,15 @@ export default async function AnswerPage({ params }: PageProps) {
             purchased={trace.receipts.length}
             skipped={trace.budgetDecision.skippedSources.length}
           />
-          <article className="border border-white/10 bg-panel p-6">
+          <article className="roman-panel p-6">
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-gold">Final answer</p>
             <div className="mt-4 whitespace-pre-wrap text-base leading-8 text-cream">{answer.response}</div>
           </article>
-          <section className="border border-white/10 bg-panel p-5">
+          <section className="roman-panel p-5">
             <h2 className="font-display text-3xl text-cream">Citations</h2>
             <div className="mt-5 space-y-3">
               {citedSources.map((source) => (
-                <div key={source.id} className="border border-white/8 bg-ink-2 p-4">
+                <div key={source.id} className="border border-marble/10 bg-ink-2 p-4">
                   <h3 className="font-display text-xl text-cream">{source.title}</h3>
                   <p className="mt-1 font-mono text-xs uppercase text-muted">
                     {source.authorName} · {source.citationPriceUSDC} USDC
@@ -52,11 +52,11 @@ export default async function AnswerPage({ params }: PageProps) {
               ))}
             </div>
           </section>
-          <section className="border border-white/10 bg-panel p-5">
+          <section className="roman-panel p-5">
             <h2 className="font-display text-3xl text-cream">Skipped Sources</h2>
             <div className="mt-5 space-y-3">
               {trace.budgetDecision.skippedSources.map((source) => (
-                <div key={source.sourceId} className="border border-white/8 bg-ink-2 p-4">
+                <div key={source.sourceId} className="border border-marble/10 bg-ink-2 p-4">
                   <h3 className="font-display text-xl text-cream">{source.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-muted">{source.reason}</p>
                 </div>

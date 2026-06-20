@@ -14,7 +14,7 @@ export function BudgetMeter({ budgetUSDC, spentUSDC, considered, purchased, skip
   const percentage = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
 
   return (
-    <div className="border border-white/10 bg-panel p-5">
+    <div className="roman-panel p-5">
       <div className="flex items-center justify-between">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Research budget</p>
         <p className="font-mono text-sm text-gold">{budgetUSDC} USDC</p>
@@ -35,7 +35,7 @@ export function BudgetMeter({ budgetUSDC, spentUSDC, considered, purchased, skip
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-white/8 bg-ink-2 p-3">
+    <div className="border border-marble/10 bg-ink-2 p-3">
       <p className="uppercase text-dim">{label}</p>
       <p className="mt-2 text-cream">{value}</p>
     </div>

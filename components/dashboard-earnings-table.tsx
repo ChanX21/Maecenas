@@ -3,7 +3,7 @@ import type { CitationPayment } from "@/lib/types";
 
 export function DashboardEarningsTable({ receipts }: { receipts: CitationPayment[] }) {
   return (
-    <div className="overflow-x-auto border border-white/10 bg-panel p-5">
+    <div className="roman-panel overflow-x-auto p-5">
       <h2 className="font-display text-3xl text-cream">Latest Paid Citations</h2>
       <table className="mt-5 w-full min-w-[820px] border-collapse font-mono text-xs">
         <thead className="text-left uppercase text-dim">

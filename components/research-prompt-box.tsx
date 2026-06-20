@@ -50,7 +50,7 @@ export function ResearchPromptBox() {
   }
 
   return (
-    <form onSubmit={submitResearch} className="border border-white/10 bg-panel p-5 shadow-gold">
+    <form onSubmit={submitResearch} className="roman-panel p-5">
       <label className="font-mono text-xs uppercase tracking-[0.18em] text-gold" htmlFor="question">
         Research question
       </label>
@@ -85,7 +85,7 @@ export function ResearchPromptBox() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink transition hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-70 sm:mt-auto"
+          className="roman-button mt-6 inline-flex items-center justify-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink transition hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-70 sm:mt-auto"
         >
           <Search size={16} />
           Ask

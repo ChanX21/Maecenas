@@ -31,7 +31,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           placeholder="0x owner wallet"
           className="min-w-0 flex-1 border border-white/10 bg-panel px-4 py-3 font-mono text-sm text-cream outline-none focus:border-gold/50"
         />
-        <button className="rounded-md bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink">Filter</button>
+        <button className="roman-button bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink">Filter</button>
       </form>
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <Metric label="Total sources registered" value={String(sources.length)} />
@@ -47,7 +47,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-white/10 bg-panel p-5">
+    <div className="roman-panel p-5">
       <p className="font-mono text-xs uppercase tracking-[0.16em] text-dim">{label}</p>
       <p className="mt-4 font-display text-3xl text-gold">{value}</p>
     </div>
