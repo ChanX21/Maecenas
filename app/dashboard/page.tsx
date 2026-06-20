@@ -1,0 +1,55 @@
+import { DashboardEarningsTable } from "@/components/dashboard-earnings-table";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { readDb } from "@/lib/db/store";
+import { sumUSDC } from "@/lib/utils/money";
+
+export const dynamic = "force-dynamic";
+
+type PageProps = {
+  searchParams: Promise<{ wallet?: string }>;
+};
+
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const { wallet = "" } = await searchParams;
+  const db = await readDb();
+  const normalizedWallet = wallet.toLowerCase();
+  const sources = db.sources.filter((source) => !normalizedWallet || source.walletAddress.toLowerCase() === normalizedWallet);
+  const sourceIds = new Set(sources.map((source) => source.id));
+  const receipts = db.receipts.filter((receipt) => sourceIds.has(receipt.sourceId));
+
+  return (
+    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <SectionHeading
+        eyebrow="Source owner dashboard"
+        title="Track source earnings."
+        copy="Enter ?wallet=0x... in the URL to filter this MVP dashboard to a specific owner wallet."
+      />
+      <form className="mt-8 flex max-w-2xl gap-3" action="/dashboard">
+        <input
+          name="wallet"
+          defaultValue={wallet}
+          placeholder="0x owner wallet"
+          className="min-w-0 flex-1 border border-white/10 bg-panel px-4 py-3 font-mono text-sm text-cream outline-none focus:border-gold/50"
+        />
+        <button className="rounded-md bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink">Filter</button>
+      </form>
+      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <Metric label="Total sources registered" value={String(sources.length)} />
+        <Metric label="Total citations received" value={String(receipts.length)} />
+        <Metric label="Total USDC earned" value={`${sumUSDC(receipts.map((receipt) => receipt.amountUSDC))} USDC`} />
+      </div>
+      <div className="mt-8">
+        <DashboardEarningsTable receipts={receipts} />
+      </div>
+    </main>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-white/10 bg-panel p-5">
+      <p className="font-mono text-xs uppercase tracking-[0.16em] text-dim">{label}</p>
+      <p className="mt-4 font-display text-3xl text-gold">{value}</p>
+    </div>
+  );
+}

@@ -1,0 +1,32 @@
+import { SourceCard } from "@/components/source-card";
+import { ButtonLink } from "@/components/ui/button-link";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { listSources } from "@/lib/db/store";
+
+export const dynamic = "force-dynamic";
+
+export default async function SourcesPage() {
+  const sources = await listSources();
+
+  return (
+    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <SectionHeading
+          eyebrow="Public source registry"
+          title="Agent-readable paid evidence endpoints."
+          copy="Each source exposes a free preview and a protected evidence endpoint that requires payment proof."
+        />
+        <ButtonLink href="/sources/new" variant="primary">
+          Register a Source
+        </ButtonLink>
+      </div>
+      <div className="mt-8 grid gap-4 lg:grid-cols-2">
+        {sources.map((source) => (
+          <div key={source.id} id={source.id}>
+            <SourceCard source={source} />
+          </div>
+        ))}
+      </div>
+    </main>
+  );
+}

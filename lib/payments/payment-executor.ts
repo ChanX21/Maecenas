@@ -1,4 +1,4 @@
-import type { CitationPayment, Source, UnlockedEvidence } from "@/lib/types";
+import type { CitationPayment, Source } from "@/lib/types";
 import { makeId } from "@/lib/utils/ids";
 
 const agentName = "Mecenas Scholar v1";
@@ -26,11 +26,31 @@ export function hasValidPaymentProof(source: Source, proof?: string | null): boo
   return proof === `proof:${source.id}`;
 }
 
-export async function unlockEvidenceWithPayment(
+export function requestProtectedEvidence(source: Source, proof?: string | null) {
+  if (!hasValidPaymentProof(source, proof)) {
+    return {
+      ok: false as const,
+      challenge: buildPaymentRequired(source)
+    };
+  }
+
+  return {
+    ok: true as const,
+    evidence: {
+      sourceId: source.id,
+      title: source.title,
+      authorName: source.authorName,
+      evidenceText: source.evidenceText,
+      citationPriceUSDC: source.citationPriceUSDC
+    }
+  };
+}
+
+export async function createEvidencePayment(
   source: Source,
   answerId: string,
   userPrompt: string
-): Promise<UnlockedEvidence> {
+): Promise<{ receipt: CitationPayment; paymentProof: string }> {
   const mode = getPaymentMode();
   const paymentId = `${mode === "mock" ? "mock" : "pay"}_${makeId("x402").replace("x402_", "")}`;
   const receipt: CitationPayment = {
@@ -50,11 +70,7 @@ export async function unlockEvidenceWithPayment(
   };
 
   return {
-    sourceId: source.id,
-    title: source.title,
-    authorName: source.authorName,
-    evidenceText: source.evidenceText,
-    citationPriceUSDC: source.citationPriceUSDC,
-    receipt
+    receipt,
+    paymentProof: `proof:${source.id}`
   };
 }

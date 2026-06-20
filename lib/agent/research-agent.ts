@@ -5,7 +5,7 @@ import { scoreSources } from "@/lib/agent/source-scorer";
 import { synthesizeAnswer } from "@/lib/agent/answer-synthesizer";
 import { traceEvent } from "@/lib/agent/trace";
 import { createAnswer, createReceipts, listSources } from "@/lib/db/store";
-import { buildPaymentRequired, getPaymentMode, unlockEvidenceWithPayment } from "@/lib/payments/payment-executor";
+import { createEvidencePayment, getPaymentMode, requestProtectedEvidence } from "@/lib/payments/payment-executor";
 import type { Answer, ResearchStrategy, ResearchTrace, Source, TraceEvent, UnlockedEvidence } from "@/lib/types";
 import { makeId } from "@/lib/utils/ids";
 import { sumUSDC } from "@/lib/utils/money";
@@ -44,26 +44,32 @@ export async function runResearchAgent(input: RunResearchInput): Promise<Answer>
   for (const selected of budgetDecision.selectedSources) {
     const source = sourceById.get(selected.sourceId);
     if (!source) continue;
-    const challenge = buildPaymentRequired(source);
+    const firstAttempt = requestProtectedEvidence(source);
+    if (firstAttempt.ok) continue;
     events.push(
       traceEvent(
         "payment-required",
         "402 Payment Required",
-        `${source.title} quoted ${challenge.x402.amountUSDC} USDC on ${challenge.x402.network}.`
+        `${source.title} quoted ${firstAttempt.challenge.x402.amountUSDC} USDC on ${firstAttempt.challenge.x402.network}.`
       )
     );
-    const unlocked = await unlockEvidenceWithPayment(source, answerId, input.question);
+    const payment = await createEvidencePayment(source, answerId, input.question);
     events.push(
       traceEvent(
         "payment-sent",
         getPaymentMode() === "mock" ? "MOCK PAYMENT sent" : "USDC nanopayment submitted",
-        `${unlocked.receipt.amountUSDC} USDC to ${unlocked.receipt.recipientWallet}.`,
+        `${payment.receipt.amountUSDC} USDC to ${payment.receipt.recipientWallet}.`,
         getPaymentMode() === "mock" ? "mock" : "completed"
       )
     );
+    const secondAttempt = requestProtectedEvidence(source, payment.paymentProof);
+    if (!secondAttempt.ok) continue;
     events.push(traceEvent("evidence-unlocked", "Evidence unlocked", `${source.title} returned protected evidence.`));
-    events.push(traceEvent("receipt-saved", "Receipt prepared", `${unlocked.receipt.id} created for paid citation.`));
-    unlockedEvidence.push(unlocked);
+    events.push(traceEvent("receipt-saved", "Receipt prepared", `${payment.receipt.id} created for paid citation.`));
+    unlockedEvidence.push({
+      ...secondAttempt.evidence,
+      receipt: payment.receipt
+    });
   }
 
   const receipts = unlockedEvidence.map((evidence) => evidence.receipt);
