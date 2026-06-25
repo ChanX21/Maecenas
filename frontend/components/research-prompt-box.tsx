@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import type { ResearchStrategy } from "@/backend/types";
+import { apiUrl } from "@/frontend/api";
 
 const loadingSteps = [
   "Planning research...",
@@ -35,7 +36,7 @@ export function ResearchPromptBox() {
     }, 420);
 
     try {
-      const response = await fetch("/api/research", {
+      const response = await fetch(apiUrl("/api/research"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, budgetUSDC, strategy })

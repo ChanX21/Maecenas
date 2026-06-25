@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { PaymentReceiptCard } from "@/frontend/components/payment-receipt-card";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
-import { findReceipt } from "@/backend/db/store";
+import { getReceipt } from "@/frontend/api";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ type PageProps = {
 
 export default async function ReceiptPage({ params }: PageProps) {
   const { id } = await params;
-  const receipt = await findReceipt(id);
+  const { receipt } = await getReceipt(id).catch(() => ({ receipt: null }));
   if (!receipt) notFound();
 
   return (

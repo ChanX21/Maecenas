@@ -1,7 +1,6 @@
 import { DashboardEarningsTable } from "@/frontend/components/dashboard-earnings-table";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
-import { readDb } from "@/backend/db/store";
-import { sumUSDC } from "@/backend/utils/money";
+import { getDashboard } from "@/frontend/api";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +10,7 @@ type PageProps = {
 
 export default async function DashboardPage({ searchParams }: PageProps) {
   const { wallet = "" } = await searchParams;
-  const db = await readDb();
-  const normalizedWallet = wallet.toLowerCase();
-  const sources = db.sources.filter((source) => !normalizedWallet || source.walletAddress.toLowerCase() === normalizedWallet);
-  const sourceIds = new Set(sources.map((source) => source.id));
-  const receipts = db.receipts.filter((receipt) => sourceIds.has(receipt.sourceId));
+  const dashboard = await getDashboard(wallet);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -34,12 +29,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         <button className="roman-button bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink">Filter</button>
       </form>
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        <Metric label="Total sources registered" value={String(sources.length)} />
-        <Metric label="Total citations received" value={String(receipts.length)} />
-        <Metric label="Total USDC earned" value={`${sumUSDC(receipts.map((receipt) => receipt.amountUSDC))} USDC`} />
+        <Metric label="Total sources registered" value={String(dashboard.totalSourcesRegistered)} />
+        <Metric label="Total citations received" value={String(dashboard.totalCitationsReceived)} />
+        <Metric label="Total USDC earned" value={`${dashboard.totalUSDCEarned} USDC`} />
       </div>
       <div className="mt-8">
-        <DashboardEarningsTable receipts={receipts} />
+        <DashboardEarningsTable receipts={dashboard.latestPaidCitations} />
       </div>
     </main>
   );

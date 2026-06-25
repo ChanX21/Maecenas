@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
 import type { Source } from "@/backend/types";
+import { apiUrl } from "@/frontend/api";
 
 const initialForm = {
   title: "",
@@ -29,7 +30,7 @@ export function SourceRegistrationForm() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
-    const response = await fetch("/api/sources", {
+    const response = await fetch(apiUrl("/api/sources"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form)
@@ -77,7 +78,7 @@ export function SourceRegistrationForm() {
             <Result label="Citation price" value={`${createdSource.citationPriceUSDC} USDC`} />
             <Result label="Owner wallet" value={createdSource.walletAddress} />
             <Result label="Public source page" value={`/sources#${createdSource.id}`} />
-            <Result label="Protected endpoint" value={`/api/sources/${createdSource.id}/evidence`} />
+            <Result label="Protected endpoint" value={apiUrl(`/api/sources/${createdSource.id}/evidence`)} />
           </div>
         ) : null}
       </aside>

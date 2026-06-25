@@ -1,12 +1,12 @@
 import { SourceCard } from "@/frontend/components/source-card";
 import { ButtonLink } from "@/frontend/components/ui/button-link";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
-import { listSources } from "@/backend/db/store";
+import { getSources } from "@/frontend/api";
 
 export const dynamic = "force-dynamic";
 
 export default async function SourcesPage() {
-  const sources = await listSources();
+  const { sources } = await getSources();
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">

@@ -3,7 +3,7 @@ import { AgentTrace } from "@/frontend/components/agent-trace";
 import { BudgetMeter } from "@/frontend/components/budget-meter";
 import { PaymentReceiptCard } from "@/frontend/components/payment-receipt-card";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
-import { findAnswer, readDb } from "@/backend/db/store";
+import { getAnswer, getSources } from "@/frontend/api";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +13,10 @@ type PageProps = {
 
 export default async function AnswerPage({ params }: PageProps) {
   const { id } = await params;
-  const answer = await findAnswer(id);
+  const [{ answer }, { sources }] = await Promise.all([getAnswer(id).catch(() => ({ answer: null })), getSources()]);
   if (!answer) notFound();
-  const db = await readDb();
   const trace = answer.decisionTraceJson;
-  const citedSources = db.sources.filter((source) => answer.citedSourceIds.includes(source.id));
+  const citedSources = sources.filter((source) => answer.citedSourceIds.includes(source.id));
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">

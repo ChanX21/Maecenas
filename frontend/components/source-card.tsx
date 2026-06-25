@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import type { Source } from "@/backend/types";
+import { apiUrl } from "@/frontend/api";
 
 export function SourceCard({ source }: { source: Source }) {
+  const previewUrl = apiUrl(`/api/sources/${source.id}/preview`);
+
   return (
     <article className="roman-panel p-5">
       <div className="flex items-start justify-between gap-4">
@@ -23,7 +26,7 @@ export function SourceCard({ source }: { source: Source }) {
         ))}
       </div>
       <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-4 font-mono text-xs">
-        <Link href={`/api/sources/${source.id}/preview`} className="text-gold hover:text-gold-soft">
+        <Link href={previewUrl} className="text-gold hover:text-gold-soft">
           Preview endpoint
         </Link>
         <Link href={source.sourceUrl} className="inline-flex items-center gap-1 text-muted hover:text-cream">

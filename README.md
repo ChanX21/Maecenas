@@ -36,8 +36,10 @@ Mecenas is an experimental attribution and payment layer for AI-agent source usa
 
 ```txt
 Next.js App Router
-├─ app/                      Next.js routing layer: pages, layouts, and API route wrappers
+├─ app/                      Next.js frontend routing layer: pages and layout
 ├─ frontend/                 UI components and client-side interaction surfaces
+├─ backend/server.ts         standalone Node.js backend entrypoint
+├─ backend/http.ts           Node HTTP API router
 ├─ backend/types.ts          shared domain contracts
 ├─ backend/db/               JSON persistence and seed sources
 ├─ backend/agent/
@@ -49,10 +51,11 @@ Next.js App Router
 │  ├─ trace.ts
 │  └─ research-agent.ts
 ├─ backend/payments/         x402/Gateway-shaped payment loop
+├─ scripts/dev-all.mjs       starts frontend and backend together
 └─ scripts/seed.ts           reset local demo data
 ```
 
-Local persistence is `data/db.json`, generated at runtime and ignored by git. The code is intentionally modular so each agent decision can be read and debugged independently. The `app/` directory is intentionally thin because Next.js owns routing conventions; product UI lives in `frontend/`, while source registry, agent, payment, and persistence logic lives in `backend/`.
+Local persistence is `data/db.json`, generated at runtime and ignored by git. The code is intentionally modular so each agent decision can be read and debugged independently. The `app/` directory is now frontend-only because Next.js owns routing conventions; product UI lives in `frontend/`, while source registry, agent, payment, HTTP API, and persistence logic lives in `backend/`.
 
 ## Agent Decision Flow
 
@@ -94,7 +97,7 @@ GET /api/sources/:id/evidence
 → receipt is stored
 ```
 
-The integration surface is isolated in `backend/payments/payment-executor.ts` so real Circle Gateway / Arc testnet calls can replace the mock proof path without changing the agent or UI contracts.
+The integration surface is isolated in `backend/payments/payment-executor.ts` so real Circle Gateway / Arc testnet calls can replace the mock proof path without changing the agent or UI contracts. The standalone backend runs on `http://localhost:4000` by default.
 
 ## Pages
 
@@ -133,6 +136,21 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+Runtime services:
+
+```txt
+Frontend: http://localhost:3000
+Backend:  http://localhost:4000
+Health:   http://localhost:4000/api/health
+```
+
+To run them separately:
+
+```bash
+npm run dev:backend
+npm run dev:frontend
+```
+
 Useful checks:
 
 ```bash
@@ -160,6 +178,9 @@ MECENAS_AGENT_WALLET_ADDRESS=
 GATEWAY_API_URL=
 X402_NETWORK=arc-testnet
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+BACKEND_PORT=4000
+CORS_ORIGIN=http://localhost:3000
 NEXT_PUBLIC_PAYMENT_MODE=mock
 ```
 

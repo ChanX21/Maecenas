@@ -3,9 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-all.mjs",
+    "dev:frontend": "next dev",
+    "dev:backend": "tsx backend/server.ts",
     "build": "next build",
-    "start": "next start",
+    "start:frontend": "next start",
+    "start:backend": "tsx backend/server.ts",
     "lint": "eslint .",
     "seed": "tsx scripts/seed.ts",
     "typecheck": "tsc --noEmit"
