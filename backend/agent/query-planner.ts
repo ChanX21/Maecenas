@@ -1,4 +1,4 @@
-import type { ResearchPlan, ResearchStrategy } from "@/backend/types";
+import type { ResearchPlan, ResearchStrategy } from "@/types";
 
 const defaultNeeds = [
   "technical payment mechanism",

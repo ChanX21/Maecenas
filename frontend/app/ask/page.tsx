@@ -1,5 +1,5 @@
-import { ResearchPromptBox } from "@/frontend/components/research-prompt-box";
-import { SectionHeading } from "@/frontend/components/ui/section-heading";
+import { ResearchPromptBox } from "@/components/research-prompt-box";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 export default function AskPage() {
   return (

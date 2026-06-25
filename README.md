@@ -46,23 +46,20 @@ MVP payment mode is mock-labeled by default. Real Circle/Arc settlement is a fut
 ## Folder Map
 
 ```txt
-app/
+frontend/app/
   Next.js frontend routing layer.
   Keep pages/layouts here because Next.js App Router requires it.
   No backend API routes live here anymore.
 
 frontend/
-  Frontend-owned code.
-  Reusable components, client forms, API client, presentation logic.
+  Standalone Next.js frontend app.
+  Own package.json, lockfile, configs, routes, components, API client.
 
 backend/
-  Backend-owned code.
-  Standalone Node HTTP server, agent logic, DB store, payment executor, types.
+  Standalone Node.js backend app.
+  Own package.json, lockfile, configs, HTTP server, agent, DB store, payment executor.
 
-scripts/
-  Dev helper scripts and seed script.
-
-data/
+backend/data/
   Local JSON database generated at runtime. Ignored by git.
 ```
 
@@ -70,12 +67,14 @@ Important files:
 
 ```txt
 frontend/api.ts                         Frontend API client for Node backend
+frontend/package.json                   Frontend dependencies and scripts
 backend/server.ts                       Node backend entrypoint
 backend/http.ts                         HTTP router and API endpoints
 backend/agent/research-agent.ts         Agent orchestrator
 backend/payments/payment-executor.ts    402/x402-shaped payment flow
 backend/db/store.ts                     Local JSON persistence
 backend/types.ts                        Shared app/domain types
+backend/package.json                    Backend dependencies and scripts
 ```
 
 ## Frontend Dev Handoff
@@ -85,17 +84,18 @@ The frontend dev should mostly work in:
 ```txt
 frontend/components/
 frontend/api.ts
-app/page.tsx
-app/ask/page.tsx
-app/answer/[id]/page.tsx
-app/sources/page.tsx
-app/sources/new/page.tsx
-app/dashboard/page.tsx
-app/leaderboard/page.tsx
-app/receipts/[id]/page.tsx
-app/layout.tsx
-app/globals.css
-tailwind.config.ts
+frontend/app/page.tsx
+frontend/app/ask/page.tsx
+frontend/app/answer/[id]/page.tsx
+frontend/app/sources/page.tsx
+frontend/app/sources/new/page.tsx
+frontend/app/dashboard/page.tsx
+frontend/app/leaderboard/page.tsx
+frontend/app/receipts/[id]/page.tsx
+frontend/app/layout.tsx
+frontend/app/globals.css
+frontend/tailwind.config.ts
+frontend/package.json
 ```
 
 Frontend should avoid changing:
@@ -120,7 +120,10 @@ Frontend responsibilities:
 Frontend run command:
 
 ```bash
-npm run dev:frontend
+cd frontend
+npm install
+cp .env.example .env.local
+npm run dev
 ```
 
 The frontend expects the backend to already be running on port `4000`.
@@ -131,8 +134,6 @@ Backend/product work lives in:
 
 ```txt
 backend/
-scripts/
-.env.example
 ```
 
 Backend responsibilities:
@@ -147,7 +148,11 @@ Backend responsibilities:
 Backend run command:
 
 ```bash
-npm run dev:backend
+cd backend
+npm install
+cp .env.example .env
+npm run seed
+npm run dev
 ```
 
 Backend health check:
@@ -194,37 +199,49 @@ POST /api/admin/seed
 
 ## Local Setup
 
+Backend terminal:
+
 ```bash
+cd backend
 npm install
 cp .env.example .env
 npm run seed
 npm run dev
 ```
 
-`npm run dev` starts both services:
+Frontend terminal:
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Services:
 
 ```txt
 Backend on  http://localhost:4000
 Frontend on http://localhost:3000
 ```
 
-Run separately:
-
-```bash
-npm run dev:backend
-npm run dev:frontend
-```
-
 If port `3000` is occupied, Next may use `3001`. That is okay for local dev. The backend CORS handler allows localhost dev ports by default unless `CORS_ORIGIN` is fixed in `.env`.
 
 ## Environment Variables
 
-Minimum local `.env`:
+Frontend `frontend/.env.local`:
 
 ```txt
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+NEXT_PUBLIC_PAYMENT_MODE=mock
+```
+
+Backend `backend/.env`:
+
+```txt
 BACKEND_PORT=4000
+BACKEND_HOST=0.0.0.0
 CORS_ORIGIN=http://localhost:3000
 X402_NETWORK=arc-testnet
 NEXT_PUBLIC_PAYMENT_MODE=mock
@@ -256,9 +273,12 @@ GATEWAY_API_URL=
 Before pushing:
 
 ```bash
-npm run lint
+cd frontend
 npm run typecheck
 npm run build
+
+cd ../backend
+npm run typecheck
 ```
 
 Backend smoke tests:
@@ -320,7 +340,7 @@ Receipt storage
 - Payments are mock-labeled unless real Circle/Arc credentials are added.
 - Source ownership is not verified.
 - The answer synthesizer is deterministic and can be replaced by an LLM adapter.
-- Local persistence is JSON in `data/db.json`; production should use Postgres.
+- Local persistence is JSON in `backend/data/db.json`; production should use Postgres.
 - No auth yet.
 
 ## Production Path

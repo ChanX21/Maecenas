@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import { AgentTrace } from "@/frontend/components/agent-trace";
-import { BudgetMeter } from "@/frontend/components/budget-meter";
-import { PaymentReceiptCard } from "@/frontend/components/payment-receipt-card";
-import { SectionHeading } from "@/frontend/components/ui/section-heading";
-import { getAnswer, getSources } from "@/frontend/api";
+import { AgentTrace } from "@/components/agent-trace";
+import { BudgetMeter } from "@/components/budget-meter";
+import { PaymentReceiptCard } from "@/components/payment-receipt-card";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { getAnswer, getSources } from "@/api";
 
 export const dynamic = "force-dynamic";
 

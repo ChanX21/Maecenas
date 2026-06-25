@@ -1,5 +1,5 @@
-import type { BudgetDecision, ResearchStrategy, ScoredSource } from "@/backend/types";
-import { formatUSDC, parseUSDC } from "@/backend/utils/money";
+import type { BudgetDecision, ResearchStrategy, ScoredSource } from "@/types";
+import { formatUSDC, parseUSDC } from "@/utils/money";
 
 const thresholds: Record<ResearchStrategy, number> = {
   conservative: 82,

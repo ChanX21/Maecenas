@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, Brain, Coins, FileCheck2, ReceiptText, SearchCheck } from "lucide-react";
-import { ResearchPromptBox } from "@/frontend/components/research-prompt-box";
+import { ResearchPromptBox } from "@/components/research-prompt-box";
 
 const heroStats = [
   ["Research Budget", "0.01 USDC"],

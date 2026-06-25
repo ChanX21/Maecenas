@@ -5,14 +5,15 @@ This folder owns the standalone Node.js backend and Mecenas domain logic.
 ## Own These Areas
 
 ```txt
-backend/server.ts
-backend/http.ts
-backend/agent/
-backend/db/
-backend/payments/
-backend/utils/
-backend/types.ts
+server.ts
+http.ts
+agent/
+db/
+payments/
+utils/
+types.ts
 scripts/seed.ts
+package.json
 ```
 
 ## Responsibilities
@@ -28,7 +29,11 @@ scripts/seed.ts
 ## Run
 
 ```bash
-npm run dev:backend
+cd backend
+npm install
+cp .env.example .env
+npm run seed
+npm run dev
 ```
 
 Default:
@@ -47,11 +52,11 @@ curl http://localhost:4000/api/health
 
 The frontend calls this backend through `frontend/api.ts`.
 
-Do not add new Next.js API routes in `app/api`. Backend APIs belong here in `backend/http.ts`.
+Do not add new Next.js API routes in the frontend. Backend APIs belong here in `http.ts`.
 
 ## Current Persistence
 
-Local JSON file:
+Backend-local JSON file:
 
 ```txt
 data/db.json

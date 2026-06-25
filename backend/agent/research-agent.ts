@@ -1,14 +1,14 @@
-import { allocateBudget } from "@/backend/agent/budget-allocator";
-import { planResearch } from "@/backend/agent/query-planner";
-import { scoutSources } from "@/backend/agent/source-scout";
-import { scoreSources } from "@/backend/agent/source-scorer";
-import { synthesizeAnswer } from "@/backend/agent/answer-synthesizer";
-import { traceEvent } from "@/backend/agent/trace";
-import { createAnswer, createReceipts, listSources } from "@/backend/db/store";
-import { createEvidencePayment, getPaymentMode, requestProtectedEvidence } from "@/backend/payments/payment-executor";
-import type { Answer, ResearchStrategy, ResearchTrace, Source, TraceEvent, UnlockedEvidence } from "@/backend/types";
-import { makeId } from "@/backend/utils/ids";
-import { sumUSDC } from "@/backend/utils/money";
+import { allocateBudget } from "@/agent/budget-allocator";
+import { planResearch } from "@/agent/query-planner";
+import { scoutSources } from "@/agent/source-scout";
+import { scoreSources } from "@/agent/source-scorer";
+import { synthesizeAnswer } from "@/agent/answer-synthesizer";
+import { traceEvent } from "@/agent/trace";
+import { createAnswer, createReceipts, listSources } from "@/db/store";
+import { createEvidencePayment, getPaymentMode, requestProtectedEvidence } from "@/payments/payment-executor";
+import type { Answer, ResearchStrategy, ResearchTrace, Source, TraceEvent, UnlockedEvidence } from "@/types";
+import { makeId } from "@/utils/ids";
+import { sumUSDC } from "@/utils/money";
 
 type RunResearchInput = {
   question: string;

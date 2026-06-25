@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
-import type { Answer, CitationPayment, MecenasDatabase, Source } from "@/backend/types";
-import { seedSources } from "@/backend/db/seed-data";
+import type { Answer, CitationPayment, MecenasDatabase, Source } from "@/types";
+import { seedSources } from "@/db/seed-data";
 
 const dataDir = path.join(process.cwd(), "data");
 const dbPath = path.join(dataDir, "db.json");

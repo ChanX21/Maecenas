@@ -1,4 +1,4 @@
-import { formatUSDC, parseUSDC } from "@/backend/utils/money";
+import { formatUSDC, parseUSDC } from "@/utils/money";
 
 type BudgetMeterProps = {
   budgetUSDC: string;

@@ -1,4 +1,4 @@
-import type { Source } from "@/backend/types";
+import type { Source } from "@/types";
 
 export function CitationCard({ source }: { source: Source }) {
   return (

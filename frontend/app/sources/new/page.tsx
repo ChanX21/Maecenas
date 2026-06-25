@@ -1,5 +1,5 @@
-import { SourceRegistrationForm } from "@/frontend/components/source-registration-form";
-import { SectionHeading } from "@/frontend/components/ui/section-heading";
+import { SourceRegistrationForm } from "@/components/source-registration-form";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 export default function NewSourcePage() {
   return (

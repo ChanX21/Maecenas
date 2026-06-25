@@ -1,11 +1,11 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { URL } from "url";
-import { runResearchAgent } from "@/backend/agent/research-agent";
-import { createSource, findAnswer, findReceipt, findSource, listSources, readDb, resetDbWithSeeds } from "@/backend/db/store";
-import { buildPaymentRequired, hasValidPaymentProof } from "@/backend/payments/payment-executor";
-import type { ResearchStrategy, Source } from "@/backend/types";
-import { makeId } from "@/backend/utils/ids";
-import { sumUSDC } from "@/backend/utils/money";
+import { runResearchAgent } from "@/agent/research-agent";
+import { createSource, findAnswer, findReceipt, findSource, listSources, readDb, resetDbWithSeeds } from "@/db/store";
+import { buildPaymentRequired, hasValidPaymentProof } from "@/payments/payment-executor";
+import type { ResearchStrategy, Source } from "@/types";
+import { makeId } from "@/utils/ids";
+import { sumUSDC } from "@/utils/money";
 
 type RouteContext = {
   request: IncomingMessage;

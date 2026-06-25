@@ -2,25 +2,24 @@
 
 This folder owns the Mecenas user experience.
 
-The frontend is Next.js App Router + React + TypeScript + Tailwind. The root `app/` folder still contains page routes because Next.js requires that convention, but reusable UI and client-side interaction code should live here.
+The frontend is a standalone Next.js App Router app with React, TypeScript, and Tailwind.
 
 ## Own These Areas
 
 ```txt
-frontend/components/
-frontend/api.ts
+components/
+api.ts
 app/**/page.tsx
 app/layout.tsx
 app/globals.css
 tailwind.config.ts
+package.json
 ```
 
 ## Avoid Unless Coordinated
 
 ```txt
 backend/
-scripts/
-data/
 ```
 
 ## API Boundary
@@ -53,19 +52,15 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 Frontend only:
 
 ```bash
-npm run dev:frontend
-```
-
-Full app:
-
-```bash
+cd frontend
+npm install
+cp .env.example .env.local
 npm run dev
 ```
 
 Checks:
 
 ```bash
-npm run lint
 npm run typecheck
 npm run build
 ```

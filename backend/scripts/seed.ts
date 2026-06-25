@@ -1,4 +1,4 @@
-import { resetDbWithSeeds } from "@/backend/db/store";
+import { resetDbWithSeeds } from "@/db/store";
 
 async function main() {
   const db = await resetDbWithSeeds();

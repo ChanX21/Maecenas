@@ -1,4 +1,4 @@
-import type { Answer, CitationPayment, Source } from "@/backend/types";
+import type { Answer, CitationPayment, Source } from "@/types";
 
 export type LeaderboardResponse = {
   metrics: {

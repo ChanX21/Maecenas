@@ -1,5 +1,5 @@
-import type { CandidateSource, ResearchPlan, ScoredSource } from "@/backend/types";
-import { parseUSDC } from "@/backend/utils/money";
+import type { CandidateSource, ResearchPlan, ScoredSource } from "@/types";
+import { parseUSDC } from "@/utils/money";
 
 function tokenize(value: string): string[] {
   return value

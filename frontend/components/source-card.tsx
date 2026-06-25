@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import type { Source } from "@/backend/types";
-import { apiUrl } from "@/frontend/api";
+import type { Source } from "@/types";
+import { apiUrl } from "@/api";
 
 export function SourceCard({ source }: { source: Source }) {
   const previewUrl = apiUrl(`/api/sources/${source.id}/preview`);

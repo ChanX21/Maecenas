@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Save } from "lucide-react";
-import type { Source } from "@/backend/types";
-import { apiUrl } from "@/frontend/api";
+import type { Source } from "@/types";
+import { apiUrl } from "@/api";
 
 const initialForm = {
   title: "",

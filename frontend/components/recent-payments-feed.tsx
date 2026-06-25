@@ -1,4 +1,4 @@
-import type { CitationPayment } from "@/backend/types";
+import type { CitationPayment } from "@/types";
 
 export function RecentPaymentsFeed({ receipts }: { receipts: CitationPayment[] }) {
   return (

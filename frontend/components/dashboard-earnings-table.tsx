@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { CitationPayment } from "@/backend/types";
+import type { CitationPayment } from "@/types";
 
 export function DashboardEarningsTable({ receipts }: { receipts: CitationPayment[] }) {
   return (

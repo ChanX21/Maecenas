@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
-import type { ResearchStrategy } from "@/backend/types";
-import { apiUrl } from "@/frontend/api";
+import type { ResearchStrategy } from "@/types";
+import { apiUrl } from "@/api";
 
 const loadingSteps = [
   "Planning research...",

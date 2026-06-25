@@ -1,5 +1,5 @@
-import type { TraceEvent } from "@/backend/types";
-import { makeId } from "@/backend/utils/ids";
+import type { TraceEvent } from "@/types";
+import { makeId } from "@/utils/ids";
 
 export function traceEvent(
   phase: TraceEvent["phase"],

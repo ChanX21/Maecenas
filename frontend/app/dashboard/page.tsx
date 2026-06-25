@@ -1,6 +1,6 @@
-import { DashboardEarningsTable } from "@/frontend/components/dashboard-earnings-table";
-import { SectionHeading } from "@/frontend/components/ui/section-heading";
-import { getDashboard } from "@/frontend/api";
+import { DashboardEarningsTable } from "@/components/dashboard-earnings-table";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { getDashboard } from "@/api";
 
 export const dynamic = "force-dynamic";
 

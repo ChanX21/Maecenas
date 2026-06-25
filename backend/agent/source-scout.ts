@@ -1,4 +1,4 @@
-import type { CandidateSource, ResearchPlan, Source } from "@/backend/types";
+import type { CandidateSource, ResearchPlan, Source } from "@/types";
 
 function tokenize(value: string): string[] {
   return value

@@ -1,7 +1,7 @@
-import { LeaderboardStats } from "@/frontend/components/leaderboard-stats";
-import { RecentPaymentsFeed } from "@/frontend/components/recent-payments-feed";
-import { SectionHeading } from "@/frontend/components/ui/section-heading";
-import { getLeaderboard } from "@/frontend/api";
+import { LeaderboardStats } from "@/components/leaderboard-stats";
+import { RecentPaymentsFeed } from "@/components/recent-payments-feed";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { getLeaderboard } from "@/api";
 
 export const dynamic = "force-dynamic";
 
