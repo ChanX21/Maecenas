@@ -32,6 +32,7 @@ package.json
 cd backend
 npm install
 cp .env.example .env
+npm run db:migrate
 npm run seed
 npm run dev
 ```
@@ -54,19 +55,26 @@ The frontend calls this backend through `frontend/api.ts`.
 
 Do not add new Next.js API routes in the frontend. Backend APIs belong here in `http.ts`.
 
-## Current Persistence
+## Persistence
 
-Backend-local JSON file:
+SQLite with Drizzle migrations:
 
 ```txt
-data/db.json
+data/maecenas.db
 ```
 
-Reset seed data:
+`npm run seed` is idempotent and does not reset usage or payment records.
 
-```bash
-npm run seed
-```
+## Free And Paid Research
+
+The client persists `maecenas_session_id` in localStorage and sends it as
+`sessionId`. Call `GET /api/usage`, then `POST /api/research`. After five
+completed free answers, create `/api/payments/search-intent`, submit mock proof
+to `/api/payments/search-proof`, and retry research with the returned
+`searchPaymentId`.
+
+`PAYMENT_MODE=real` intentionally fails startup until Circle/Arc verification
+and evidence payment execution are implemented.
 
 ## Production Notes
 
@@ -78,5 +86,4 @@ wallet auth
 real Circle Gateway/x402 payments
 source ownership verification
 LLM answer adapter
-background jobs / queue for longer research runs
 ```

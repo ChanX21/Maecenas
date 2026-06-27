@@ -20,6 +20,7 @@ export type CitationPaymentStatus = "pending" | "paid" | "failed" | "mock";
 export type CitationPayment = {
   id: string;
   answerId: string;
+  searchPaymentId?: string;
   sourceId: string;
   sourceTitle: string;
   userPrompt: string;
@@ -30,6 +31,7 @@ export type CitationPayment = {
   payerWallet: string;
   recipientWallet: string;
   status: CitationPaymentStatus;
+  fundedBy: "maecenas_sponsored" | "user_paid_search";
   createdAt: string;
 };
 
@@ -113,5 +115,38 @@ export type Answer = {
   spentUSDC: string;
   citedSourceIds: string[];
   decisionTraceJson: ResearchTrace;
+  searchPaymentId?: string;
+  paymentType: "free_sponsored" | "user_paid";
+  sessionId?: string;
+  walletAddress?: string;
   createdAt: string;
+};
+
+export type Usage = {
+  sessionId: string;
+  walletAddress?: string;
+  freeSearchesUsed: number;
+  freeSearchLimit: number;
+  freeSearchesRemaining: number;
+  paidSearchesUsed: number;
+  requiresPayment: boolean;
+  paidSearchPriceUSDC: string;
+};
+
+export type SearchPaymentIntentResponse = {
+  paymentIntentId: string;
+  amountUSDC: string;
+  recipientWallet: string;
+  network: string;
+  status: "requires_payment" | "paid" | "expired" | "used";
+  paymentMode: "mock" | "real";
+  expiresAt: string;
+};
+
+export type SearchPaymentResponse = {
+  searchPaymentId: string;
+  paymentIntentId: string;
+  status: "pending" | "paid" | "failed" | "mock";
+  amountUSDC: string;
+  paymentMode: "mock" | "real";
 };

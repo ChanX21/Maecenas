@@ -1,4 +1,11 @@
-import type { Answer, CitationPayment, Source } from "@/types";
+import type {
+  Answer,
+  CitationPayment,
+  SearchPaymentIntentResponse,
+  SearchPaymentResponse,
+  Source,
+  Usage
+} from "@/types";
 
 export type LeaderboardResponse = {
   metrics: {
@@ -7,6 +14,12 @@ export type LeaderboardResponse = {
     researchQuestionsAnswered: number;
     paidEvidenceUnlocks: number;
     totalTestUSDCDistributed: string;
+    questionsAnswered: number;
+    freeSearchesUsed: number;
+    paidSearchesCompleted: number;
+    paidSearchRevenueUSDC: string;
+    sourcePayoutsUSDC: string;
+    paidCitations: number;
   };
   topEarningSources: {
     sourceId: string;
@@ -45,7 +58,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error ?? `Request failed: ${response.status}`);
+    throw new Error(data.message ?? data.error ?? `Request failed: ${response.status}`);
   }
   return data as T;
 }
@@ -69,4 +82,32 @@ export async function getLeaderboard() {
 export async function getDashboard(wallet: string) {
   const query = wallet ? `?wallet=${encodeURIComponent(wallet)}` : "";
   return apiFetch<DashboardResponse>(`/api/dashboard${query}`);
+}
+
+export async function getUsage(sessionId: string, walletAddress?: string) {
+  const query = new URLSearchParams({ sessionId });
+  if (walletAddress) query.set("wallet", walletAddress);
+  return apiFetch<Usage>(`/api/usage?${query}`);
+}
+
+export async function createSearchPaymentIntent(sessionId: string, walletAddress: string) {
+  return apiFetch<SearchPaymentIntentResponse>("/api/payments/search-intent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId, walletAddress })
+  });
+}
+
+export async function submitSearchPaymentProof(input: {
+  paymentIntentId: string;
+  sessionId: string;
+  walletAddress: string;
+  paymentProof: string;
+  txHash?: string;
+}) {
+  return apiFetch<SearchPaymentResponse>("/api/payments/search-proof", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
 }

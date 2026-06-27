@@ -23,6 +23,10 @@ export type Answer = {
   spentUSDC: string;
   citedSourceIds: string[];
   decisionTraceJson: ResearchTrace;
+  searchPaymentId?: string;
+  paymentType: "free_sponsored" | "user_paid";
+  sessionId?: string;
+  walletAddress?: string;
   createdAt: string;
 };
 
@@ -31,6 +35,7 @@ export type CitationPaymentStatus = "pending" | "paid" | "failed" | "mock";
 export type CitationPayment = {
   id: string;
   answerId: string;
+  searchPaymentId?: string;
   sourceId: string;
   sourceTitle: string;
   userPrompt: string;
@@ -41,6 +46,46 @@ export type CitationPayment = {
   payerWallet: string;
   recipientWallet: string;
   status: CitationPaymentStatus;
+  fundedBy: "maecenas_sponsored" | "user_paid_search";
+  createdAt: string;
+};
+
+export type UserUsage = {
+  id: string;
+  sessionId: string;
+  walletAddress?: string;
+  ipHash?: string;
+  freeSearchesUsed: number;
+  freeSearchLimit: number;
+  paidSearchesUsed: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SearchPayment = {
+  id: string;
+  paymentIntentId: string;
+  sessionId: string;
+  walletAddress: string;
+  amountUSDC: string;
+  status: "pending" | "paid" | "failed" | "mock";
+  paymentMode: "mock" | "real";
+  paymentProof?: string;
+  txHash?: string;
+  paymentId?: string;
+  createdAt: string;
+  paidAt?: string;
+  usedForAnswerId?: string;
+};
+
+export type SearchPaymentIntent = {
+  id: string;
+  sessionId: string;
+  walletAddress?: string;
+  amountUSDC: string;
+  status: "requires_payment" | "paid" | "expired" | "used";
+  paymentMode: "mock" | "real";
+  expiresAt: string;
   createdAt: string;
 };
 
@@ -129,4 +174,7 @@ export type MecenasDatabase = {
   sources: Source[];
   answers: Answer[];
   receipts: CitationPayment[];
+  userUsages: UserUsage[];
+  searchPaymentIntents: SearchPaymentIntent[];
+  searchPayments: SearchPayment[];
 };

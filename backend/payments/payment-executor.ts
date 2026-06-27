@@ -5,7 +5,7 @@ const agentName = "Mecenas Scholar v1";
 const mockWallet = "0xMecenasAgent000000000000000000000000000001";
 
 export function getPaymentMode(): "real" | "mock" {
-  return process.env.NEXT_PUBLIC_PAYMENT_MODE === "real" && Boolean(process.env.CIRCLE_API_KEY) ? "real" : "mock";
+  return process.env.PAYMENT_MODE === "real" ? "real" : "mock";
 }
 
 export function buildPaymentRequired(source: Source) {
@@ -49,23 +49,28 @@ export function requestProtectedEvidence(source: Source, proof?: string | null) 
 export async function createEvidencePayment(
   source: Source,
   answerId: string,
-  userPrompt: string
+  userPrompt: string,
+  fundedBy: CitationPayment["fundedBy"],
+  searchPaymentId?: string
 ): Promise<{ receipt: CitationPayment; paymentProof: string }> {
   const mode = getPaymentMode();
-  const paymentId = `${mode === "mock" ? "mock" : "pay"}_${makeId("x402").replace("x402_", "")}`;
+  if (mode === "real") throw new Error("Real evidence payment execution is not implemented");
+  const paymentId = `mock_${makeId("x402").replace("x402_", "")}`;
   const receipt: CitationPayment = {
     id: makeId("rcpt"),
     answerId,
+    searchPaymentId,
     sourceId: source.id,
     sourceTitle: source.title,
     userPrompt,
     amountUSDC: source.citationPriceUSDC,
     paymentId,
-    txHash: mode === "real" ? undefined : `mock_tx_${source.id}`,
+    txHash: `mock_tx_${source.id}`,
     payerAgent: agentName,
     payerWallet: process.env.MECENAS_AGENT_WALLET_ADDRESS ?? mockWallet,
     recipientWallet: source.walletAddress,
-    status: mode === "real" ? "pending" : "mock",
+    status: "mock",
+    fundedBy,
     createdAt: new Date().toISOString()
   };
 

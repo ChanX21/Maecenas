@@ -10,13 +10,17 @@ export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
           <h2 className="mt-2 font-display text-2xl text-cream">{receipt.sourceTitle}</h2>
         </div>
         <span className="rounded-sm border border-white/10 px-2 py-1 font-mono text-xs uppercase text-muted">
-          {receipt.status}
+          {receipt.status === "mock" ? "Mock x402 / test USDC proof" : receipt.status}
         </span>
       </div>
       <dl className="mt-5 space-y-3 font-mono text-xs">
         <Row label="Amount" value={`${receipt.amountUSDC} USDC`} />
         <Row label="Recipient" value={receipt.recipientWallet} />
         <Row label="Payer" value={receipt.payerAgent} />
+        <Row
+          label="Paid by"
+          value={receipt.fundedBy === "user_paid_search" ? "User-funded research budget" : "Maecenas sponsored budget"}
+        />
         <Row label="Payment ID" value={receipt.paymentId ?? "pending"} />
       </dl>
       <Link href={`/receipts/${receipt.id}`} className="mt-5 inline-block font-mono text-xs uppercase text-gold">

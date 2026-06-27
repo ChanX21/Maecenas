@@ -38,6 +38,11 @@ Controlled by:
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 ```
 
+Persist a random `maecenas_session_id` in localStorage. Send it as `sessionId`
+on every research request and use `getUsage`, `createSearchPaymentIntent`, and
+`submitSearchPaymentProof` from `frontend/api.ts` when the free quota reaches
+zero.
+
 ## UX Direction
 
 - Chat-first landing page.
