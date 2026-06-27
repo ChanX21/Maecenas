@@ -145,6 +145,7 @@ export type Usage = {
   paidSearchesUsed: number;
   requiresPayment: boolean;
   paidSearchPriceUSDC: string;
+  paymentMode: "mock" | "real";
 };
 
 export type SearchPaymentIntentResponse = {

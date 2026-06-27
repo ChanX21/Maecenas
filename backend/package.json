@@ -7,6 +7,7 @@
     "dev": "tsx server.ts",
     "start": "tsx server.ts",
     "seed": "tsx scripts/seed.ts",
+    "source:review": "tsx scripts/review-source.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "test": "tsx --test test/backend.test.ts",

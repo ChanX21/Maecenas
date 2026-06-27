@@ -1,86 +1,139 @@
 "use client";
 
-import { useState } from "react";
-import { Save } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, Save, WalletCards } from "lucide-react";
+import { registerSource } from "@/api";
+import { connectWallet, getSavedWallet } from "@/browser";
 import type { Source } from "@/types";
-import { apiUrl } from "@/api";
 
 const initialForm = {
   title: "",
   authorName: "",
   sourceUrl: "",
   doiOrCanonicalUrl: "",
-  walletAddress: "",
   citationPriceUSDC: "0.0001",
   abstract: "",
-  tags: "agents, payments, x402",
+  tags: "",
   evidenceText: "",
   license: "CC BY 4.0"
 };
 
 export function SourceRegistrationForm() {
   const [form, setForm] = useState(initialForm);
-  const [createdSource, setCreatedSource] = useState<Source | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [createdSource, setCreatedSource] = useState<Source>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => setWalletAddress(getSavedWallet()), []);
 
   function update(field: keyof typeof initialForm, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  async function ensureWallet() {
+    try {
+      setWalletAddress(await connectWallet());
+      setError("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Wallet connection failed");
+    }
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
-    const response = await fetch(apiUrl("/api/sources"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form)
-    });
-    const data = await response.json();
-    setLoading(false);
-    if (!response.ok) throw new Error(data.error ?? "Failed to register source");
-    setCreatedSource(data.source);
-    setForm(initialForm);
+    if (!walletAddress) return ensureWallet();
+    setBusy(true);
+    setError("");
+    try {
+      const { source } = await registerSource({ ...form, walletAddress });
+      setCreatedSource(source);
+      setForm(initialForm);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Source registration failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-      <form onSubmit={submit} className="roman-panel p-5">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField label="Title" value={form.title} onChange={(value) => update("title", value)} required />
-          <TextField label="Author name" value={form.authorName} onChange={(value) => update("authorName", value)} required />
-          <TextField label="Source URL" value={form.sourceUrl} onChange={(value) => update("sourceUrl", value)} required />
-          <TextField label="DOI or canonical URL" value={form.doiOrCanonicalUrl} onChange={(value) => update("doiOrCanonicalUrl", value)} />
-          <TextField label="Owner wallet" value={form.walletAddress} onChange={(value) => update("walletAddress", value)} required />
-          <TextField label="Citation price USDC" value={form.citationPriceUSDC} onChange={(value) => update("citationPriceUSDC", value)} required />
-          <TextField label="Tags" value={form.tags} onChange={(value) => update("tags", value)} required />
-          <TextField label="License" value={form.license} onChange={(value) => update("license", value)} />
-        </div>
-        <TextArea label="Abstract" value={form.abstract} onChange={(value) => update("abstract", value)} required rows={4} />
-        <TextArea label="Protected evidence text" value={form.evidenceText} onChange={(value) => update("evidenceText", value)} required rows={8} />
+    <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
+      <form onSubmit={submit} className="space-y-6">
+        <section className="border-b border-marble/10 pb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-medium text-cream">Owner wallet</h2>
+              <p className="mt-1 text-sm text-muted">Receipts and future settlements are assigned to this address.</p>
+            </div>
+            <button
+              type="button"
+              onClick={ensureWallet}
+              className="roman-button inline-flex items-center gap-2 border border-marble/15 px-4 py-2.5 font-mono text-xs uppercase text-cream"
+            >
+              <WalletCards size={15} />
+              {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Connect wallet"}
+            </button>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="font-display text-2xl text-cream">Public metadata</h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <TextField label="Title" value={form.title} onChange={(value) => update("title", value)} required />
+            <TextField label="Author or publisher" value={form.authorName} onChange={(value) => update("authorName", value)} required />
+            <TextField label="Source URL" type="url" value={form.sourceUrl} onChange={(value) => update("sourceUrl", value)} required />
+            <TextField label="DOI or canonical URL" value={form.doiOrCanonicalUrl} onChange={(value) => update("doiOrCanonicalUrl", value)} />
+            <TextField
+              label="Evidence price in USDC"
+              value={form.citationPriceUSDC}
+              onChange={(value) => update("citationPriceUSDC", value)}
+              required
+            />
+            <TextField label="License" value={form.license} onChange={(value) => update("license", value)} />
+            <div className="sm:col-span-2">
+              <TextField label="Tags, comma separated" value={form.tags} onChange={(value) => update("tags", value)} required />
+            </div>
+          </div>
+          <TextArea label="Abstract" value={form.abstract} onChange={(value) => update("abstract", value)} required rows={4} />
+        </section>
+
+        <section className="border-t border-marble/10 pt-6">
+          <h2 className="font-display text-2xl text-cream">Protected evidence</h2>
+          <p className="mt-2 text-sm text-muted">This text is available to the agent only after the evidence purchase step.</p>
+          <TextArea label="Evidence text" value={form.evidenceText} onChange={(value) => update("evidenceText", value)} required rows={10} />
+        </section>
+
         <button
           type="submit"
-          disabled={loading}
-          className="roman-button mt-5 inline-flex items-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink transition hover:bg-gold-soft disabled:opacity-70"
+          disabled={busy}
+          className="roman-button inline-flex items-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink disabled:opacity-50"
         >
-          <Save size={16} />
-          Register Source
+          <Save size={15} />
+          {busy ? "Submitting..." : walletAddress ? "Submit for review" : "Connect wallet"}
         </button>
+        {error ? <p role="alert" className="border border-danger/40 bg-danger/10 p-3 text-sm text-red-200">{error}</p> : null}
       </form>
-      <aside className="roman-panel p-5">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-gold">MVP note</p>
-        <p className="mt-3 text-sm leading-6 text-muted">
-          Maecenas does not verify academic ownership yet. This demo shows how agentic citation payments can work once
-          sources are registered.
-        </p>
+
+      <aside className="border-l border-marble/10 pl-6">
+        <h2 className="font-mono text-xs uppercase text-muted">Review status</h2>
         {createdSource ? (
-          <div className="mt-6 space-y-3 border-t border-white/10 pt-5 font-mono text-xs">
-            <Result label="Source ID" value={createdSource.id} />
-            <Result label="Citation price" value={`${createdSource.citationPriceUSDC} USDC`} />
-            <Result label="Owner wallet" value={createdSource.walletAddress} />
-            <Result label="Public source page" value={`/sources#${createdSource.id}`} />
-            <Result label="Protected endpoint" value={apiUrl(`/api/sources/${createdSource.id}/evidence`)} />
+          <div className="mt-4">
+            <CheckCircle2 size={24} className="text-gold" />
+            <p className="mt-3 text-lg text-cream">Submitted for review</p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              This source remains excluded from research until an administrator approves it.
+            </p>
+            <dl className="mt-5 space-y-4 font-mono text-xs">
+              <Result label="Source ID" value={createdSource.id} />
+              <Result label="Status" value={createdSource.status} />
+              <Result label="Price" value={`${createdSource.citationPriceUSDC} USDC`} />
+            </dl>
           </div>
-        ) : null}
+        ) : (
+          <p className="mt-4 text-sm leading-6 text-muted">
+            New submissions are checked for duplicate URLs and evidence quality before entering the public registry. Wallet ownership verification is not yet enabled.
+          </p>
+        )}
       </aside>
     </div>
   );
@@ -90,21 +143,24 @@ function TextField({
   label,
   value,
   onChange,
-  required
+  required,
+  type = "text"
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  type?: string;
 }) {
   return (
     <label className="block">
       <span className="font-mono text-xs uppercase text-muted">{label}</span>
       <input
+        type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required={required}
-        className="mt-2 w-full border border-white/10 bg-ink-2 px-3 py-3 font-mono text-sm text-cream outline-none focus:border-gold/50"
+        className="mt-2 w-full border border-marble/15 bg-panel px-3 py-3 text-sm text-cream outline-none focus:border-gold/60"
       />
     </label>
   );
@@ -131,7 +187,7 @@ function TextArea({
         onChange={(event) => onChange(event.target.value)}
         required={required}
         rows={rows}
-        className="mt-2 w-full resize-none border border-white/10 bg-ink-2 px-3 py-3 text-sm leading-6 text-cream outline-none focus:border-gold/50"
+        className="mt-2 w-full resize-y border border-marble/15 bg-panel px-3 py-3 text-sm leading-6 text-cream outline-none focus:border-gold/60"
       />
     </label>
   );
@@ -140,8 +196,8 @@ function TextArea({
 function Result({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="uppercase text-dim">{label}</p>
-      <p className="mt-1 break-all text-cream">{value}</p>
+      <dt className="uppercase text-dim">{label}</dt>
+      <dd className="mt-1 break-all text-cream">{value}</dd>
     </div>
   );
 }

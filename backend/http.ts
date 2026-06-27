@@ -97,6 +97,15 @@ async function routeRequest(context: RouteContext) {
     return sendJson(response, 200, { sources: listSources({ walletAddress }) });
   }
 
+  if (method === "GET" && path === "/api/admin/sources") {
+    requireAdmin(request);
+    const status = url.searchParams.get("status");
+    const allSources = listSources({ includeUnapproved: true });
+    return sendJson(response, 200, {
+      sources: status ? allSources.filter((source) => source.status === status) : allSources
+    });
+  }
+
   if (method === "GET" && path === "/api/usage") {
     const sessionId = requireSessionId(url.searchParams.get("sessionId"));
     const walletAddress = optionalWallet(url.searchParams.get("wallet"));
@@ -444,7 +453,8 @@ function usageResponse(usage: ReturnType<typeof getOrCreateUsage>) {
     freeSearchesRemaining: remaining,
     paidSearchesUsed: usage.paidSearchesUsed,
     requiresPayment: remaining === 0,
-    paidSearchPriceUSDC: process.env.PAID_SEARCH_PRICE_USDC ?? "0.01"
+    paidSearchPriceUSDC: process.env.PAID_SEARCH_PRICE_USDC ?? "0.01",
+    paymentMode: process.env.PAYMENT_MODE === "real" ? "real" : "mock"
   };
 }
 

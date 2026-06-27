@@ -10,20 +10,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#030201",
-        "ink-2": "#080604",
-        panel: "#120e09",
-        "panel-2": "#191208",
-        gold: "#d8cfbf",
-        "gold-soft": "#efe4cf",
-        "gold-deep": "#8d8274",
-        bronze: "#b8afa2",
-        marble: "#d8cfbf",
-        cream: "#efe4cf",
-        muted: "#9b9182",
-        dim: "#62584b",
+        ink: "#090b0a",
+        "ink-2": "#101311",
+        panel: "#151815",
+        "panel-2": "#1b1f1c",
+        gold: "#8dd8a8",
+        "gold-soft": "#c8f0d5",
+        "gold-deep": "#47785a",
+        bronze: "#b8b2a8",
+        marble: "#e3e7e2",
+        cream: "#f3f4ef",
+        muted: "#a5aca6",
+        dim: "#69716b",
         success: "#75c78a",
-        danger: "#d96c5f"
+        danger: "#e4776b"
       },
       fontFamily: {
         display: ["Georgia", "Cambria", "Times New Roman", "serif"],
@@ -31,7 +31,7 @@ const config: Config = {
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"]
       },
       boxShadow: {
-        gold: "0 0 0 1px rgba(216,207,191,0.22), 0 24px 80px rgba(0,0,0,0.45)"
+        gold: "0 0 0 1px rgba(141,216,168,0.28)"
       }
     }
   },

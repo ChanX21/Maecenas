@@ -209,11 +209,13 @@ export function seedDatabase(): number {
 
 export function listSources(options: { walletAddress?: string; includeUnapproved?: boolean } = {}): Source[] {
   const rows = options.walletAddress
-    ? database().select().from(sources).where(eq(sources.walletAddress, options.walletAddress)).orderBy(desc(sources.createdAt)).all()
+    ? database().select().from(sources).orderBy(desc(sources.createdAt)).all()
     : options.includeUnapproved
       ? database().select().from(sources).orderBy(desc(sources.createdAt)).all()
       : database().select().from(sources).where(eq(sources.status, "approved")).orderBy(desc(sources.createdAt)).all();
-  return rows.map(mapSource);
+  return rows
+    .filter((source) => !options.walletAddress || source.walletAddress.toLowerCase() === options.walletAddress)
+    .map(mapSource);
 }
 
 export function findSource(id: string): Source | undefined {

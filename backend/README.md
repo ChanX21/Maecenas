@@ -65,6 +65,13 @@ data/maecenas.db
 
 `npm run seed` is idempotent and does not reset usage or payment records.
 
+New source submissions remain pending until reviewed:
+
+```bash
+npm run source:review -- src_123 approved
+npm run source:review -- src_123 rejected "Duplicate or unverifiable evidence"
+```
+
 ## Free And Paid Research
 
 The client persists `maecenas_session_id` in localStorage and sends it as
@@ -75,6 +82,9 @@ to `/api/payments/search-proof`, and retry research with the returned
 
 `PAYMENT_MODE=real` intentionally fails startup until Circle/Arc verification
 and evidence payment execution are implemented.
+
+Research requires `OPENAI_API_KEY`; `OPENAI_MODEL` defaults to `gpt-5-mini`.
+Without a key the API returns `503 AI_NOT_CONFIGURED` and does not consume quota.
 
 ## Production Notes
 

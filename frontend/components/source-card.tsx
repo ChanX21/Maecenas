@@ -14,7 +14,7 @@ export function SourceCard({ source }: { source: Source }) {
           <p className="mt-1 font-mono text-xs uppercase tracking-[0.16em] text-muted">{source.authorName}</p>
         </div>
         <span className="whitespace-nowrap rounded-sm border border-gold/30 bg-gold/10 px-2 py-1 font-mono text-xs text-gold">
-          {source.citationPriceUSDC} USDC
+          {source.citationPriceUSDC} USDC / evidence
         </span>
       </div>
       <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted">{source.abstract}</p>

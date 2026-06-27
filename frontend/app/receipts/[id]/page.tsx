@@ -17,9 +17,9 @@ export default async function ReceiptPage({ params }: PageProps) {
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeading
-        eyebrow="Public receipt"
-        title="Paid Citation Receipt"
-        copy="A source owner earned because Maecenas decided this evidence was worth buying before citation."
+        eyebrow="Evidence ledger"
+        title="Evidence purchase receipt"
+        copy="This record shows why evidence was selected, who was assigned the value, and whether settlement was mock or real."
       />
       <div className="mt-8">
         <PaymentReceiptCard receipt={receipt} />

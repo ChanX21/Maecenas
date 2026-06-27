@@ -77,6 +77,29 @@ export async function getSources() {
   return apiFetch<{ sources: Source[] }>("/api/sources");
 }
 
+export async function getOwnerSources(wallet: string) {
+  return apiFetch<{ sources: Source[] }>(`/api/sources?wallet=${encodeURIComponent(wallet)}`);
+}
+
+export async function registerSource(input: {
+  title: string;
+  authorName: string;
+  sourceUrl: string;
+  doiOrCanonicalUrl?: string;
+  walletAddress: string;
+  citationPriceUSDC: string;
+  abstract: string;
+  evidenceText: string;
+  tags: string;
+  license?: string;
+}) {
+  return apiFetch<{ source: Source }>("/api/sources", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+}
+
 export async function getAnswer(id: string) {
   return apiFetch<{ answer: Answer }>(`/api/answers/${id}`);
 }
@@ -126,7 +149,7 @@ export async function runResearch(input: {
   sessionId: string;
   clientRequestId: string;
   question: string;
-  budgetUSDC: string;
+  budgetUSDC?: string;
   strategy: ResearchStrategy;
   walletAddress?: string;
   searchPaymentId?: string;

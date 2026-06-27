@@ -11,16 +11,16 @@ export default async function LeaderboardPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeading
-        eyebrow="Public traction dashboard"
-        title="Live Maecenas payment activity."
-        copy="A public ledger for registered sources, paid evidence unlocks, source-owner earnings, and recent citation payments."
+        eyebrow="Public evidence ledger"
+        title="Maecenas research activity."
+        copy="Approved sources, evidence unlocks, recorded value and settlement status. Mock records are not transferred funds."
       />
       <div className="mt-8">
         <LeaderboardStats metrics={leaderboard.metrics} />
       </div>
       <div className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <section className="roman-panel p-5">
-          <h2 className="font-display text-3xl text-cream">Top Earning Sources</h2>
+          <h2 className="font-display text-3xl text-cream">Top Sources by Recorded Value</h2>
           <div className="mt-5 space-y-3">
             {leaderboard.topEarningSources.map((source) => (
               <div key={source.sourceId} className="border border-marble/10 bg-ink-2 p-4">
@@ -31,7 +31,7 @@ export default async function LeaderboardPage() {
                   </div>
                   <p className="font-mono text-sm text-gold">{source.earnedUSDC} USDC</p>
                 </div>
-                <p className="mt-3 font-mono text-xs uppercase text-dim">{source.citations} paid citations</p>
+                <p className="mt-3 font-mono text-xs uppercase text-dim">{source.citations} evidence purchases</p>
               </div>
             ))}
           </div>

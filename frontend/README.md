@@ -38,13 +38,16 @@ Controlled by:
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 ```
 
-`ResearchPromptBox` already owns the complete product flow: persistent
+`ResearchPromptBox` owns the complete product flow: persistent
 `maecenas_session_id`, quota loading, free research, 402 handling, injected EVM
 wallet connection, mock payment intent/proof, and paid-search retry. Keep API
 calls in `frontend/api.ts` while changing presentation.
 
 Mock mode connects a real wallet address but does not submit an on-chain
 transaction. It sends an explicitly mock proof to the backend.
+
+The answer page shows structured model output first. Source scores, skipped
+records and receipts remain available under the collapsed research details.
 
 ## UX Direction
 

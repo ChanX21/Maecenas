@@ -6,7 +6,7 @@ export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
     <article className="roman-panel p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-gold">Paid Citation Receipt</p>
+          <p className="font-mono text-xs uppercase text-gold">Evidence Receipt</p>
           <h2 className="mt-2 font-display text-2xl text-cream">{receipt.sourceTitle}</h2>
         </div>
         <span className="rounded-sm border border-white/10 px-2 py-1 font-mono text-xs uppercase text-muted">

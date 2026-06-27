@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SessionStatus } from "@/components/session-status";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default function RootLayout({
       <body>
         <div className="min-h-screen">
           <header className="sticky top-0 z-40 border-b border-marble/10 bg-ink/88 backdrop-blur">
-            <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
               <Link href="/" className="flex items-center gap-3">
                 <span className="coin-surface flex h-9 w-9 items-center justify-center rounded-full text-sm font-black text-ink shadow-gold ring-1 ring-marble/40">
                   M
@@ -36,7 +37,10 @@ export default function RootLayout({
                   </span>
                 </span>
               </Link>
-              <nav className="hidden items-center gap-1 border border-marble/10 bg-panel px-1 py-1 font-mono text-xs uppercase text-muted md:flex">
+              <div className="flex items-center gap-2">
+                <SessionStatus />
+              </div>
+              <nav className="order-3 flex w-full items-center gap-1 overflow-x-auto border-t border-marble/10 pt-2 font-mono text-[11px] uppercase text-muted sm:order-none sm:w-auto sm:border-0 sm:pt-0">
                 {navItems.map((item) => (
                   <Link
                     key={item.href}

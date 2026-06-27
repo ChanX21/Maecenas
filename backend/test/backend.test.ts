@@ -54,6 +54,12 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
     assert.ok(!publicSourcesBefore.sources.some((source: Record<string, unknown>) => source.id === submitted.body.source.id));
     const ownerSources = (await (await fetch(`${base}/api/sources?wallet=${walletAddress}`)).json()) as Record<string, any>;
     assert.equal(ownerSources.sources.find((source: Record<string, unknown>) => source.id === submitted.body.source.id)?.status, "pending");
+    const reviewQueue = (await (
+      await fetch(`${base}/api/admin/sources?status=pending`, {
+        headers: { Authorization: "Bearer test_admin_token" }
+      })
+    ).json()) as Record<string, any>;
+    assert.ok(reviewQueue.sources.some((source: Record<string, unknown>) => source.id === submitted.body.source.id));
 
     const unauthorizedReview = await post(`/api/admin/sources/${submitted.body.source.id}/review`, { status: "approved" });
     assert.equal(unauthorizedReview.response.status, 401);

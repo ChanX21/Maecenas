@@ -13,8 +13,8 @@ export default async function SourcesPage() {
       <div className="flex flex-wrap items-end justify-between gap-5">
         <SectionHeading
           eyebrow="Public source registry"
-          title="Agent-readable paid evidence endpoints."
-          copy="Each source exposes a free preview and a protected evidence endpoint that requires payment proof."
+          title="Approved evidence sources."
+          copy="Public metadata is searchable. Protected evidence is unlocked only when selected for a funded research answer."
         />
         <ButtonLink href="/sources/new" variant="primary">
           Register a Source
