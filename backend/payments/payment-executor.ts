@@ -1,8 +1,8 @@
 import type { CitationPayment, Source } from "@/types";
 import { makeId } from "@/utils/ids";
 
-const agentName = "Mecenas Scholar v1";
-const mockWallet = "0xMecenasAgent000000000000000000000000000001";
+const agentName = "Maecenas Scholar v1";
+const mockWallet = "0x00000000000000000000000000000000000a11ce";
 
 export function getPaymentMode(): "real" | "mock" {
   return process.env.PAYMENT_MODE === "real" ? "real" : "mock";
@@ -67,7 +67,7 @@ export async function createEvidencePayment(
     paymentId,
     txHash: `mock_tx_${source.id}`,
     payerAgent: agentName,
-    payerWallet: process.env.MECENAS_AGENT_WALLET_ADDRESS ?? mockWallet,
+    payerWallet: process.env.MAECENAS_AGENT_WALLET_ADDRESS ?? mockWallet,
     recipientWallet: source.walletAddress,
     status: "mock",
     fundedBy,

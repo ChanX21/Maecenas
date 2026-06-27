@@ -21,13 +21,13 @@ export default function HomePage() {
               Autonomous scholarly payment agent
             </p>
             <h1 className="mt-5 font-display text-6xl leading-[0.9] text-cream sm:text-8xl lg:text-9xl">
-              Mecenas
+              Maecenas
             </h1>
             <p className="roman-inscription mx-auto mt-5 max-w-3xl text-2xl leading-tight text-marble sm:text-3xl">
               Scholarly agents that pay their sources.
             </p>
             <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-muted">
-              Ask a research question. Mecenas plans the work, searches registered evidence endpoints,
+              Ask a research question. Maecenas plans the work, searches registered evidence endpoints,
               decides what is worth buying, pays in USDC, then answers with citations and receipts.
             </p>
           </div>
@@ -115,7 +115,7 @@ export default function HomePage() {
             Most AI research tools cite sources after using them.
           </h2>
           <div className="border-l border-marble/30 pl-6">
-            <p className="font-display text-4xl text-marble">Mecenas pays sources before using them.</p>
+            <p className="font-display text-4xl text-marble">Maecenas pays sources before using them.</p>
             <p className="mt-4 text-muted">
               It turns scholarly sources into x402-priced evidence endpoints, and gives AI agents a budget
               to buy the most useful evidence before answering.

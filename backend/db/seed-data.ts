@@ -85,7 +85,7 @@ export const seedSources: Source[] = [
     title: "Research Attribution in AI Systems",
     authorName: "Dr. Elena Vos",
     sourceUrl: "https://example.com/research-attribution-ai",
-    doiOrCanonicalUrl: "10.0000/mecenas.demo.attribution",
+    doiOrCanonicalUrl: "10.0000/maecenas.demo.attribution",
     walletAddress: "0x04419b057dB121cE5B47Dc4Fd94707B6B5a6A006",
     citationPriceUSDC: "0.00025",
     abstract:

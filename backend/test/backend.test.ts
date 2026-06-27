@@ -15,11 +15,11 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
   process.env.MAECENAS_TREASURY_WALLET_ADDRESS = "0x2222222222222222222222222222222222222222";
 
   const store = await import("@/db/store");
-  const { createMecenasServer } = await import("@/http");
+  const { createMaecenasServer } = await import("@/http");
   store.initializeDatabase();
   store.seedDatabase();
 
-  const server = createMecenasServer();
+  const server = createMaecenasServer();
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const sessionId = "sess_acceptance_001";

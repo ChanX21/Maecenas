@@ -3,7 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Mecenas",
+  title: "Maecenas",
   description: "Scholarly agents that pay their sources."
 };
 
@@ -30,7 +30,7 @@ export default function RootLayout({
                   M
                 </span>
                 <span>
-                  <span className="roman-inscription block text-xl leading-5 text-cream">Mecenas</span>
+                  <span className="roman-inscription block text-xl leading-5 text-cream">Maecenas</span>
                   <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-marble/70">
                     autonomous research ledger
                   </span>

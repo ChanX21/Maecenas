@@ -19,7 +19,7 @@ import {
 import type {
   Answer,
   CitationPayment,
-  MecenasDatabase,
+  MaecenasDatabase,
   SearchPayment,
   SearchPaymentIntent,
   Source,
@@ -180,26 +180,23 @@ function mapSearchPayment(row: typeof searchPayments.$inferSelect): SearchPaymen
 
 export function seedDatabase(): number {
   const conn = database();
-  conn
-    .insert(sources)
-    .values(
-      seedSources.map((source) => ({
-        id: source.id,
-        title: source.title,
-        authorName: source.authorName,
-        sourceUrl: source.sourceUrl,
-        doiOrCanonicalUrl: source.doiOrCanonicalUrl,
-        walletAddress: source.walletAddress,
-        citationPriceMicros: parseUSDCMicros(source.citationPriceUSDC),
-        abstract: source.abstract,
-        evidenceText: source.evidenceText,
-        tagsJson: JSON.stringify(source.tags),
-        license: source.license,
-        createdAt: source.createdAt
-      }))
-    )
-    .onConflictDoNothing()
-    .run();
+  for (const source of seedSources) {
+    const values = {
+      id: source.id,
+      title: source.title,
+      authorName: source.authorName,
+      sourceUrl: source.sourceUrl,
+      doiOrCanonicalUrl: source.doiOrCanonicalUrl,
+      walletAddress: source.walletAddress,
+      citationPriceMicros: parseUSDCMicros(source.citationPriceUSDC),
+      abstract: source.abstract,
+      evidenceText: source.evidenceText,
+      tagsJson: JSON.stringify(source.tags),
+      license: source.license,
+      createdAt: source.createdAt
+    };
+    conn.insert(sources).values(values).onConflictDoUpdate({ target: sources.id, set: values }).run();
+  }
   return seedSources.length;
 }
 
@@ -243,7 +240,7 @@ export function findReceipt(id: string): CitationPayment | undefined {
   return row ? mapReceipt(row) : undefined;
 }
 
-export function readDb(): MecenasDatabase {
+export function readDb(): MaecenasDatabase {
   const conn = database();
   return {
     sources: conn.select().from(sources).orderBy(desc(sources.createdAt)).all().map(mapSource),

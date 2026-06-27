@@ -1,11 +1,21 @@
 import type {
   Answer,
   CitationPayment,
+  ResearchStrategy,
   SearchPaymentIntentResponse,
   SearchPaymentResponse,
   Source,
   Usage
 } from "@/types";
+
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    public data: Record<string, unknown>
+  ) {
+    super(String(data.message ?? data.error ?? `Request failed: ${status}`));
+  }
+}
 
 export type LeaderboardResponse = {
   metrics: {
@@ -58,7 +68,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.message ?? data.error ?? `Request failed: ${response.status}`);
+    throw new ApiError(response.status, data);
   }
   return data as T;
 }
@@ -106,6 +116,28 @@ export async function submitSearchPaymentProof(input: {
   txHash?: string;
 }) {
   return apiFetch<SearchPaymentResponse>("/api/payments/search-proof", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function runResearch(input: {
+  sessionId: string;
+  clientRequestId: string;
+  question: string;
+  budgetUSDC: string;
+  strategy: ResearchStrategy;
+  walletAddress?: string;
+  searchPaymentId?: string;
+}) {
+  return apiFetch<{
+    answerId: string;
+    status: "completed";
+    paymentType: "free_sponsored" | "user_paid";
+    searchPaymentId?: string;
+    freeSearchesRemaining: number;
+  }>("/api/research", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input)

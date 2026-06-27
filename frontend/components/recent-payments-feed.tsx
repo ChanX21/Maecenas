@@ -11,7 +11,7 @@ export function RecentPaymentsFeed({ receipts }: { receipts: CitationPayment[] }
           receipts.map((receipt) => (
             <div key={receipt.id} className="border border-marble/10 bg-ink-2 p-4">
               <p className="font-mono text-sm text-cream">
-                Mecenas Scholar paid {receipt.amountUSDC} USDC to &ldquo;{receipt.sourceTitle}&rdquo;
+                Maecenas Scholar paid {receipt.amountUSDC} USDC to &ldquo;{receipt.sourceTitle}&rdquo;
               </p>
               <p className="mt-2 font-mono text-xs uppercase text-dim">{receipt.status} · {receipt.paymentId}</p>
             </div>

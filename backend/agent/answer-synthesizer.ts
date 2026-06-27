@@ -23,6 +23,6 @@ export function synthesizeAnswer(
     "Paid evidence used:",
     evidenceSummary,
     "",
-    "Boundary: Mecenas is an experimental attribution and payment layer for AI-agent source usage. It rewards usage, not academic merit, and this MVP does not verify academic ownership."
+    "Boundary: Maecenas is an experimental attribution and payment layer for AI-agent source usage. It rewards usage, not academic merit, and this MVP does not verify academic ownership."
   ].join("\n");
 }

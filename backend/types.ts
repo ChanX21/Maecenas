@@ -170,7 +170,7 @@ export type ResearchTrace = {
   paymentMode: "real" | "mock";
 };
 
-export type MecenasDatabase = {
+export type MaecenasDatabase = {
   sources: Source[];
   answers: Answer[];
   receipts: CitationPayment[];
