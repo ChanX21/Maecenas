@@ -1,4 +1,4 @@
-# Mecenas
+# Maecenas
 
 **Scholarly agents that pay their sources.**
 
