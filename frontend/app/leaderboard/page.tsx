@@ -12,7 +12,7 @@ export default async function LeaderboardPage() {
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeading
         eyebrow="Public traction dashboard"
-        title="Live Mecenas payment activity."
+        title="Live Maecenas payment activity."
         copy="A public ledger for registered sources, paid evidence unlocks, source-owner earnings, and recent citation payments."
       />
       <div className="mt-8">

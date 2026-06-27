@@ -19,7 +19,7 @@ export default async function ReceiptPage({ params }: PageProps) {
       <SectionHeading
         eyebrow="Public receipt"
         title="Paid Citation Receipt"
-        copy="A source owner earned because Mecenas decided this evidence was worth buying before citation."
+        copy="A source owner earned because Maecenas decided this evidence was worth buying before citation."
       />
       <div className="mt-8">
         <PaymentReceiptCard receipt={receipt} />

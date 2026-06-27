@@ -69,7 +69,7 @@ export function SourceRegistrationForm() {
       <aside className="roman-panel p-5">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-gold">MVP note</p>
         <p className="mt-3 text-sm leading-6 text-muted">
-          Mecenas does not verify academic ownership yet. This demo shows how agentic citation payments can work once
+          Maecenas does not verify academic ownership yet. This demo shows how agentic citation payments can work once
           sources are registered.
         </p>
         {createdSource ? (

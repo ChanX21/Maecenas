@@ -44,7 +44,7 @@ class HttpError extends Error {
   }
 }
 
-export function createMecenasServer() {
+export function createMaecenasServer() {
   return createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
     const context: RouteContext = {
@@ -85,7 +85,7 @@ async function routeRequest(context: RouteContext) {
   if (method === "GET" && path === "/api/health") {
     return sendJson(response, 200, {
       ok: true,
-      service: "mecenas-backend",
+      service: "maecenas-backend",
       tagline: "Scholarly agents that pay their sources."
     });
   }

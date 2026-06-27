@@ -1,6 +1,6 @@
 # Backend
 
-This folder owns the standalone Node.js backend and Mecenas domain logic.
+This folder owns the standalone Node.js backend and Maecenas domain logic.
 
 ## Own These Areas
 

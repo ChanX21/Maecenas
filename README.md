@@ -2,13 +2,13 @@
 
 **Scholarly agents that pay their sources.**
 
-Mecenas is a research/payment agent demo. A user asks a research question, the agent searches registered sources, scores which evidence is worth buying, unlocks selected evidence through a 402/x402-shaped payment flow, writes a cited answer, and stores paid citation receipts for source owners.
+Maecenas is a research/payment agent demo. A user asks a research question, the agent searches registered sources, scores which evidence is worth buying, unlocks selected evidence through a 402/x402-shaped payment flow, writes a cited answer, and stores paid citation receipts for source owners.
 
 The core product idea:
 
 ```txt
 Most AI tools cite sources after using them.
-Mecenas pays sources before using protected evidence.
+Maecenas pays sources before using protected evidence.
 ```
 
 ## Current App
@@ -30,10 +30,10 @@ End-to-end demo flow:
 1. Source owner registers a source.
 2. Source gets a free preview endpoint and protected evidence endpoint.
 3. User asks a research question.
-4. Mecenas plans the research.
-5. Mecenas searches registered sources.
-6. Mecenas scores relevance, fit, novelty, and price efficiency.
-7. Mecenas buys selected sources and skips weaker ones.
+4. Maecenas plans the research.
+5. Maecenas searches registered sources.
+6. Maecenas scores relevance, fit, novelty, and price efficiency.
+7. Maecenas buys selected sources and skips weaker ones.
 8. Protected evidence endpoint returns 402 Payment Required.
 9. Agent sends a mock-labeled x402/USDC payment proof.
 10. Evidence unlocks.
@@ -234,7 +234,6 @@ Frontend `frontend/.env.local`:
 ```txt
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
-NEXT_PUBLIC_PAYMENT_MODE=mock
 ```
 
 Backend `backend/.env`:
@@ -244,7 +243,10 @@ BACKEND_PORT=4000
 BACKEND_HOST=0.0.0.0
 CORS_ORIGIN=http://localhost:3000
 X402_NETWORK=arc-testnet
-NEXT_PUBLIC_PAYMENT_MODE=mock
+PAYMENT_MODE=mock
+FREE_SEARCH_LIMIT=5
+FREE_SEARCH_BUDGET_USDC=0.01
+PAID_SEARCH_PRICE_USDC=0.01
 ```
 
 Reserved for real integrations:
@@ -262,8 +264,8 @@ CIRCLE_API_KEY=
 CIRCLE_WALLET_ID=
 CIRCLE_ENTITY_SECRET=
 
-MECENAS_AGENT_PRIVATE_KEY=
-MECENAS_AGENT_WALLET_ADDRESS=
+MAECENAS_AGENT_PRIVATE_KEY=
+MAECENAS_AGENT_WALLET_ADDRESS=
 
 GATEWAY_API_URL=
 ```
