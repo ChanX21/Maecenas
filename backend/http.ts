@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { URL } from "url";
 import { runResearchAgent } from "@/agent/research-agent";
 import { AgentError } from "@/agent/ai";
@@ -16,6 +16,7 @@ import {
   getOrCreateUsage,
   listSources,
   readDb,
+  reviewSource,
   StoreError
 } from "@/db/store";
 import { buildPaymentRequired, hasValidPaymentProof } from "@/payments/payment-executor";
@@ -92,7 +93,8 @@ async function routeRequest(context: RouteContext) {
   }
 
   if (method === "GET" && path === "/api/sources") {
-    return sendJson(response, 200, { sources: listSources() });
+    const walletAddress = optionalWallet(url.searchParams.get("wallet"));
+    return sendJson(response, 200, { sources: listSources({ walletAddress }) });
   }
 
   if (method === "GET" && path === "/api/usage") {
@@ -110,32 +112,65 @@ async function routeRequest(context: RouteContext) {
       return sendJson(response, 400, { error: `Missing required fields: ${missing.join(", ")}` });
     }
 
+    const title = String(body.title).trim();
+    const authorName = String(body.authorName).trim();
+    const abstract = String(body.abstract).trim();
+    const evidenceText = String(body.evidenceText).trim();
+    if (title.length > 200 || authorName.length > 120) {
+      throw new HttpError(400, "INVALID_SOURCE", "Source title or author name is too long");
+    }
+    if (abstract.length < 40 || abstract.length > 2_000 || evidenceText.length < 80 || evidenceText.length > 20_000) {
+      throw new HttpError(400, "INVALID_SOURCE", "Abstract or evidence length is outside the accepted range");
+    }
+    const tags = String(body.tags ?? "")
+      .split(",")
+      .map((tag) => tag.trim().toLowerCase())
+      .filter(Boolean)
+      .slice(0, 12);
+    if (tags.length === 0) throw new HttpError(400, "INVALID_SOURCE", "At least one tag is required");
+
     const source: Source = {
       id: makeId("src"),
-      title: String(body.title),
-      authorName: String(body.authorName),
-      sourceUrl: String(body.sourceUrl),
-      doiOrCanonicalUrl: body.doiOrCanonicalUrl ? String(body.doiOrCanonicalUrl) : undefined,
-      walletAddress: String(body.walletAddress),
+      title,
+      authorName,
+      sourceUrl: requireHttpUrl(body.sourceUrl, "sourceUrl"),
+      doiOrCanonicalUrl: body.doiOrCanonicalUrl
+        ? requireHttpUrlOrDoi(body.doiOrCanonicalUrl, "doiOrCanonicalUrl")
+        : undefined,
+      walletAddress: requireWallet(body.walletAddress),
       citationPriceUSDC: String(body.citationPriceUSDC),
-      abstract: String(body.abstract),
-      evidenceText: String(body.evidenceText),
-      tags: String(body.tags ?? "")
-        .split(",")
-        .map((tag) => tag.trim().toLowerCase())
-        .filter(Boolean),
+      abstract,
+      evidenceText,
+      tags,
       license: body.license ? String(body.license) : undefined,
+      status: "pending",
       createdAt: new Date().toISOString()
     };
 
     validateUSDC(source.citationPriceUSDC, "citationPriceUSDC");
+    if (parseUSDCMicros(source.citationPriceUSDC) === 0) {
+      throw new HttpError(400, "INVALID_USDC_AMOUNT", "citationPriceUSDC must be greater than zero");
+    }
     return sendJson(response, 201, { source: createSource(source) });
+  }
+
+  const sourceReviewMatch = path.match(/^\/api\/admin\/sources\/([^/]+)\/review$/);
+  if (method === "POST" && sourceReviewMatch) {
+    requireAdmin(request);
+    const body = await readJsonBody<Record<string, unknown>>(request);
+    const status = String(body.status ?? "");
+    if (status !== "approved" && status !== "rejected") {
+      throw new HttpError(400, "INVALID_SOURCE_STATUS", "status must be approved or rejected");
+    }
+    return sendJson(response, 200, {
+      source: reviewSource(sourceReviewMatch[1], status, body.reason ? String(body.reason) : undefined)
+    });
   }
 
   const sourcePreviewMatch = path.match(/^\/api\/sources\/([^/]+)\/preview$/);
   if (method === "GET" && sourcePreviewMatch) {
     const source = findSource(sourcePreviewMatch[1]);
-    if (!source) return sendJson(response, 404, { error: "Source not found" });
+    if (!source || source.status !== "approved") return sendJson(response, 404, { error: "Source not found" });
 
     return sendJson(response, 200, {
       id: source.id,
@@ -150,7 +185,7 @@ async function routeRequest(context: RouteContext) {
   const sourceEvidenceMatch = path.match(/^\/api\/sources\/([^/]+)\/evidence$/);
   if (method === "GET" && sourceEvidenceMatch) {
     const source = findSource(sourceEvidenceMatch[1]);
-    if (!source) return sendJson(response, 404, { error: "Source not found" });
+    if (!source || source.status !== "approved") return sendJson(response, 404, { error: "Source not found" });
 
     const proof = request.headers["x-payment-proof"]?.toString() ?? url.searchParams.get("proof");
     if (!hasValidPaymentProof(source, proof)) {
@@ -173,7 +208,7 @@ async function routeRequest(context: RouteContext) {
   const sourceMatch = path.match(/^\/api\/sources\/([^/]+)$/);
   if (method === "GET" && sourceMatch) {
     const source = findSource(sourceMatch[1]);
-    if (!source) return sendJson(response, 404, { error: "Source not found" });
+    if (!source || source.status !== "approved") return sendJson(response, 404, { error: "Source not found" });
     return sendJson(response, 200, { source });
   }
 
@@ -441,6 +476,34 @@ function validateUSDC(value: string, field: string): void {
   }
 }
 
+function requireHttpUrl(value: unknown, field: string): string {
+  const raw = String(value ?? "").trim();
+  try {
+    const url = new URL(raw);
+    if (!["http:", "https:"].includes(url.protocol)) throw new Error();
+    return url.toString();
+  } catch {
+    throw new HttpError(400, "INVALID_SOURCE_URL", `${field} must be an HTTP or HTTPS URL`);
+  }
+}
+
+function requireHttpUrlOrDoi(value: unknown, field: string): string {
+  const raw = String(value ?? "").trim();
+  if (/^10\.\d{4,9}\/\S+$/i.test(raw)) return raw;
+  return requireHttpUrl(raw, field);
+}
+
+function requireAdmin(request: IncomingMessage): void {
+  const expected = process.env.ADMIN_TOKEN;
+  if (!expected) throw new HttpError(503, "ADMIN_NOT_CONFIGURED", "ADMIN_TOKEN is required for source review");
+  const supplied = request.headers.authorization?.replace(/^Bearer\s+/i, "") ?? "";
+  const expectedBuffer = Buffer.from(expected);
+  const suppliedBuffer = Buffer.from(supplied);
+  if (expectedBuffer.length !== suppliedBuffer.length || !timingSafeEqual(expectedBuffer, suppliedBuffer)) {
+    throw new HttpError(401, "UNAUTHORIZED", "Valid admin authorization is required");
+  }
+}
+
 function ipHash(request: IncomingMessage): string | undefined {
   const secret = process.env.IP_HASH_SECRET;
   if (!secret) return undefined;
@@ -457,7 +520,7 @@ function setCorsHeaders(request: IncomingMessage, response: ServerResponse) {
 
   response.setHeader("Access-Control-Allow-Origin", allowedOrigin);
   response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type,x-payment-proof");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,x-payment-proof");
 }
 
 function sendJson(response: ServerResponse, status: number, data: unknown) {

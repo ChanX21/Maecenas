@@ -12,8 +12,14 @@ export const sources = sqliteTable("sources", {
   evidenceText: text("evidence_text").notNull(),
   tagsJson: text("tags_json").notNull(),
   license: text("license"),
+  status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+  reviewedAt: text("reviewed_at"),
+  rejectionReason: text("rejection_reason"),
   createdAt: text("created_at").notNull()
-});
+}, (table) => [
+  uniqueIndex("sources_source_url_unique").on(table.sourceUrl),
+  uniqueIndex("sources_canonical_url_unique").on(table.doiOrCanonicalUrl)
+]);
 
 export const userUsages = sqliteTable(
   "user_usages",
