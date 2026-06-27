@@ -19,6 +19,7 @@ export type Answer = {
   id: string;
   prompt: string;
   response: string;
+  contentJson?: AnswerContent;
   budgetUSDC: string;
   spentUSDC: string;
   citedSourceIds: string[];
@@ -28,6 +29,16 @@ export type Answer = {
   sessionId?: string;
   walletAddress?: string;
   createdAt: string;
+};
+
+export type AnswerContent = {
+  summary: string;
+  sections: {
+    heading: string;
+    body: string;
+    citations: string[];
+  }[];
+  limitations: string[];
 };
 
 export type CitationPaymentStatus = "pending" | "paid" | "failed" | "mock";

@@ -1,8 +1,7 @@
 import { allocateBudget } from "@/agent/budget-allocator";
-import { planResearch } from "@/agent/query-planner";
+import { analyzeResearch } from "@/agent/query-planner";
 import { scoutSources } from "@/agent/source-scout";
-import { scoreSources } from "@/agent/source-scorer";
-import { synthesizeAnswer } from "@/agent/answer-synthesizer";
+import { answerContentToText, synthesizeAnswer } from "@/agent/answer-synthesizer";
 import { traceEvent } from "@/agent/trace";
 import { listSources } from "@/db/store";
 import { createEvidencePayment, getPaymentMode, requestProtectedEvidence } from "@/payments/payment-executor";
@@ -24,13 +23,11 @@ export async function runResearchAgent(input: RunResearchInput): Promise<{ answe
   const answerId = makeId("ans");
   const allSources = await listSources();
   const events: TraceEvent[] = [];
-  const plan = planResearch(input.question, input.budgetUSDC, input.strategy);
-  events.push(traceEvent("plan", "Research plan created", `${plan.subquestions.length} subquestions and ${plan.evidenceNeeds.length} evidence needs.`));
-
-  const candidates = scoutSources(plan, allSources);
+  const candidates = scoutSources(input.question, allSources);
   events.push(traceEvent("scout", "Source registry searched", `${candidates.length} candidate sources found.`));
 
-  const scoredSources = scoreSources(plan, candidates);
+  const { plan, scoredSources } = await analyzeResearch(input.question, input.budgetUSDC, input.strategy, candidates);
+  events.push(traceEvent("plan", "Research plan created", `${plan.subquestions.length} subquestions and ${plan.evidenceNeeds.length} evidence needs.`));
   events.push(traceEvent("score", "Candidate sources scored", `Top score: ${scoredSources[0]?.finalScore ?? 0}.`));
 
   const budgetDecision = allocateBudget(scoredSources, input.budgetUSDC, input.strategy);
@@ -84,8 +81,9 @@ export async function runResearchAgent(input: RunResearchInput): Promise<{ answe
 
   const receipts = unlockedEvidence.map((evidence) => evidence.receipt);
 
-  const response = synthesizeAnswer(plan, unlockedEvidence, budgetDecision);
-  events.push(traceEvent("synthesis", "Cited answer generated", `Answer uses ${unlockedEvidence.length} paid evidence sources.`));
+  const contentJson = await synthesizeAnswer(plan, unlockedEvidence, budgetDecision);
+  const response = answerContentToText(contentJson);
+  events.push(traceEvent("synthesis", "Cited answer generated", `Answer uses ${unlockedEvidence.length} selected evidence sources.`));
 
   const trace: ResearchTrace = {
     plan,
@@ -101,9 +99,10 @@ export async function runResearchAgent(input: RunResearchInput): Promise<{ answe
     id: answerId,
     prompt: input.question,
     response,
+    contentJson,
     budgetUSDC: input.budgetUSDC,
     spentUSDC: sumUSDC(receipts.map((receipt) => receipt.amountUSDC)),
-    citedSourceIds: unlockedEvidence.map((evidence) => evidence.sourceId),
+    citedSourceIds: [...new Set(contentJson.sections.flatMap((section) => section.citations))],
     decisionTraceJson: trace,
     searchPaymentId: input.searchPaymentId,
     paymentType: input.paymentType,

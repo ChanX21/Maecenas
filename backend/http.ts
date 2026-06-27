@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { createHmac } from "crypto";
 import { URL } from "url";
 import { runResearchAgent } from "@/agent/research-agent";
+import { AgentError } from "@/agent/ai";
 import {
   beginResearch,
   completeResearch,
@@ -272,6 +273,9 @@ async function routeRequest(context: RouteContext) {
       return sendResearchResponse(response, answer);
     } catch (error) {
       failResearch(reservation.runId);
+      if (error instanceof AgentError) {
+        return sendJson(response, error.status, { error: error.code, message: error.message });
+      }
       console.error(error);
       return sendJson(response, 500, { error: "RESEARCH_FAILED", message: "Research could not be completed" });
     }

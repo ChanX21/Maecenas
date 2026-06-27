@@ -9,6 +9,7 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "maecenas-"));
   process.env.DATABASE_URL = path.join(dir, "test.db");
   process.env.PAYMENT_MODE = "mock";
+  process.env.AI_MODE = "test";
   process.env.FREE_SEARCH_LIMIT = "5";
   process.env.FREE_SEARCH_BUDGET_USDC = "0.01";
   process.env.PAID_SEARCH_PRICE_USDC = "0.01";
@@ -58,6 +59,10 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
       strategy: "balanced"
     });
     assert.equal(retry.body.answerId, firstAnswerId);
+    const answerResponse = await fetch(`${base}/api/answers/${firstAnswerId}`);
+    const savedAnswer = (await answerResponse.json()) as Record<string, any>;
+    assert.match(savedAnswer.answer.contentJson.summary, /nanopayments matter/i);
+    assert.ok(savedAnswer.answer.contentJson.sections[0].citations.length > 0);
 
     const sixth = await post("/api/research", {
       sessionId,
@@ -176,6 +181,18 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
     for (const reservation of reservations) {
       if (reservation.kind === "started") store.failResearch(reservation.runId);
     }
+
+    delete process.env.AI_MODE;
+    const unconfigured = await post("/api/research", {
+      sessionId: "sess_no_ai_key_001",
+      clientRequestId: "request_no_ai_key",
+      question: "Can this return a canned answer?",
+      strategy: "balanced"
+    });
+    assert.equal(unconfigured.response.status, 503);
+    assert.equal(unconfigured.body.error, "AI_NOT_CONFIGURED");
+    assert.equal(store.getUsageBySession("sess_no_ai_key_001")?.freeSearchesUsed, 0);
+    process.env.AI_MODE = "test";
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     store.closeDatabase();

@@ -77,6 +77,7 @@ export const answers = sqliteTable(
     id: text("id").primaryKey(),
     prompt: text("prompt").notNull(),
     response: text("response").notNull(),
+    contentJson: text("content_json"),
     budgetMicros: integer("budget_micros").notNull(),
     spentMicros: integer("spent_micros").notNull(),
     citedSourceIdsJson: text("cited_source_ids_json").notNull(),

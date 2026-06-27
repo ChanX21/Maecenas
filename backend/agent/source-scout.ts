@@ -1,4 +1,4 @@
-import type { CandidateSource, ResearchPlan, Source } from "@/types";
+import type { CandidateSource, Source } from "@/types";
 
 function tokenize(value: string): string[] {
   return value
@@ -8,8 +8,8 @@ function tokenize(value: string): string[] {
     .filter((token) => token.length > 2);
 }
 
-export function scoutSources(plan: ResearchPlan, sources: Source[]): CandidateSource[] {
-  const queryTokens = new Set(tokenize(`${plan.userQuestion} ${plan.evidenceNeeds.join(" ")}`));
+export function scoutSources(question: string, sources: Source[]): CandidateSource[] {
+  const queryTokens = new Set(tokenize(question));
 
   return sources
     .map((source) => {
@@ -17,9 +17,8 @@ export function scoutSources(plan: ResearchPlan, sources: Source[]): CandidateSo
       const matches = tokenize(searchable).filter((token) => queryTokens.has(token)).length;
       return { source, matches };
     })
-    .filter(({ matches }) => matches > 0)
     .sort((a, b) => b.matches - a.matches)
-    .slice(0, 12)
+    .slice(0, 20)
     .map(({ source }) => ({
       sourceId: source.id,
       title: source.title,
