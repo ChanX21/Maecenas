@@ -3,7 +3,7 @@ import { mkdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { seedSources } from "@/db/seed-data";
@@ -98,6 +98,9 @@ function mapSource(row: typeof sources.$inferSelect): Source {
     evidenceText: row.evidenceText,
     tags: JSON.parse(row.tagsJson) as string[],
     license: row.license ?? undefined,
+    status: row.status,
+    reviewedAt: row.reviewedAt ?? undefined,
+    rejectionReason: row.rejectionReason ?? undefined,
     createdAt: row.createdAt
   };
 }
@@ -194,6 +197,9 @@ export function seedDatabase(): number {
       evidenceText: source.evidenceText,
       tagsJson: JSON.stringify(source.tags),
       license: source.license,
+      status: source.status,
+      reviewedAt: source.reviewedAt,
+      rejectionReason: source.rejectionReason,
       createdAt: source.createdAt
     };
     conn.insert(sources).values(values).onConflictDoUpdate({ target: sources.id, set: values }).run();
@@ -201,8 +207,13 @@ export function seedDatabase(): number {
   return seedSources.length;
 }
 
-export function listSources(): Source[] {
-  return database().select().from(sources).orderBy(desc(sources.createdAt)).all().map(mapSource);
+export function listSources(options: { walletAddress?: string; includeUnapproved?: boolean } = {}): Source[] {
+  const rows = options.walletAddress
+    ? database().select().from(sources).where(eq(sources.walletAddress, options.walletAddress)).orderBy(desc(sources.createdAt)).all()
+    : options.includeUnapproved
+      ? database().select().from(sources).orderBy(desc(sources.createdAt)).all()
+      : database().select().from(sources).where(eq(sources.status, "approved")).orderBy(desc(sources.createdAt)).all();
+  return rows.map(mapSource);
 }
 
 export function findSource(id: string): Source | undefined {
@@ -211,7 +222,18 @@ export function findSource(id: string): Source | undefined {
 }
 
 export function createSource(source: Source): Source {
-  database()
+  const conn = database();
+  const duplicate = conn
+    .select({ id: sources.id })
+    .from(sources)
+    .where(
+      source.doiOrCanonicalUrl
+        ? or(eq(sources.sourceUrl, source.sourceUrl), eq(sources.doiOrCanonicalUrl, source.doiOrCanonicalUrl))
+        : eq(sources.sourceUrl, source.sourceUrl)
+    )
+    .get();
+  if (duplicate) throw new StoreError("SOURCE_ALREADY_REGISTERED", "This source URL or canonical URL is already registered", 409);
+  conn
     .insert(sources)
     .values({
       id: source.id,
@@ -225,10 +247,28 @@ export function createSource(source: Source): Source {
       evidenceText: source.evidenceText,
       tagsJson: JSON.stringify(source.tags),
       license: source.license,
+      status: source.status,
+      reviewedAt: source.reviewedAt,
+      rejectionReason: source.rejectionReason,
       createdAt: source.createdAt
     })
     .run();
   return source;
+}
+
+export function reviewSource(id: string, status: "approved" | "rejected", rejectionReason?: string): Source {
+  const conn = database();
+  const existing = conn.select().from(sources).where(eq(sources.id, id)).get();
+  if (!existing) throw new StoreError("SOURCE_NOT_FOUND", "Source was not found", 404);
+  conn.update(sources)
+    .set({
+      status,
+      reviewedAt: new Date().toISOString(),
+      rejectionReason: status === "rejected" ? rejectionReason ?? "Source did not pass review" : null
+    })
+    .where(eq(sources.id, id))
+    .run();
+  return mapSource(conn.select().from(sources).where(eq(sources.id, id)).get()!);
 }
 
 export function findAnswer(id: string): Answer | undefined {

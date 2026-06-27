@@ -12,6 +12,9 @@ export type Source = {
   evidenceText: string;
   tags: string[];
   license?: string;
+  status: "pending" | "approved" | "rejected";
+  reviewedAt?: string;
+  rejectionReason?: string;
   createdAt: string;
 };
 

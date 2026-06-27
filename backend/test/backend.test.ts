@@ -14,6 +14,7 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
   process.env.FREE_SEARCH_BUDGET_USDC = "0.01";
   process.env.PAID_SEARCH_PRICE_USDC = "0.01";
   process.env.MAECENAS_TREASURY_WALLET_ADDRESS = "0x2222222222222222222222222222222222222222";
+  process.env.ADMIN_TOKEN = "test_admin_token";
 
   const store = await import("@/db/store");
   const { createMaecenasServer } = await import("@/http");
@@ -26,16 +27,56 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
   const sessionId = "sess_acceptance_001";
   const walletAddress = "0x1111111111111111111111111111111111111111";
 
-  const post = async (route: string, body: unknown) => {
+  const post = async (route: string, body: unknown, headers: Record<string, string> = {}) => {
     const response = await fetch(`${base}${route}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify(body)
     });
     return { response, body: (await response.json()) as Record<string, any> };
   };
 
   try {
+    const submitted = await post("/api/sources", {
+      title: "Independent Nanopayment Evidence",
+      authorName: "Test Source Owner",
+      sourceUrl: "https://example.org/independent-nanopayment-evidence",
+      walletAddress,
+      citationPriceUSDC: "0.0001",
+      abstract: "Independent evidence about nanopayment authorization, settlement, and accountable source compensation.",
+      evidenceText:
+        "Nanopayment authorization lets software purchase one narrowly scoped evidence item while preserving a receipt that identifies the buyer, source owner, amount, and funded research session.",
+      tags: "nanopayments, evidence, authorization"
+    });
+    assert.equal(submitted.response.status, 201);
+    assert.equal(submitted.body.source.status, "pending");
+    const publicSourcesBefore = (await (await fetch(`${base}/api/sources`)).json()) as Record<string, any>;
+    assert.ok(!publicSourcesBefore.sources.some((source: Record<string, unknown>) => source.id === submitted.body.source.id));
+    const ownerSources = (await (await fetch(`${base}/api/sources?wallet=${walletAddress}`)).json()) as Record<string, any>;
+    assert.equal(ownerSources.sources.find((source: Record<string, unknown>) => source.id === submitted.body.source.id)?.status, "pending");
+
+    const unauthorizedReview = await post(`/api/admin/sources/${submitted.body.source.id}/review`, { status: "approved" });
+    assert.equal(unauthorizedReview.response.status, 401);
+    const approved = await post(
+      `/api/admin/sources/${submitted.body.source.id}/review`,
+      { status: "approved" },
+      { Authorization: "Bearer test_admin_token" }
+    );
+    assert.equal(approved.body.source.status, "approved");
+    const duplicate = await post("/api/sources", {
+      title: "Duplicate",
+      authorName: "Test Source Owner",
+      sourceUrl: "https://example.org/independent-nanopayment-evidence",
+      walletAddress,
+      citationPriceUSDC: "0.0001",
+      abstract: "A duplicate source submission with enough abstract text to pass normal input validation.",
+      evidenceText:
+        "This evidence body is intentionally long enough to pass validation while reusing the same canonical source URL.",
+      tags: "duplicate, evidence"
+    });
+    assert.equal(duplicate.response.status, 409);
+    assert.equal(duplicate.body.error, "SOURCE_ALREADY_REGISTERED");
+
     let firstAnswerId = "";
     for (let index = 0; index < 5; index += 1) {
       const result = await post("/api/research", {

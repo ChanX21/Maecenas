@@ -2,7 +2,7 @@ import type { Source } from "@/types";
 
 const createdAt = "2026-06-20T00:00:00.000Z";
 
-export const seedSources: Source[] = [
+const sources: Omit<Source, "status">[] = [
   {
     id: "src_gateway_agents",
     title: "Gateway Nanopayments for AI Agents",
@@ -157,3 +157,5 @@ export const seedSources: Source[] = [
     createdAt
   }
 ];
+
+export const seedSources: Source[] = sources.map((source) => ({ ...source, status: "approved" }));
