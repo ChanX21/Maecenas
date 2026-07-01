@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { motion } from "framer-motion";
 import type { CitationPayment } from "@/types";
 
 export function DashboardEarningsTable({ receipts }: { receipts: CitationPayment[] }) {
@@ -17,9 +18,23 @@ export function DashboardEarningsTable({ receipts }: { receipts: CitationPayment
                 <th className="border-b border-marble/10 py-3 pr-4">Receipt</th>
               </tr>
             </thead>
-            <tbody>
+            <motion.tbody
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: { opacity: 0 },
+                show: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.1 }
+                }
+              }}
+            >
               {receipts.map((receipt) => (
-                <tr key={receipt.id} className="text-muted">
+                <motion.tr 
+                  variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+                  key={receipt.id} 
+                  className="text-muted"
+                >
                   <td className="border-b border-marble/10 py-3 pr-4">{new Date(receipt.createdAt).toLocaleDateString()}</td>
                   <td className="border-b border-marble/10 py-3 pr-4 text-cream">{receipt.sourceTitle}</td>
                   <td className="border-b border-marble/10 py-3 pr-4">{receipt.amountUSDC} USDC</td>
@@ -27,9 +42,9 @@ export function DashboardEarningsTable({ receipts }: { receipts: CitationPayment
                   <td className="border-b border-marble/10 py-3 pr-4">
                     <Link href={`/receipts/${receipt.id}`} className="text-gold">Open</Link>
                   </td>
-                </tr>
+                </motion.tr>
               ))}
-            </tbody>
+            </motion.tbody>
           </table>
         </div>
       ) : (
