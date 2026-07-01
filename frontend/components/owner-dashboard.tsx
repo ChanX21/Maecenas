@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { WalletCards } from "lucide-react";
 import { getDashboard, getOwnerSources, type DashboardResponse } from "@/api";
 import { connectWallet, getSavedWallet } from "@/browser";
@@ -81,9 +82,24 @@ export function OwnerDashboard() {
 
           <section className="mt-10">
             <h2 className="font-display text-2xl text-cream">Source submissions</h2>
-            <div className="mt-4 divide-y divide-marble/10 border-t border-marble/10">
+            <motion.div 
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: { opacity: 0 },
+                show: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.1 }
+                }
+              }}
+              className="mt-4 divide-y divide-marble/10 border-t border-marble/10"
+            >
               {sources.length ? sources.map((source) => (
-                <div key={source.id} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <motion.div 
+                  variants={{ hidden: { opacity: 0, x: -10 }, show: { opacity: 1, x: 0 } }}
+                  key={source.id} 
+                  className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div>
                     <p className="text-sm text-cream">{source.title}</p>
                     <p className="mt-1 font-mono text-[11px] text-muted">{source.citationPriceUSDC} USDC per evidence purchase</p>
@@ -91,9 +107,9 @@ export function OwnerDashboard() {
                   <span className={`font-mono text-xs uppercase ${source.status === "approved" ? "text-success" : source.status === "rejected" ? "text-danger" : "text-gold"}`}>
                     {source.status}
                   </span>
-                </div>
+                </motion.div>
               )) : <p className="py-5 text-sm text-muted">No sources registered for this wallet.</p>}
-            </div>
+            </motion.div>
           </section>
 
           <div className="mt-10">

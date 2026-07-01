@@ -21,7 +21,7 @@ body {
   margin: 0;
   background: #090b0a;
   color: #f3f4ef;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 a {
@@ -59,7 +59,23 @@ a {
 }
 
 .roman-inscription {
-  font-family: Georgia, Cambria, "Times New Roman", serif;
+  font-family: var(--font-serif), Georgia, Cambria, "Times New Roman", serif;
   font-variant: small-caps;
   letter-spacing: 0;
+}
+
+.gleam {
+  background: linear-gradient(92deg, #f3f4ef 30%, #8dd8a8 52%, #f3f4ef 74%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gleam-anim 4s linear infinite;
+}
+
+@keyframes gleam-anim {
+  to {
+    background-position: 200% center;
+  }
 }

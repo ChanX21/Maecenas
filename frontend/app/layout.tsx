@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Instrument_Serif, IBM_Plex_Mono, Inter } from "next/font/google";
 import { SessionStatus } from "@/components/session-status";
 import "./globals.css";
 
@@ -7,6 +8,23 @@ export const metadata: Metadata = {
   title: "Maecenas",
   description: "Scholarly agents that pay their sources."
 };
+
+const serif = Instrument_Serif({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-serif",
+});
+
+const mono = IBM_Plex_Mono({
+  weight: ["400", "500", "600"],
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
+
+const sans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 const navItems = [
   { href: "/ask", label: "Ask" },
@@ -21,8 +39,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" className={`${serif.variable} ${mono.variable} ${sans.variable}`}>
+      <body className="font-sans">
         <div className="min-h-screen">
           <header className="sticky top-0 z-40 border-b border-marble/10 bg-ink/88 backdrop-blur">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
@@ -31,7 +49,7 @@ export default function RootLayout({
                   M
                 </span>
                 <span>
-                  <span className="roman-inscription block text-xl leading-5 text-cream">Maecenas</span>
+                  <span className="roman-inscription block text-xl leading-5 text-cream font-serif italic">Maecenas</span>
                   <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-marble/70">
                     autonomous research ledger
                   </span>
