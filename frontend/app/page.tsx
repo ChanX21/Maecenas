@@ -7,7 +7,7 @@ export default function HomePage() {
     <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="max-w-3xl">
         <p className="font-mono text-xs uppercase text-gold">Research workspace</p>
-        <h1 className="mt-4 font-display text-5xl text-cream sm:text-6xl">Maecenas</h1>
+        <h1 className="mt-4 font-display text-5xl sm:text-6xl"><span className="gleam font-serif italic">Maecenas</span></h1>
         <p className="mt-4 max-w-2xl text-lg leading-8 text-muted">
           Evidence-grounded answers with transparent research budgets and source-owner receipts.
         </p>

@@ -27,8 +27,9 @@ const config: Config = {
       },
       fontFamily: {
         display: ["Georgia", "Cambria", "Times New Roman", "serif"],
-        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"]
+        serif: ["var(--font-serif)", "Georgia", "Cambria", "Times New Roman", "serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"]
       },
       boxShadow: {
         gold: "0 0 0 1px rgba(141,216,168,0.28)"
