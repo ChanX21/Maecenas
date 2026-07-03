@@ -53,6 +53,11 @@ export type DashboardResponse = {
   } | null;
 };
 
+export type AdminSource = Source & {
+  evidencePreview: string;
+  ownershipAttestation?: string;
+};
+
 export function getApiBaseUrl() {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 }
@@ -62,8 +67,13 @@ export function apiUrl(path: string) {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = typeof window === "undefined" ? "" : window.localStorage.getItem("maecenas_auth_token") ?? "";
   const response = await fetch(apiUrl(path), {
     ...init,
+    headers: {
+      ...init?.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
     cache: "no-store"
   });
   const data = await response.json();
@@ -90,6 +100,7 @@ export async function registerSource(input: {
   citationPriceUSDC: string;
   abstract: string;
   evidenceText: string;
+  ownershipAttestation: string;
   tags: string;
   license?: string;
 }) {
@@ -108,6 +119,12 @@ export async function getReceipt(id: string) {
   return apiFetch<{ receipt: CitationPayment }>(`/api/receipts/${id}`);
 }
 
+export async function verifyReceipt(id: string) {
+  return apiFetch<{ receiptId: string; valid: boolean; status: string; network?: string; transaction?: string }>(
+    `/api/receipts/${id}/verify`
+  );
+}
+
 export async function getLeaderboard() {
   return apiFetch<LeaderboardResponse>("/api/leaderboard");
 }
@@ -115,6 +132,18 @@ export async function getLeaderboard() {
 export async function getDashboard(wallet: string) {
   const query = wallet ? `?wallet=${encodeURIComponent(wallet)}` : "";
   return apiFetch<DashboardResponse>(`/api/dashboard${query}`);
+}
+
+export async function getAdminSources(status = "pending") {
+  return apiFetch<{ sources: AdminSource[] }>(`/api/admin/sources?status=${encodeURIComponent(status)}`);
+}
+
+export async function reviewAdminSource(id: string, status: "approved" | "rejected", reason?: string) {
+  return apiFetch<{ source: Source }>(`/api/admin/sources/${id}/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, reason })
+  });
 }
 
 export async function getUsage(sessionId: string, walletAddress?: string) {
@@ -136,6 +165,7 @@ export async function submitSearchPaymentProof(input: {
   sessionId: string;
   walletAddress: string;
   paymentProof: string;
+  paymentPayload?: unknown;
   txHash?: string;
 }) {
   return apiFetch<SearchPaymentResponse>("/api/payments/search-proof", {
@@ -155,8 +185,9 @@ export async function runResearch(input: {
   searchPaymentId?: string;
 }) {
   return apiFetch<{
-    answerId: string;
-    status: "completed";
+    answerId?: string;
+    runId?: string;
+    status: "completed" | "processing";
     paymentType: "free_sponsored" | "user_paid";
     searchPaymentId?: string;
     freeSearchesRemaining: number;
@@ -165,4 +196,12 @@ export async function runResearch(input: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input)
   });
+}
+
+export async function getResearchRun(runId: string, sessionId: string) {
+  return apiFetch<{
+    answerId?: string;
+    runId?: string;
+    status: "completed" | "processing" | "failed";
+  }>(`/api/research/runs/${encodeURIComponent(runId)}?sessionId=${encodeURIComponent(sessionId)}`);
 }

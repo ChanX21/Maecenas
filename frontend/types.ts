@@ -9,10 +9,11 @@ export type Source = {
   walletAddress: string;
   citationPriceUSDC: string;
   abstract: string;
-  evidenceText: string;
+  ownerWallet: string;
   tags: string[];
   license?: string;
   status: "pending" | "approved" | "rejected";
+  ownershipVerifiedAt?: string;
   reviewedAt?: string;
   rejectionReason?: string;
   createdAt: string;
@@ -35,6 +36,8 @@ export type CitationPayment = {
   recipientWallet: string;
   status: CitationPaymentStatus;
   fundedBy: "maecenas_sponsored" | "user_paid_search";
+  receiptSignature: string;
+  network?: string;
   createdAt: string;
 };
 
@@ -156,6 +159,19 @@ export type SearchPaymentIntentResponse = {
   status: "requires_payment" | "paid" | "expired" | "used";
   paymentMode: "mock" | "real";
   expiresAt: string;
+  paymentRequired?: {
+    x402Version: number;
+    resource: Record<string, unknown>;
+    accepts: Array<{
+      scheme: string;
+      network: string;
+      asset: string;
+      amount: string;
+      payTo: string;
+      maxTimeoutSeconds: number;
+      extra?: Record<string, unknown>;
+    }>;
+  };
 };
 
 export type SearchPaymentResponse = {

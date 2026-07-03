@@ -9,11 +9,11 @@ Evidence-grounded research with transparent budgets and source-owner receipts.
 - Only approved registry sources can enter research.
 - SQLite persistence with Drizzle migrations.
 - Idempotent quota and payment reservations.
-- Mock search payments and evidence receipts, clearly labeled as unsettled.
-- Wallet-connected source submission and owner dashboard.
+- Mock or Circle Gateway search payments and source payouts.
+- Wallet-authenticated source submission and owner dashboard.
+- Signed receipts, queued research, rate limits, admin review, and SQLite backups.
 
-Real Circle/Arc settlement is intentionally disabled until payment verification
-and payout execution are implemented.
+Real mode fails closed unless Circle/Arc settlement configuration is complete.
 
 ## Run
 
@@ -50,16 +50,24 @@ OPENAI_MODEL=gpt-5-mini
 
 FREE_SEARCH_LIMIT=5
 FREE_SEARCH_BUDGET_USDC=0.01
+SPONSORED_TREASURY_LIMIT_USDC=1.00
 PAID_SEARCH_PRICE_USDC=0.01
 
 PAYMENT_MODE=mock
 MAECENAS_TREASURY_WALLET_ADDRESS=
 MAECENAS_AGENT_WALLET_ADDRESS=
 ADMIN_TOKEN=
+ADMIN_WALLETS=
+TOKEN_SIGNING_SECRET=
+
+PLATFORM_FEE_BPS=1000
+RESEARCH_ASYNC=true
+RESEARCH_WORKER_CONCURRENCY=2
+BACKUP_INTERVAL_MINUTES=60
 ```
 
 Without `OPENAI_API_KEY`, research returns `503 AI_NOT_CONFIGURED` and consumes
-no quota. Mock payment mode connects a wallet address but moves no funds.
+no quota. Mock payment mode authenticates a wallet signature but moves no funds.
 
 ## Source Review
 
@@ -72,13 +80,17 @@ npm run source:review -- src_123 approved
 npm run source:review -- src_123 rejected "Duplicate or unverifiable evidence"
 ```
 
-The HTTP review endpoint is protected by `ADMIN_TOKEN`.
+The HTTP review endpoint accepts `ADMIN_TOKEN` or a signed wallet listed in
+`ADMIN_WALLETS`. The web console is available at `/admin`.
 
 ## Main APIs
 
 ```txt
 GET  /api/usage
 POST /api/research
+GET  /api/research/runs/:id
+POST /api/auth/nonce
+POST /api/auth/verify
 POST /api/payments/search-intent
 POST /api/payments/search-proof
 
@@ -89,8 +101,10 @@ POST /api/admin/sources/:id/review
 
 GET  /api/answers/:id
 GET  /api/receipts/:id
+GET  /api/receipts/:id/verify
 GET  /api/dashboard
 GET  /api/leaderboard
+GET  /api/admin/metrics
 ```
 
 ## Verification
@@ -105,11 +119,24 @@ npm run typecheck
 npm run build
 ```
 
-## Not Yet Production Settlement
+## Security And Operations
 
-- Wallet signatures do not yet prove source ownership.
-- Circle/Gateway x402 proofs are not verified.
-- Evidence receipts are mock ledger records, not transferred USDC.
-- SQLite assumes one backend instance with persistent disk.
-- PostgreSQL, rate limiting, worker jobs, reconciliation and compliance controls
-  are required before mainnet.
+- Public source responses never contain protected evidence.
+- Owner operations require one-time wallet challenges and signed sessions.
+- Real payments settle through Circle Gateway; mock mode remains available.
+- Receipts carry signatures and expose a verification endpoint.
+- Research can use a bounded worker queue.
+- Rate limits, JSON request logs, admin metrics, and SQLite backups are included.
+
+SQLite assumes one backend process with persistent disk. Mainnet still requires
+funded Gateway wallets, off-site backup retention, alert routing, and a
+deployment-specific compliance review.
+
+## Funding Economics
+
+- `PAID_SEARCH_PRICE_USDC` is the patron payment for one commission.
+- `PLATFORM_FEE_BPS` is reserved for platform operations; the remainder is the maximum evidence budget.
+- `SPONSORED_TREASURY_LIMIT_USDC` caps aggregate sponsored evidence spending.
+- Selected source prices are paid directly to their registered wallets in real mode.
+- Unspent commission value remains in the treasury.
+- A failed research run releases its paid commission for a retry. Settled USDC is not automatically reversed.

@@ -5,7 +5,7 @@ import type { CitationPayment } from "@/types";
 export function DashboardEarningsTable({ receipts }: { receipts: CitationPayment[] }) {
   return (
     <section>
-      <h2 className="font-display text-2xl text-cream">Evidence receipts</h2>
+      <h2 className="font-display text-2xl text-cream">Treasury history</h2>
       {receipts.length ? (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[700px] border-collapse font-mono text-xs">
@@ -14,8 +14,8 @@ export function DashboardEarningsTable({ receipts }: { receipts: CitationPayment
                 <th className="border-b border-marble/10 py-3 pr-4">Date</th>
                 <th className="border-b border-marble/10 py-3 pr-4">Source</th>
                 <th className="border-b border-marble/10 py-3 pr-4">Amount</th>
-                <th className="border-b border-marble/10 py-3 pr-4">Settlement</th>
-                <th className="border-b border-marble/10 py-3 pr-4">Receipt</th>
+                <th className="border-b border-marble/10 py-3 pr-4">Status</th>
+                <th className="border-b border-marble/10 py-3 pr-4">Record</th>
               </tr>
             </thead>
             <motion.tbody
@@ -38,7 +38,7 @@ export function DashboardEarningsTable({ receipts }: { receipts: CitationPayment
                   <td className="border-b border-marble/10 py-3 pr-4">{new Date(receipt.createdAt).toLocaleDateString()}</td>
                   <td className="border-b border-marble/10 py-3 pr-4 text-cream">{receipt.sourceTitle}</td>
                   <td className="border-b border-marble/10 py-3 pr-4">{receipt.amountUSDC} USDC</td>
-                  <td className="border-b border-marble/10 py-3 pr-4">{receipt.status === "mock" ? "Mock / not settled" : receipt.status}</td>
+                  <td className="border-b border-marble/10 py-3 pr-4">{receipt.status === "mock" ? "Test record / not settled" : receipt.status}</td>
                   <td className="border-b border-marble/10 py-3 pr-4">
                     <Link href={`/receipts/${receipt.id}`} className="text-gold">Open</Link>
                   </td>
@@ -48,7 +48,7 @@ export function DashboardEarningsTable({ receipts }: { receipts: CitationPayment
           </table>
         </div>
       ) : (
-        <p className="mt-4 border-y border-marble/10 py-5 text-sm text-muted">No evidence receipts yet.</p>
+        <p className="mt-4 border-y border-marble/10 py-5 text-sm text-muted">No funded evidence records yet.</p>
       )}
     </section>
   );

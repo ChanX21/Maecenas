@@ -32,7 +32,7 @@ export function AgentTrace({ events, scoredSources }: { events: TraceEvent[]; sc
             <motion.li 
               key={event.id}
               initial={{ opacity: 0, y: 15, scale: 0.98 }}
-              animate={isPayment ? { opacity: 1, y: 0, scale: [0.98, 1.02, 1] } : { opacity: 1, y: 0, scale: 1 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.5, type: "spring", bounce: 0.4 }}
               className={`grid gap-1 border-b border-marble/10 pb-3 sm:grid-cols-[140px_1fr] ${isPayment ? 'border-gold/30' : ''}`}
             >
@@ -61,8 +61,8 @@ export function AgentTrace({ events, scoredSources }: { events: TraceEvent[]; sc
               <tr>
                 <th className="border-b border-marble/10 py-3 pr-4">Source</th>
                 <th className="border-b border-marble/10 py-3 pr-4">Relevance</th>
-                <th className="border-b border-marble/10 py-3 pr-4">Fit</th>
-                <th className="border-b border-marble/10 py-3 pr-4">Final</th>
+                <th className="border-b border-marble/10 py-3 pr-4">Evidence fit</th>
+                <th className="border-b border-marble/10 py-3 pr-4">Final rank</th>
               </tr>
             </thead>
             <tbody>

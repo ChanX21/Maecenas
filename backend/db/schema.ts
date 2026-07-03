@@ -13,6 +13,8 @@ export const sources = sqliteTable("sources", {
   tagsJson: text("tags_json").notNull(),
   license: text("license"),
   status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+  ownershipVerifiedAt: text("ownership_verified_at"),
+  ownershipAttestation: text("ownership_attestation"),
   reviewedAt: text("reviewed_at"),
   rejectionReason: text("rejection_reason"),
   createdAt: text("created_at").notNull()
@@ -118,12 +120,27 @@ export const citationPayments = sqliteTable(
     recipientWallet: text("recipient_wallet").notNull(),
     status: text("status", { enum: ["pending", "paid", "failed", "mock"] }).notNull(),
     fundedBy: text("funded_by", { enum: ["maecenas_sponsored", "user_paid_search"] }).notNull(),
+    receiptSignature: text("receipt_signature").notNull().default(""),
+    network: text("network"),
     createdAt: text("created_at").notNull()
   },
   (table) => [
     index("citation_payments_answer_idx").on(table.answerId),
     index("citation_payments_source_idx").on(table.sourceId)
   ]
+);
+
+export const walletAuthNonces = sqliteTable(
+  "wallet_auth_nonces",
+  {
+    id: text("id").primaryKey(),
+    walletAddress: text("wallet_address").notNull(),
+    message: text("message").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    usedAt: text("used_at"),
+    createdAt: text("created_at").notNull()
+  },
+  (table) => [index("wallet_auth_nonces_wallet_idx").on(table.walletAddress)]
 );
 
 export const researchRuns = sqliteTable(

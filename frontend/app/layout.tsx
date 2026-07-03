@@ -5,8 +5,8 @@ import { SessionStatus } from "@/components/session-status";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Maecenas",
-  description: "Scholarly agents that pay their sources."
+  title: "Maecenas | Research Funding Protocol",
+  description: "Fund rigorous research. Reward the evidence behind it."
 };
 
 const serif = Instrument_Serif({
@@ -27,10 +27,10 @@ const sans = Inter({
 });
 
 const navItems = [
-  { href: "/ask", label: "Ask" },
-  { href: "/sources", label: "Sources" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/leaderboard", label: "Leaderboard" }
+  { href: "/ask", label: "Research" },
+  { href: "/sources", label: "Archive" },
+  { href: "/dashboard", label: "Treasury" },
+  { href: "/leaderboard", label: "Ledger" }
 ];
 
 export default function RootLayout({
@@ -51,7 +51,7 @@ export default function RootLayout({
                 <span>
                   <span className="roman-inscription block text-xl leading-5 text-cream font-serif italic">Maecenas</span>
                   <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-marble/70">
-                    autonomous research ledger
+                    research funding protocol
                   </span>
                 </span>
               </Link>

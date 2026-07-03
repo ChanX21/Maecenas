@@ -9,23 +9,28 @@ export default async function SourcesPage() {
   const { sources } = await getSources();
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="flex flex-wrap items-end justify-between gap-5">
-        <SectionHeading
-          eyebrow="Public source registry"
-          title="Approved evidence sources."
-          copy="Public metadata is searchable. Protected evidence is unlocked only when selected for a funded research answer."
-        />
+    <main className="home-grid min-h-[calc(100vh-65px)] px-4 py-14 sm:px-6 lg:px-8">
+      <SectionHeading
+        eyebrow="The source archive"
+        title="Evidence worth funding."
+        copy="Explore approved research assets. Protected evidence is funded only when it earns a place in a research commission."
+      />
+      <div className="mt-7 flex justify-center">
         <ButtonLink href="/sources/new" variant="primary">
-          Register a Source
+          Publish evidence
         </ButtonLink>
       </div>
-      <div className="mt-8 grid gap-4 lg:grid-cols-2">
+      <div className="mx-auto mt-10 grid max-w-7xl gap-4 md:grid-cols-2 xl:grid-cols-3">
         {sources.map((source) => (
           <div key={source.id} id={source.id}>
             <SourceCard source={source} />
           </div>
         ))}
+        {!sources.length ? (
+          <div className="roman-panel p-10 text-center md:col-span-2 xl:col-span-3">
+            <p className="text-sm text-muted">The archive is waiting for its first approved source.</p>
+          </div>
+        ) : null}
       </div>
     </main>
   );

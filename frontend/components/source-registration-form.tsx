@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Save, WalletCards } from "lucide-react";
 import { registerSource } from "@/api";
-import { connectWallet, getSavedWallet } from "@/browser";
+import { connectWallet, getAuthToken, getSavedWallet, signSourceOwnership } from "@/browser";
 import type { Source } from "@/types";
 
 const initialForm = {
@@ -26,7 +26,7 @@ export function SourceRegistrationForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => setWalletAddress(getSavedWallet()), []);
+  useEffect(() => setWalletAddress(getAuthToken() ? getSavedWallet() : ""), []);
 
   function update(field: keyof typeof initialForm, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -47,21 +47,22 @@ export function SourceRegistrationForm() {
     setBusy(true);
     setError("");
     try {
-      const { source } = await registerSource({ ...form, walletAddress });
+      const ownershipAttestation = await signSourceOwnership(form.sourceUrl);
+      const { source } = await registerSource({ ...form, walletAddress, ownershipAttestation });
       setCreatedSource(source);
       setForm(initialForm);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Source registration failed");
+      setError(cause instanceof Error ? cause.message : "Evidence submission failed");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
+    <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
       <motion.form 
         onSubmit={submit} 
-        className="space-y-6"
+        className="roman-panel space-y-7 p-5 sm:p-7"
         initial="hidden"
         animate="show"
         variants={{
@@ -78,8 +79,8 @@ export function SourceRegistrationForm() {
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-medium text-cream">Owner wallet</h2>
-              <p className="mt-1 text-sm text-muted">Receipts and future settlements are assigned to this address.</p>
+              <h2 className="text-base font-medium text-cream">Contributor wallet</h2>
+              <p className="mt-1 text-sm text-muted">Treasury records and future settlements belong to this address.</p>
             </div>
             <button
               type="button"
@@ -93,14 +94,14 @@ export function SourceRegistrationForm() {
         </motion.section>
 
         <motion.section variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <h2 className="font-display text-2xl text-cream">Public metadata</h2>
+          <h2 className="font-display text-2xl text-cream">Public source record</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <TextField label="Title" value={form.title} onChange={(value) => update("title", value)} required />
             <TextField label="Author or publisher" value={form.authorName} onChange={(value) => update("authorName", value)} required />
             <TextField label="Source URL" type="url" value={form.sourceUrl} onChange={(value) => update("sourceUrl", value)} required />
             <TextField label="DOI or canonical URL" value={form.doiOrCanonicalUrl} onChange={(value) => update("doiOrCanonicalUrl", value)} />
             <TextField
-              label="Evidence price in USDC"
+              label="Unlock price in USDC"
               value={form.citationPriceUSDC}
               onChange={(value) => update("citationPriceUSDC", value)}
               required
@@ -117,8 +118,8 @@ export function SourceRegistrationForm() {
           variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
           className="border-t border-marble/10 pt-6"
         >
-          <h2 className="font-display text-2xl text-cream">Protected evidence</h2>
-          <p className="mt-2 text-sm text-muted">This text is available to the agent only after the evidence purchase step.</p>
+          <h2 className="font-display text-2xl text-cream">Fundable evidence</h2>
+          <p className="mt-2 text-sm text-muted">Maecenas unlocks this material only when it is selected and funded for a commission.</p>
           <TextArea label="Evidence text" value={form.evidenceText} onChange={(value) => update("evidenceText", value)} required rows={10} />
         </motion.section>
 
@@ -131,7 +132,7 @@ export function SourceRegistrationForm() {
           className="roman-button inline-flex items-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink hover:bg-gold-soft transition-colors disabled:opacity-50"
         >
           <Save size={15} />
-          {busy ? "Submitting..." : walletAddress ? "Submit for review" : "Connect wallet"}
+          {busy ? "Sending to the forum..." : walletAddress ? "Submit to the forum" : "Connect wallet"}
         </motion.button>
         {error ? <p role="alert" className="border border-danger/40 bg-danger/10 p-3 text-sm text-red-200">{error}</p> : null}
       </motion.form>
@@ -140,9 +141,9 @@ export function SourceRegistrationForm() {
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.4 }}
-        className="border-l border-marble/10 pl-6"
+        className="roman-panel h-fit p-5 sm:p-6 lg:sticky lg:top-24"
       >
-        <h2 className="font-mono text-xs uppercase text-muted">Review status</h2>
+        <h2 className="font-mono text-xs uppercase text-muted">Forum review</h2>
         <AnimatePresence mode="wait">
         {createdSource ? (
           <motion.div 
@@ -152,9 +153,9 @@ export function SourceRegistrationForm() {
             className="mt-4 overflow-hidden"
           >
             <CheckCircle2 size={24} className="text-gold" />
-            <p className="mt-3 text-lg text-cream">Submitted for review</p>
+            <p className="mt-3 text-lg text-cream">Entered into review</p>
             <p className="mt-2 text-sm leading-6 text-muted">
-              This source remains excluded from research until an administrator approves it.
+              The source enters the funded archive after an administrator approves it.
             </p>
             <dl className="mt-5 space-y-4 font-mono text-xs">
               <Result label="Source ID" value={createdSource.id} />
@@ -170,7 +171,7 @@ export function SourceRegistrationForm() {
             exit={{ opacity: 0 }}
             className="mt-4 text-sm leading-6 text-muted"
           >
-            New submissions are checked for duplicate URLs and evidence quality before entering the public registry. Wallet ownership verification is not yet enabled.
+            The forum checks every submission for duplicate URLs and evidence quality before it enters the public archive. Wallet ownership verification is not yet enabled.
           </motion.p>
         )}
         </AnimatePresence>
@@ -200,7 +201,7 @@ function TextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required={required}
-        className="mt-2 w-full border border-marble/15 bg-panel px-3 py-3 text-sm text-cream outline-none focus:border-gold/60"
+        className="mt-2 w-full rounded-md border border-marble/10 bg-ink-2 px-3 py-3 text-sm text-cream outline-none transition focus:border-gold/60"
       />
     </label>
   );
@@ -227,7 +228,7 @@ function TextArea({
         onChange={(event) => onChange(event.target.value)}
         required={required}
         rows={rows}
-        className="mt-2 w-full resize-y border border-marble/15 bg-panel px-3 py-3 text-sm leading-6 text-cream outline-none focus:border-gold/60"
+        className="mt-2 w-full resize-y rounded-md border border-marble/10 bg-ink-2 px-3 py-3 text-sm leading-6 text-cream outline-none transition focus:border-gold/60"
       />
     </label>
   );
