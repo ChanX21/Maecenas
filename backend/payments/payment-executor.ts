@@ -1,5 +1,7 @@
 import type { CitationPayment, Source } from "@/types";
 import { makeId } from "@/utils/ids";
+import { createEvidenceGrant, signReceipt, verifyToken } from "@/security";
+import { payCircleResource } from "@/payments/circle-gateway";
 
 const agentName = "Maecenas Scholar v1";
 const mockWallet = "0x00000000000000000000000000000000000a11ce";
@@ -23,7 +25,8 @@ export function buildPaymentRequired(source: Source) {
 }
 
 export function hasValidPaymentProof(source: Source, proof?: string | null): boolean {
-  return proof === `proof:${source.id}`;
+  const grant = proof ? verifyToken<{ typ: "evidence"; exp: number; sourceId: string; receiptId: string; answerId: string }>(proof, "evidence") : undefined;
+  return grant?.sourceId === source.id;
 }
 
 export function requestProtectedEvidence(source: Source, proof?: string | null) {
@@ -52,11 +55,32 @@ export async function createEvidencePayment(
   userPrompt: string,
   fundedBy: CitationPayment["fundedBy"],
   searchPaymentId?: string
-): Promise<{ receipt: CitationPayment; paymentProof: string }> {
+): Promise<{
+  receipt: CitationPayment;
+  paymentProof?: string;
+  evidence?: { sourceId: string; title: string; authorName: string; evidenceText: string; citationPriceUSDC: string };
+}> {
   const mode = getPaymentMode();
-  if (mode === "real") throw new Error("Real evidence payment execution is not implemented");
-  const paymentId = `mock_${makeId("x402").replace("x402_", "")}`;
-  const receipt: CitationPayment = {
+  let paymentId = `mock_${makeId("x402").replace("x402_", "")}`;
+  let txHash = `mock_tx_${source.id}`;
+  let network = process.env.X402_NETWORK ?? "arc-testnet";
+  let payerWallet = process.env.MAECENAS_AGENT_WALLET_ADDRESS ?? mockWallet;
+  let evidence;
+  if (mode === "real") {
+    const baseUrl = process.env.PUBLIC_BACKEND_URL ?? `http://127.0.0.1:${process.env.BACKEND_PORT ?? 4000}`;
+    const payment = await payCircleResource<{
+      id: string;
+      title: string;
+      authorName: string;
+      evidenceText: string;
+    }>(`${baseUrl}/api/sources/${source.id}/evidence`);
+    paymentId = payment.transaction;
+    txHash = payment.transaction;
+    network = payment.network;
+    payerWallet = payment.payer;
+    evidence = { ...payment.data, sourceId: source.id, citationPriceUSDC: source.citationPriceUSDC };
+  }
+  const unsigned: Omit<CitationPayment, "receiptSignature"> = {
     id: makeId("rcpt"),
     answerId,
     searchPaymentId,
@@ -65,17 +89,20 @@ export async function createEvidencePayment(
     userPrompt,
     amountUSDC: source.citationPriceUSDC,
     paymentId,
-    txHash: `mock_tx_${source.id}`,
+    txHash,
     payerAgent: agentName,
-    payerWallet: process.env.MAECENAS_AGENT_WALLET_ADDRESS ?? mockWallet,
+    payerWallet,
     recipientWallet: source.walletAddress,
-    status: "mock",
+    status: mode === "mock" ? "mock" : "paid",
     fundedBy,
+    network,
     createdAt: new Date().toISOString()
   };
+  const receipt: CitationPayment = { ...unsigned, receiptSignature: signReceipt(unsigned) };
 
   return {
     receipt,
-    paymentProof: `proof:${source.id}`
+    paymentProof: mode === "mock" ? createEvidenceGrant(source.id, receipt.id, answerId) : undefined,
+    evidence
   };
 }

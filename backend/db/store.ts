@@ -14,7 +14,8 @@ import {
   searchPaymentIntents,
   searchPayments,
   sources,
-  userUsages
+  userUsages,
+  walletAuthNonces
 } from "@/db/schema";
 import type {
   Answer,
@@ -25,6 +26,7 @@ import type {
   Source,
   UserUsage
 } from "@/types";
+import { signReceipt, walletAuthMessage } from "@/security";
 import { makeId } from "@/utils/ids";
 import { microsToUSDC, parseUSDCMicros } from "@/utils/money";
 
@@ -58,12 +60,25 @@ export function initializeDatabase(): void {
   db = drizzle(sqlite);
   const migrationsFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../drizzle");
   migrate(db, { migrationsFolder });
+  const unsignedReceipts = db.select().from(citationPayments).where(eq(citationPayments.receiptSignature, "")).all();
+  for (const row of unsignedReceipts) {
+    const receipt = mapReceipt(row);
+    db.update(citationPayments)
+      .set({ receiptSignature: signReceipt(receipt) })
+      .where(eq(citationPayments.id, row.id))
+      .run();
+  }
 }
 
 export function closeDatabase(): void {
   sqlite?.close();
   sqlite = undefined;
   db = undefined;
+}
+
+export async function backupDatabase(destination: string): Promise<void> {
+  initializeDatabase();
+  await sqlite!.backup(destination);
 }
 
 function database(): Db {
@@ -85,6 +100,12 @@ function paymentPriceMicros(): number {
   return parseUSDCMicros(process.env.PAID_SEARCH_PRICE_USDC ?? "0.01");
 }
 
+function platformFeeBps(): number {
+  const value = Number(process.env.PLATFORM_FEE_BPS ?? 1000);
+  if (!Number.isInteger(value) || value < 0 || value > 10_000) throw new Error("PLATFORM_FEE_BPS must be between 0 and 10000");
+  return value;
+}
+
 function mapSource(row: typeof sources.$inferSelect): Source {
   return {
     id: row.id,
@@ -99,6 +120,8 @@ function mapSource(row: typeof sources.$inferSelect): Source {
     tags: JSON.parse(row.tagsJson) as string[],
     license: row.license ?? undefined,
     status: row.status,
+    ownershipVerifiedAt: row.ownershipVerifiedAt ?? undefined,
+    ownershipAttestation: row.ownershipAttestation ?? undefined,
     reviewedAt: row.reviewedAt ?? undefined,
     rejectionReason: row.rejectionReason ?? undefined,
     createdAt: row.createdAt
@@ -139,6 +162,8 @@ function mapReceipt(row: typeof citationPayments.$inferSelect): CitationPayment 
     recipientWallet: row.recipientWallet,
     status: row.status,
     fundedBy: row.fundedBy,
+    receiptSignature: row.receiptSignature,
+    network: row.network ?? undefined,
     createdAt: row.createdAt
   };
 }
@@ -198,6 +223,8 @@ export function seedDatabase(): number {
       tagsJson: JSON.stringify(source.tags),
       license: source.license,
       status: source.status,
+      ownershipVerifiedAt: source.ownershipVerifiedAt,
+      ownershipAttestation: source.ownershipAttestation,
       reviewedAt: source.reviewedAt,
       rejectionReason: source.rejectionReason,
       createdAt: source.createdAt
@@ -250,6 +277,8 @@ export function createSource(source: Source): Source {
       tagsJson: JSON.stringify(source.tags),
       license: source.license,
       status: source.status,
+      ownershipVerifiedAt: source.ownershipVerifiedAt,
+      ownershipAttestation: source.ownershipAttestation,
       reviewedAt: source.reviewedAt,
       rejectionReason: source.rejectionReason,
       createdAt: source.createdAt
@@ -265,6 +294,7 @@ export function reviewSource(id: string, status: "approved" | "rejected", reject
   conn.update(sources)
     .set({
       status,
+      ownershipVerifiedAt: status === "approved" ? existing.ownershipVerifiedAt ?? new Date().toISOString() : existing.ownershipVerifiedAt,
       reviewedAt: new Date().toISOString(),
       rejectionReason: status === "rejected" ? rejectionReason ?? "Source did not pass review" : null
     })
@@ -281,6 +311,27 @@ export function findAnswer(id: string): Answer | undefined {
 export function findReceipt(id: string): CitationPayment | undefined {
   const row = database().select().from(citationPayments).where(eq(citationPayments.id, id)).get();
   return row ? mapReceipt(row) : undefined;
+}
+
+export function createWalletAuthNonce(walletAddress: string): { id: string; message: string; expiresAt: string } {
+  const id = makeId("nonce");
+  const createdAt = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + 5 * 60_000).toISOString();
+  const message = walletAuthMessage(walletAddress, id, expiresAt);
+  database().insert(walletAuthNonces).values({ id, walletAddress, message, expiresAt, createdAt }).run();
+  return { id, message, expiresAt };
+}
+
+export function consumeWalletAuthNonce(id: string, walletAddress: string): string {
+  return database().transaction((rawTx) => {
+    const tx = rawTx as Db;
+    const nonce = tx.select().from(walletAuthNonces).where(eq(walletAuthNonces.id, id)).get();
+    if (!nonce || nonce.walletAddress !== walletAddress || nonce.usedAt || Date.parse(nonce.expiresAt) <= Date.now()) {
+      throw new StoreError("INVALID_AUTH_NONCE", "Wallet authentication challenge is invalid or expired", 401);
+    }
+    tx.update(walletAuthNonces).set({ usedAt: new Date().toISOString() }).where(eq(walletAuthNonces.id, id)).run();
+    return nonce.message;
+  });
 }
 
 export function readDb(): MaecenasDatabase {
@@ -391,28 +442,46 @@ export function beginResearch(input: BeginResearchInput): BeginResearchResult {
     }
 
     const usage = getOrCreateUsageInTransaction(tx, input.sessionId, input.walletAddress, input.ipHash);
+    const scopedUsages = input.ipHash
+      ? tx.select().from(userUsages).where(eq(userUsages.ipHash, input.ipHash)).all()
+      : [usage];
+    const scopedSessionIds = scopedUsages.map((entry) => entry.sessionId);
+    const scopedFreeSearchesUsed = scopedUsages.reduce((total, entry) => total + entry.freeSearchesUsed, 0);
     const processingFreeRuns = tx
       .select({ id: researchRuns.id })
       .from(researchRuns)
       .where(
         and(
-          eq(researchRuns.sessionId, input.sessionId),
+          inArray(researchRuns.sessionId, scopedSessionIds),
           eq(researchRuns.status, "processing"),
           eq(researchRuns.paymentType, "free_sponsored")
         )
       )
       .all().length;
+    const sponsoredLimitMicros = parseUSDCMicros(process.env.SPONSORED_TREASURY_LIMIT_USDC ?? "1");
+    const sponsoredSpentMicros = tx
+      .select({ amountMicros: citationPayments.amountMicros })
+      .from(citationPayments)
+      .where(eq(citationPayments.fundedBy, "maecenas_sponsored"))
+      .all()
+      .reduce((total, receipt) => total + receipt.amountMicros, 0);
+    const sponsoredReservationMicros =
+      processingFreeRuns * parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01");
+    const sponsoredRemainingMicros = Math.max(0, sponsoredLimitMicros - sponsoredSpentMicros - sponsoredReservationMicros);
+    const freeQuotaAvailable = scopedFreeSearchesUsed + processingFreeRuns < usage.freeSearchLimit;
 
     let paymentType: "free_sponsored" | "user_paid";
     let budgetMicros: number;
     let searchPaymentId: string | undefined;
 
-    if (usage.freeSearchesUsed + processingFreeRuns < usage.freeSearchLimit) {
+    if (freeQuotaAvailable && sponsoredRemainingMicros > 0) {
       paymentType = "free_sponsored";
       const funded = parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01");
-      budgetMicros = input.requestedBudgetUSDC ? Math.min(parseUSDCMicros(input.requestedBudgetUSDC), funded) : funded;
+      budgetMicros = input.requestedBudgetUSDC
+        ? Math.min(parseUSDCMicros(input.requestedBudgetUSDC), funded, sponsoredRemainingMicros)
+        : Math.min(funded, sponsoredRemainingMicros);
     } else {
-      if (usage.freeSearchesUsed < usage.freeSearchLimit) {
+      if (!freeQuotaAvailable && scopedFreeSearchesUsed < usage.freeSearchLimit) {
         throw new StoreError("FREE_QUOTA_BUSY", "The remaining free search is already processing", 409);
       }
       if (!input.walletAddress) throw new StoreError("MISSING_WALLET_ADDRESS", "Wallet address is required", 402);
@@ -442,9 +511,10 @@ export function beginResearch(input: BeginResearchInput): BeginResearchResult {
       }
       paymentType = "user_paid";
       searchPaymentId = payment.id;
+      const evidenceBudget = Math.floor((payment.amountMicros * (10_000 - platformFeeBps())) / 10_000);
       budgetMicros = input.requestedBudgetUSDC
-        ? Math.min(parseUSDCMicros(input.requestedBudgetUSDC), payment.amountMicros)
-        : payment.amountMicros;
+        ? Math.min(parseUSDCMicros(input.requestedBudgetUSDC), evidenceBudget)
+        : evidenceBudget;
     }
 
     const now = new Date().toISOString();
@@ -508,6 +578,8 @@ export function completeResearch(runId: string, answer: Answer, receipts: Citati
             recipientWallet: receipt.recipientWallet,
             status: receipt.status,
             fundedBy: receipt.fundedBy,
+            receiptSignature: receipt.receiptSignature,
+            network: receipt.network,
             createdAt: receipt.createdAt
           }))
         )
@@ -550,6 +622,20 @@ export function failResearch(runId: string): void {
     .set({ status: "failed", searchPaymentId: null, updatedAt: new Date().toISOString() })
     .where(eq(researchRuns.id, runId))
     .run();
+}
+
+export function getResearchRunStatus(runId: string, sessionId: string): {
+  status: "processing" | "completed" | "failed";
+  answer?: Answer;
+} | undefined {
+  const run = database()
+    .select()
+    .from(researchRuns)
+    .where(and(eq(researchRuns.id, runId), eq(researchRuns.sessionId, sessionId)))
+    .get();
+  if (!run) return undefined;
+  const answer = run.answerId ? findAnswer(run.answerId) : undefined;
+  return { status: run.status, answer };
 }
 
 export function createSearchPaymentIntent(sessionId: string, walletAddress: string): SearchPaymentIntent {
@@ -595,6 +681,11 @@ export type ConfirmSearchPaymentInput = {
   walletAddress: string;
   paymentProof: string;
   txHash?: string;
+  settlement?: {
+    payer: string;
+    transaction: string;
+    network: string;
+  };
 };
 
 export function confirmSearchPayment(input: ConfirmSearchPaymentInput): SearchPayment {
@@ -619,8 +710,10 @@ export function confirmSearchPayment(input: ConfirmSearchPaymentInput): SearchPa
     if (!input.paymentProof.trim()) {
       throw new StoreError("PAYMENT_NOT_CONFIRMED", "Payment proof is required", 400);
     }
-    if (intent.paymentMode !== "mock") {
-      throw new StoreError("PAYMENT_NOT_CONFIRMED", "Real payment verification is not configured", 501);
+    if (intent.paymentMode === "real") {
+      if (!input.settlement || input.settlement.payer.toLowerCase() !== input.walletAddress) {
+        throw new StoreError("PAYMENT_NOT_CONFIRMED", "Circle Gateway payer does not match the authenticated wallet", 402);
+      }
     }
     const now = new Date().toISOString();
     const payment = {
@@ -629,11 +722,11 @@ export function confirmSearchPayment(input: ConfirmSearchPaymentInput): SearchPa
       sessionId: input.sessionId,
       walletAddress: input.walletAddress,
       amountMicros: intent.amountMicros,
-      status: "mock" as const,
-      paymentMode: "mock" as const,
+      status: intent.paymentMode === "mock" ? "mock" as const : "paid" as const,
+      paymentMode: intent.paymentMode,
       paymentProof: input.paymentProof,
-      txHash: input.txHash ?? null,
-      paymentId: `mock_${makeId("pay").slice(4)}`,
+      txHash: input.settlement?.transaction ?? input.txHash ?? null,
+      paymentId: input.settlement?.transaction ?? `mock_${makeId("pay").slice(4)}`,
       createdAt: now,
       paidAt: now,
       usedForAnswerId: null
@@ -642,6 +735,11 @@ export function confirmSearchPayment(input: ConfirmSearchPaymentInput): SearchPa
     tx.update(searchPaymentIntents).set({ status: "paid" }).where(eq(searchPaymentIntents.id, intent.id)).run();
     return mapSearchPayment(payment);
   });
+}
+
+export function getSearchPaymentIntent(id: string): SearchPaymentIntent | undefined {
+  const row = database().select().from(searchPaymentIntents).where(eq(searchPaymentIntents.id, id)).get();
+  return row ? mapIntent(row) : undefined;
 }
 
 export function getSearchPayment(id: string): SearchPayment | undefined {

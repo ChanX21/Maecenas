@@ -1,0 +1,48 @@
+import { runResearchAgent } from "@/agent/research-agent";
+import { completeResearch, failResearch } from "@/db/store";
+import type { ResearchStrategy } from "@/types";
+
+type ResearchJob = {
+  runId: string;
+  question: string;
+  budgetUSDC: string;
+  strategy: ResearchStrategy;
+  sessionId: string;
+  walletAddress?: string;
+  searchPaymentId?: string;
+  paymentType: "free_sponsored" | "user_paid";
+};
+
+const queue: ResearchJob[] = [];
+let active = 0;
+
+export function enqueueResearch(job: ResearchJob): void {
+  queue.push(job);
+  drain();
+}
+
+function drain(): void {
+  const concurrency = Math.max(1, Number(process.env.RESEARCH_WORKER_CONCURRENCY ?? 2));
+  while (active < concurrency && queue.length) {
+    const job = queue.shift()!;
+    active += 1;
+    void run(job).finally(() => {
+      active -= 1;
+      drain();
+    });
+  }
+}
+
+async function run(job: ResearchJob): Promise<void> {
+  try {
+    const result = await runResearchAgent(job);
+    completeResearch(job.runId, result.answer, result.receipts);
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", event: "research_job_failed", runId: job.runId, error: String(error) }));
+    failResearch(job.runId);
+  }
+}
+
+export function researchQueueStatus() {
+  return { active, queued: queue.length };
+}

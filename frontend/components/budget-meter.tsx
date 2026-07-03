@@ -35,12 +35,12 @@ export function BudgetMeter({ budgetUSDC, spentUSDC, considered, purchased, skip
 
   return (
     <div className="space-y-4">
-      <dl className="grid border-y border-marble/10 sm:grid-cols-5">
-        <Metric label="Evidence budget" value={<><AnimatedNumber value={budget} isUSDC /> USDC</>} />
-        <Metric label="Selected" value={<AnimatedNumber value={purchased} />} />
-        <Metric label="Considered" value={<AnimatedNumber value={considered} />} />
-        <Metric label="Spent" value={<span className="text-gold"><AnimatedNumber value={spent} isUSDC /> USDC</span>} />
-        <Metric label="Remaining" value={<><AnimatedNumber value={remaining} isUSDC /> USDC</>} detail={`${skipped} not selected`} />
+      <dl className="grid overflow-hidden rounded-lg border border-marble/10 bg-ink-2/60 sm:grid-cols-5">
+        <Metric label="Treasury limit" value={<><AnimatedNumber value={budget} isUSDC /> USDC</>} />
+        <Metric label="Funded" value={<AnimatedNumber value={purchased} />} />
+        <Metric label="Reviewed" value={<AnimatedNumber value={considered} />} />
+        <Metric label="Deployed" value={<span className="text-gold"><AnimatedNumber value={spent} isUSDC /> USDC</span>} />
+        <Metric label="Reserve" value={<><AnimatedNumber value={remaining} isUSDC /> USDC</>} detail={`${skipped} passed over`} />
       </dl>
       
       {/* Animated liquid progress bar */}
@@ -58,7 +58,7 @@ export function BudgetMeter({ budgetUSDC, spentUSDC, considered, purchased, skip
 
 function Metric({ label, value, detail }: { label: string; value: React.ReactNode; detail?: string }) {
   return (
-    <div className="border-b border-marble/10 px-4 py-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
+    <div className="border-b border-marble/10 px-4 py-4 text-center last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
       <dt className="font-mono text-[10px] uppercase text-dim">{label}</dt>
       <dd className="mt-1 text-sm text-cream font-mono tracking-tight">{value}</dd>
       {detail ? <dd className="mt-1 text-xs text-muted font-mono">{detail}</dd> : null}

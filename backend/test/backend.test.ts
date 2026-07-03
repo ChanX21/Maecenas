@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { privateKeyToAccount } from "viem/accounts";
 
 test("free quota, mock payment, idempotency, and funding links", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "maecenas-"));
@@ -18,6 +19,7 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
 
   const store = await import("@/db/store");
   const { createMaecenasServer } = await import("@/http");
+  const { circlePaymentRequired } = await import("@/payments/circle-gateway");
   store.initializeDatabase();
   store.seedDatabase();
 
@@ -25,34 +27,70 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const sessionId = "sess_acceptance_001";
-  const walletAddress = "0x1111111111111111111111111111111111111111";
+  const account = privateKeyToAccount("0x1111111111111111111111111111111111111111111111111111111111111111");
+  const walletAddress = account.address.toLowerCase();
+  let walletAuth = "";
+
+  const circleRequirement = circlePaymentRequired("0.01", process.env.MAECENAS_TREASURY_WALLET_ADDRESS, `${base}/paid`);
+  assert.equal(circleRequirement.accepts[0].amount, "10000");
+  assert.equal(circleRequirement.accepts[0].network, "eip155:5042002");
 
   const post = async (route: string, body: unknown, headers: Record<string, string> = {}) => {
     const response = await fetch(`${base}${route}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...headers },
+      headers: {
+        "Content-Type": "application/json",
+        ...(walletAuth ? { Authorization: `Bearer ${walletAuth}` } : {}),
+        ...headers
+      },
       body: JSON.stringify(body)
     });
     return { response, body: (await response.json()) as Record<string, any> };
   };
 
   try {
+    const challenge = await post("/api/auth/nonce", { walletAddress });
+    const signature = await account.signMessage({ message: challenge.body.message });
+    const authentication = await post("/api/auth/verify", {
+      walletAddress,
+      nonceId: challenge.body.id,
+      signature
+    });
+    assert.equal(authentication.response.status, 200);
+    walletAuth = authentication.body.token;
+    const sourceUrl = "https://example.org/independent-nanopayment-evidence";
+    const ownershipAttestation = await account.signMessage({
+      message: [
+        "Maecenas source ownership attestation",
+        `Wallet: ${walletAddress}`,
+        `Source: ${sourceUrl}`,
+        "I attest that I control or am authorized to register this research source."
+      ].join("\n")
+    });
+
     const submitted = await post("/api/sources", {
       title: "Independent Nanopayment Evidence",
       authorName: "Test Source Owner",
-      sourceUrl: "https://example.org/independent-nanopayment-evidence",
+      sourceUrl,
       walletAddress,
       citationPriceUSDC: "0.0001",
       abstract: "Independent evidence about nanopayment authorization, settlement, and accountable source compensation.",
       evidenceText:
         "Nanopayment authorization lets software purchase one narrowly scoped evidence item while preserving a receipt that identifies the buyer, source owner, amount, and funded research session.",
-      tags: "nanopayments, evidence, authorization"
+      tags: "nanopayments, evidence, authorization",
+      ownershipAttestation
     });
     assert.equal(submitted.response.status, 201);
     assert.equal(submitted.body.source.status, "pending");
+    assert.equal(submitted.body.source.evidenceText, undefined);
     const publicSourcesBefore = (await (await fetch(`${base}/api/sources`)).json()) as Record<string, any>;
+    assert.ok(publicSourcesBefore.sources.every((source: Record<string, unknown>) => !("evidenceText" in source)));
     assert.ok(!publicSourcesBefore.sources.some((source: Record<string, unknown>) => source.id === submitted.body.source.id));
-    const ownerSources = (await (await fetch(`${base}/api/sources?wallet=${walletAddress}`)).json()) as Record<string, any>;
+    const ownerSources = (await (
+      await fetch(`${base}/api/sources?wallet=${walletAddress}`, {
+        headers: { Authorization: `Bearer ${walletAuth}` }
+      })
+    ).json()) as Record<string, any>;
     assert.equal(ownerSources.sources.find((source: Record<string, unknown>) => source.id === submitted.body.source.id)?.status, "pending");
     const reviewQueue = (await (
       await fetch(`${base}/api/admin/sources?status=pending`, {
@@ -69,16 +107,21 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
       { Authorization: "Bearer test_admin_token" }
     );
     assert.equal(approved.body.source.status, "approved");
+    const publicSource = (await (await fetch(`${base}/api/sources/${submitted.body.source.id}`)).json()) as Record<string, any>;
+    assert.equal(publicSource.source.evidenceText, undefined);
+    const guessedProof = await fetch(`${base}/api/sources/${submitted.body.source.id}/evidence?proof=proof:${submitted.body.source.id}`);
+    assert.equal(guessedProof.status, 402);
     const duplicate = await post("/api/sources", {
       title: "Duplicate",
       authorName: "Test Source Owner",
-      sourceUrl: "https://example.org/independent-nanopayment-evidence",
+      sourceUrl,
       walletAddress,
       citationPriceUSDC: "0.0001",
       abstract: "A duplicate source submission with enough abstract text to pass normal input validation.",
       evidenceText:
         "This evidence body is intentionally long enough to pass validation while reusing the same canonical source URL.",
-      tags: "duplicate, evidence"
+      tags: "duplicate, evidence",
+      ownershipAttestation
     });
     assert.equal(duplicate.response.status, 409);
     assert.equal(duplicate.body.error, "SOURCE_ALREADY_REGISTERED");
@@ -147,8 +190,11 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
     });
     assert.equal(paid.response.status, 200);
     assert.equal(paid.body.paymentType, "user_paid");
-    assert.equal(paid.body.budget.max, "0.01");
+    assert.equal(paid.body.budget.max, "0.009");
     assert.ok(paid.body.receipts.every((receipt: Record<string, unknown>) => receipt.fundedBy === "user_paid_search"));
+    assert.ok(paid.body.receipts.every((receipt: Record<string, unknown>) => receipt.receiptSignature));
+    const receiptVerification = await fetch(`${base}/api/receipts/${paid.body.receipts[0].id}/verify`);
+    assert.equal((await receiptVerification.json() as Record<string, unknown>).valid, true);
 
     const reused = await post("/api/research", {
       sessionId,
@@ -190,7 +236,9 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
     assert.equal(paidRetry.kind, "started");
     if (paidRetry.kind === "started") store.failResearch(paidRetry.runId);
 
-    const usageResponse = await fetch(`${base}/api/usage?sessionId=${sessionId}&wallet=${walletAddress}`);
+    const usageResponse = await fetch(`${base}/api/usage?sessionId=${sessionId}&wallet=${walletAddress}`, {
+      headers: { Authorization: `Bearer ${walletAuth}` }
+    });
     const usage = (await usageResponse.json()) as Record<string, unknown>;
     assert.equal(usage.freeSearchesUsed, 5);
     assert.equal(usage.paidSearchesUsed, 1);
@@ -228,6 +276,24 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
     for (const reservation of reservations) {
       if (reservation.kind === "started") store.failResearch(reservation.runId);
     }
+
+    process.env.RESEARCH_ASYNC = "true";
+    const queued = await post("/api/research", {
+      sessionId: "sess_queued_001",
+      clientRequestId: "request_queued_001",
+      question: "Can a worker complete this research?",
+      strategy: "balanced"
+    });
+    assert.equal(queued.response.status, 202);
+    let queuedResult: Record<string, any> = queued.body;
+    for (let attempt = 0; attempt < 20 && queuedResult.status === "processing"; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      const response = await fetch(`${base}/api/research/runs/${queued.body.runId}?sessionId=sess_queued_001`);
+      queuedResult = await response.json() as Record<string, any>;
+    }
+    assert.equal(queuedResult.status, "completed");
+    assert.ok(queuedResult.answerId);
+    delete process.env.RESEARCH_ASYNC;
 
     delete process.env.AI_MODE;
     const unconfigured = await post("/api/research", {

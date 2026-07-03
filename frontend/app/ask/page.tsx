@@ -3,13 +3,13 @@ import { SectionHeading } from "@/components/ui/section-heading";
 
 export default function AskPage() {
   return (
-    <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+    <main className="home-grid min-h-[calc(100vh-65px)] px-4 py-14 sm:px-6 lg:px-8">
       <SectionHeading
-        eyebrow="Research workspace"
-        title="Ask a focused question."
-        copy="Maecenas searches approved evidence, applies the funded budget, and returns a grounded answer with citations."
+        eyebrow="The research forum"
+        title="Commission your next answer."
+        copy="Set the mandate and treasury limit. Maecenas finds the strongest approved evidence and returns a cited brief."
       />
-      <div className="mt-8">
+      <div className="mx-auto mt-10 max-w-5xl">
         <ResearchPromptBox />
       </div>
     </main>

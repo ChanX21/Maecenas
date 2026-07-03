@@ -15,18 +15,18 @@ export default async function ReceiptPage({ params }: PageProps) {
   if (!receipt) notFound();
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+    <main className="home-grid min-h-[calc(100vh-65px)] px-4 py-14 sm:px-6 lg:px-8">
       <SectionHeading
-        eyebrow="Evidence ledger"
-        title="Evidence purchase receipt"
-        copy="This record shows why evidence was selected, who was assigned the value, and whether settlement was mock or real."
+        eyebrow="The treasury ledger"
+        title="Proof of patronage."
+        copy="See why this evidence earned funding, who receives the value, and whether the settlement is test or live."
       />
-      <div className="mt-8">
+      <div className="mx-auto mt-10 max-w-4xl">
         <PaymentReceiptCard receipt={receipt} />
-      </div>
-      <div className="roman-panel mt-6 p-5">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Question</p>
-        <p className="mt-3 text-lg leading-7 text-cream">{receipt.userPrompt}</p>
+        <div className="roman-panel mt-5 p-5 sm:p-7">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Research mandate</p>
+          <p className="mt-3 font-display text-xl leading-8 text-cream sm:text-2xl">{receipt.userPrompt}</p>
+        </div>
       </div>
     </main>
   );

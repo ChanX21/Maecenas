@@ -24,18 +24,18 @@ export async function runResearchAgent(input: RunResearchInput): Promise<{ answe
   const allSources = await listSources();
   const events: TraceEvent[] = [];
   const candidates = scoutSources(input.question, allSources);
-  events.push(traceEvent("scout", "Source registry searched", `${candidates.length} candidate sources found.`));
+  events.push(traceEvent("scout", "Archive scouted", `${candidates.length} candidate sources surfaced.`));
 
   const { plan, scoredSources } = await analyzeResearch(input.question, input.budgetUSDC, input.strategy, candidates);
-  events.push(traceEvent("plan", "Research plan created", `${plan.subquestions.length} subquestions and ${plan.evidenceNeeds.length} evidence needs.`));
-  events.push(traceEvent("score", "Candidate sources scored", `Top score: ${scoredSources[0]?.finalScore ?? 0}.`));
+  events.push(traceEvent("plan", "Mandate mapped", `${plan.subquestions.length} subquestions and ${plan.evidenceNeeds.length} evidence needs defined.`));
+  events.push(traceEvent("score", "Evidence ranked", `Leading score: ${scoredSources[0]?.finalScore ?? 0}.`));
 
   const budgetDecision = allocateBudget(scoredSources, input.budgetUSDC, input.strategy);
   events.push(
     traceEvent(
       "budget",
       "Budget allocated",
-      `${budgetDecision.selectedSources.length} selected, ${budgetDecision.skippedSources.length} skipped, estimated spend ${budgetDecision.estimatedSpendUSDC} USDC.`
+      `${budgetDecision.selectedSources.length} funded, ${budgetDecision.skippedSources.length} passed over, ${budgetDecision.estimatedSpendUSDC} USDC allocated.`
     )
   );
 
@@ -64,15 +64,17 @@ export async function runResearchAgent(input: RunResearchInput): Promise<{ answe
     events.push(
       traceEvent(
         "payment-sent",
-        getPaymentMode() === "mock" ? "MOCK PAYMENT sent" : "USDC nanopayment submitted",
+        getPaymentMode() === "mock" ? "Test funding recorded" : "USDC funding submitted",
         `${payment.receipt.amountUSDC} USDC to ${payment.receipt.recipientWallet}.`,
         getPaymentMode() === "mock" ? "mock" : "completed"
       )
     );
-    const secondAttempt = requestProtectedEvidence(source, payment.paymentProof);
+    const secondAttempt = payment.evidence
+      ? { ok: true as const, evidence: payment.evidence }
+      : requestProtectedEvidence(source, payment.paymentProof);
     if (!secondAttempt.ok) continue;
-    events.push(traceEvent("evidence-unlocked", "Evidence unlocked", `${source.title} returned protected evidence.`));
-    events.push(traceEvent("receipt-saved", "Receipt prepared", `${payment.receipt.id} created for paid citation.`));
+    events.push(traceEvent("evidence-unlocked", "Funded evidence opened", `${source.title} returned protected evidence.`));
+    events.push(traceEvent("receipt-saved", "Treasury record sealed", `${payment.receipt.id} created for this funded citation.`));
     unlockedEvidence.push({
       ...secondAttempt.evidence,
       receipt: payment.receipt
@@ -83,7 +85,7 @@ export async function runResearchAgent(input: RunResearchInput): Promise<{ answe
 
   const contentJson = await synthesizeAnswer(plan, unlockedEvidence, budgetDecision);
   const response = answerContentToText(contentJson);
-  events.push(traceEvent("synthesis", "Cited answer generated", `Answer uses ${unlockedEvidence.length} selected evidence sources.`));
+  events.push(traceEvent("synthesis", "Research brief delivered", `The brief draws on ${unlockedEvidence.length} funded evidence sources.`));
 
   const trace: ResearchTrace = {
     plan,

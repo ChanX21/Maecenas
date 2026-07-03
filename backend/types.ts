@@ -13,6 +13,8 @@ export type Source = {
   tags: string[];
   license?: string;
   status: "pending" | "approved" | "rejected";
+  ownershipVerifiedAt?: string;
+  ownershipAttestation?: string;
   reviewedAt?: string;
   rejectionReason?: string;
   createdAt: string;
@@ -61,7 +63,13 @@ export type CitationPayment = {
   recipientWallet: string;
   status: CitationPaymentStatus;
   fundedBy: "maecenas_sponsored" | "user_paid_search";
+  receiptSignature: string;
+  network?: string;
   createdAt: string;
+};
+
+export type PublicSource = Omit<Source, "evidenceText" | "walletAddress" | "ownershipAttestation"> & {
+  ownerWallet: string;
 };
 
 export type UserUsage = {

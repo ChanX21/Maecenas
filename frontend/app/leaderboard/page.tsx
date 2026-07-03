@@ -9,21 +9,22 @@ export default async function LeaderboardPage() {
   const leaderboard = await getLeaderboard();
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <main className="home-grid min-h-[calc(100vh-65px)] px-4 py-14 sm:px-6 lg:px-8">
       <SectionHeading
-        eyebrow="Public evidence ledger"
-        title="Maecenas research activity."
-        copy="Approved sources, evidence unlocks, recorded value and settlement status. Mock records are not transferred funds."
+        eyebrow="The public ledger"
+        title="Capital follows useful evidence."
+        copy="See which sources shape funded research, how often they are selected, and the value they create. Test records remain clearly marked."
       />
-      <div className="mt-8">
+      <div className="mx-auto mt-10 max-w-7xl">
         <LeaderboardStats metrics={leaderboard.metrics} />
       </div>
-      <div className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <section className="roman-panel p-5">
-          <h2 className="font-display text-3xl text-cream">Top Sources by Recorded Value</h2>
-          <div className="mt-5 space-y-3">
+      <div className="mx-auto mt-5 grid max-w-7xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+        <section className="roman-panel p-5 sm:p-7">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Source performance</p>
+          <h2 className="mt-2 font-display text-3xl text-cream">Most-funded evidence</h2>
+          <div className="mt-5 divide-y divide-marble/10 border-y border-marble/10">
             {leaderboard.topEarningSources.map((source) => (
-              <div key={source.sourceId} className="border border-marble/10 bg-ink-2 p-4">
+              <div key={source.sourceId} className="py-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="font-display text-xl text-cream">{source.title}</h3>
@@ -31,9 +32,10 @@ export default async function LeaderboardPage() {
                   </div>
                   <p className="font-mono text-sm text-gold">{source.earnedUSDC} USDC</p>
                 </div>
-                <p className="mt-3 font-mono text-xs uppercase text-dim">{source.citations} evidence purchases</p>
+                <p className="mt-3 font-mono text-xs uppercase text-dim">{source.citations} funded selections</p>
               </div>
             ))}
+            {!leaderboard.topEarningSources.length ? <p className="py-8 text-center text-sm text-muted">No funded sources yet.</p> : null}
           </div>
         </section>
         <RecentPaymentsFeed receipts={leaderboard.recentPaymentStream} />

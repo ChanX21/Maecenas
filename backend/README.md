@@ -76,24 +76,24 @@ npm run source:review -- src_123 rejected "Duplicate or unverifiable evidence"
 
 The client persists `maecenas_session_id` in localStorage and sends it as
 `sessionId`. Call `GET /api/usage`, then `POST /api/research`. After five
-completed free answers, create `/api/payments/search-intent`, submit mock proof
+completed free answers, authenticate the wallet, create
+`/api/payments/search-intent`, settle the returned x402 requirement, submit it
 to `/api/payments/search-proof`, and retry research with the returned
 `searchPaymentId`.
 
-`PAYMENT_MODE=real` intentionally fails startup until Circle/Arc verification
-and evidence payment execution are implemented.
+`PAYMENT_MODE=real` uses Circle Gateway and fails closed when treasury, agent
+wallet, signing secret, or public URL configuration is missing.
 
 Research requires `OPENAI_API_KEY`; `OPENAI_MODEL` defaults to `gpt-5-mini`.
 Without a key the API returns `503 AI_NOT_CONFIGURED` and does not consume quota.
 
 ## Production Notes
 
-Main upgrades still needed:
+Deployment requirements:
 
 ```txt
-Postgres
-wallet auth
-real Circle Gateway/x402 payments
-source ownership verification
-LLM answer adapter
+funded Circle Gateway agent wallet
+off-site SQLite backup retention
+production monitoring and alert routing
+legal and payout compliance review
 ```

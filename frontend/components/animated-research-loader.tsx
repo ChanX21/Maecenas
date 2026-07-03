@@ -9,10 +9,10 @@ export function AnimatedResearchLoader({ stage }: { stage: string }) {
   
   // Rotating text for research phase
   const researchPhrases = [
-    "Scouting verified cryptographic sources...",
-    "Scanning evidence ledgers...",
-    "Evaluating budget thresholds...",
-    "Synthesizing final response...",
+    "Scouting the approved archive...",
+    "Ranking evidence by research fit...",
+    "Allocating the commission treasury...",
+    "Drafting the cited brief...",
   ];
   const [phraseIndex, setPhraseIndex] = useState(0);
 
@@ -72,7 +72,7 @@ export function AnimatedResearchLoader({ stage }: { stage: string }) {
 
       <div className="flex flex-col gap-1 overflow-hidden">
         <p className={`font-mono text-[10px] uppercase tracking-widest ${isPayment ? "text-gold/80" : "text-dim"}`}>
-          {isPayment ? "Settlement Protocol" : "Autonomous Agent"}
+          {isPayment ? "Treasury protocol" : "Research envoy"}
         </p>
         <AnimatePresence mode="wait">
           <motion.p

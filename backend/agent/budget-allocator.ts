@@ -42,12 +42,12 @@ export function allocateBudget(
       source.tags.forEach((tag) => selectedTags.add(tag));
     } else {
       const reason = !canAfford
-        ? "Skipped because buying it would exceed the research budget."
+        ? "Passed over because funding it would exceed the treasury limit."
         : !underCap
-          ? "Skipped because the agent already bought enough diverse evidence."
+          ? "Passed over because the commission already funded enough diverse evidence."
           : source.finalScore < threshold
-            ? `Skipped because final score ${source.finalScore} is below the ${threshold} ${strategy} threshold.`
-            : "Skipped because selected sources already cover the same evidence need.";
+            ? `Passed over because final score ${source.finalScore} is below the ${threshold} ${strategy} threshold.`
+            : "Passed over because funded sources already cover the same evidence need.";
       skipped.push({
         sourceId: source.sourceId,
         title: source.title,

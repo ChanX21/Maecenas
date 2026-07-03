@@ -2,11 +2,14 @@ import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { createHmac, timingSafeEqual } from "crypto";
 import { URL } from "url";
 import { runResearchAgent } from "@/agent/research-agent";
+import { enqueueResearch, researchQueueStatus } from "@/agent/research-worker";
 import { AgentError } from "@/agent/ai";
 import {
   beginResearch,
   completeResearch,
   confirmSearchPayment,
+  consumeWalletAuthNonce,
+  createWalletAuthNonce,
   createSearchPaymentIntent,
   createSource,
   failResearch,
@@ -14,13 +17,17 @@ import {
   findReceipt,
   findSource,
   getOrCreateUsage,
+  getResearchRunStatus,
+  getSearchPaymentIntent,
   listSources,
   readDb,
   reviewSource,
   StoreError
 } from "@/db/store";
 import { buildPaymentRequired, hasValidPaymentProof } from "@/payments/payment-executor";
-import type { ResearchStrategy, Source } from "@/types";
+import { circlePaymentRequired, settleCirclePayment } from "@/payments/circle-gateway";
+import { createAuthToken, sourceOwnershipMessage, verifyReceiptSignature, verifyToken, verifyWalletSignature } from "@/security";
+import type { PublicSource, ResearchStrategy, Source } from "@/types";
 import { makeId } from "@/utils/ids";
 import { microsToUSDC, parseUSDCMicros, sumUSDC } from "@/utils/money";
 
@@ -35,6 +42,14 @@ type RouteContext = {
 const strategies = new Set(["conservative", "balanced", "aggressive"]);
 const sessionIdPattern = /^[A-Za-z0-9_-]{8,128}$/;
 const walletPattern = /^0x[a-f0-9]{40}$/;
+const startedAt = Date.now();
+const rateLimits = new Map<string, { count: number; resetAt: number }>();
+const metrics = {
+  requests: 0,
+  errors: 0,
+  researchRequests: 0,
+  rateLimited: 0
+};
 
 class HttpError extends Error {
   constructor(
@@ -48,6 +63,8 @@ class HttpError extends Error {
 
 export function createMaecenasServer() {
   return createServer(async (request, response) => {
+    const requestStartedAt = Date.now();
+    const requestId = makeId("http");
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
     const context: RouteContext = {
       request,
@@ -58,14 +75,29 @@ export function createMaecenasServer() {
     };
 
     setCorsHeaders(request, response);
+    response.setHeader("X-Request-Id", requestId);
+    response.once("finish", () => {
+      console.log(JSON.stringify({
+        level: "info",
+        requestId,
+        method: context.method,
+        path: context.path,
+        status: response.statusCode,
+        durationMs: Date.now() - requestStartedAt
+      }));
+    });
+    metrics.requests += 1;
 
     if (context.method === "OPTIONS") {
       return sendJson(response, 204, {});
     }
 
     try {
+      enforceRateLimit(request, response, context.path === "/api/research" ? "research" : "api");
+      if (context.path === "/api/research") metrics.researchRequests += 1;
       await routeRequest(context);
     } catch (error) {
+      metrics.errors += 1;
       if (error instanceof StoreError) {
         return sendJson(response, error.status, { error: error.code, message: error.message });
       }
@@ -85,16 +117,60 @@ async function routeRequest(context: RouteContext) {
   const { method, path, response, url, request } = context;
 
   if (method === "GET" && path === "/api/health") {
+    const snapshot = readDb();
     return sendJson(response, 200, {
       ok: true,
       service: "maecenas-backend",
-      tagline: "Scholarly agents that pay their sources."
+      version: "0.2.0",
+      uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+      database: "sqlite",
+      paymentMode: process.env.PAYMENT_MODE === "real" ? "real" : "mock",
+      aiConfigured: Boolean(process.env.OPENAI_API_KEY),
+      records: {
+        sources: snapshot.sources.length,
+        answers: snapshot.answers.length,
+        receipts: snapshot.receipts.length
+      }
+    });
+  }
+
+  if (method === "GET" && path === "/api/admin/metrics") {
+    requireAdmin(request);
+    return sendJson(response, 200, {
+      ...metrics,
+      uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+      activeRateLimitKeys: rateLimits.size
+      ,
+      researchQueue: researchQueueStatus()
     });
   }
 
   if (method === "GET" && path === "/api/sources") {
     const walletAddress = optionalWallet(url.searchParams.get("wallet"));
-    return sendJson(response, 200, { sources: listSources({ walletAddress }) });
+    if (walletAddress) requireWalletAuth(request, walletAddress);
+    return sendJson(response, 200, { sources: listSources({ walletAddress }).map(publicSource) });
+  }
+
+  if (method === "POST" && path === "/api/auth/nonce") {
+    const body = await readJsonBody<Record<string, unknown>>(request);
+    const walletAddress = requireWallet(body.walletAddress);
+    return sendJson(response, 201, createWalletAuthNonce(walletAddress));
+  }
+
+  if (method === "POST" && path === "/api/auth/verify") {
+    const body = await readJsonBody<Record<string, unknown>>(request);
+    const walletAddress = requireWallet(body.walletAddress);
+    const nonceId = String(body.nonceId ?? "");
+    const signature = String(body.signature ?? "");
+    const message = consumeWalletAuthNonce(nonceId, walletAddress);
+    if (!(await verifyWalletSignature(walletAddress, message, signature))) {
+      throw new HttpError(401, "INVALID_WALLET_SIGNATURE", "Wallet signature could not be verified");
+    }
+    return sendJson(response, 200, {
+      walletAddress,
+      token: createAuthToken(walletAddress),
+      expiresInSeconds: Number(process.env.AUTH_SESSION_HOURS ?? 24) * 3600
+    });
   }
 
   if (method === "GET" && path === "/api/admin/sources") {
@@ -102,20 +178,22 @@ async function routeRequest(context: RouteContext) {
     const status = url.searchParams.get("status");
     const allSources = listSources({ includeUnapproved: true });
     return sendJson(response, 200, {
-      sources: status ? allSources.filter((source) => source.status === status) : allSources
+      sources: (status ? allSources.filter((source) => source.status === status) : allSources).map(adminSource)
     });
   }
 
   if (method === "GET" && path === "/api/usage") {
     const sessionId = requireSessionId(url.searchParams.get("sessionId"));
     const walletAddress = optionalWallet(url.searchParams.get("wallet"));
+    if (walletAddress) requireWalletAuth(request, walletAddress);
     const usage = getOrCreateUsage(sessionId, walletAddress, ipHash(request));
     return sendJson(response, 200, usageResponse(usage));
   }
 
   if (method === "POST" && path === "/api/sources") {
     const body = await readJsonBody<Record<string, unknown>>(request);
-    const required = ["title", "authorName", "sourceUrl", "walletAddress", "citationPriceUSDC", "abstract", "evidenceText"];
+    const authenticatedWallet = requireWalletAuth(request);
+    const required = ["title", "authorName", "sourceUrl", "citationPriceUSDC", "abstract", "evidenceText"];
     const missing = required.filter((field) => !body[field]);
     if (missing.length > 0) {
       return sendJson(response, 400, { error: `Missing required fields: ${missing.join(", ")}` });
@@ -125,6 +203,11 @@ async function routeRequest(context: RouteContext) {
     const authorName = String(body.authorName).trim();
     const abstract = String(body.abstract).trim();
     const evidenceText = String(body.evidenceText).trim();
+    const sourceUrl = requireHttpUrl(body.sourceUrl, "sourceUrl");
+    const ownershipAttestation = String(body.ownershipAttestation ?? "");
+    if (!(await verifyWalletSignature(authenticatedWallet, sourceOwnershipMessage(authenticatedWallet, sourceUrl), ownershipAttestation))) {
+      throw new HttpError(401, "INVALID_SOURCE_ATTESTATION", "Sign the source ownership attestation before submitting");
+    }
     if (title.length > 200 || authorName.length > 120) {
       throw new HttpError(400, "INVALID_SOURCE", "Source title or author name is too long");
     }
@@ -142,17 +225,18 @@ async function routeRequest(context: RouteContext) {
       id: makeId("src"),
       title,
       authorName,
-      sourceUrl: requireHttpUrl(body.sourceUrl, "sourceUrl"),
+      sourceUrl,
       doiOrCanonicalUrl: body.doiOrCanonicalUrl
         ? requireHttpUrlOrDoi(body.doiOrCanonicalUrl, "doiOrCanonicalUrl")
         : undefined,
-      walletAddress: requireWallet(body.walletAddress),
+      walletAddress: authenticatedWallet,
       citationPriceUSDC: String(body.citationPriceUSDC),
       abstract,
       evidenceText,
       tags,
       license: body.license ? String(body.license) : undefined,
       status: "pending",
+      ownershipAttestation,
       createdAt: new Date().toISOString()
     };
 
@@ -160,7 +244,7 @@ async function routeRequest(context: RouteContext) {
     if (parseUSDCMicros(source.citationPriceUSDC) === 0) {
       throw new HttpError(400, "INVALID_USDC_AMOUNT", "citationPriceUSDC must be greater than zero");
     }
-    return sendJson(response, 201, { source: createSource(source) });
+    return sendJson(response, 201, { source: publicSource(createSource(source)) });
   }
 
   const sourceReviewMatch = path.match(/^\/api\/admin\/sources\/([^/]+)\/review$/);
@@ -172,7 +256,7 @@ async function routeRequest(context: RouteContext) {
       throw new HttpError(400, "INVALID_SOURCE_STATUS", "status must be approved or rejected");
     }
     return sendJson(response, 200, {
-      source: reviewSource(sourceReviewMatch[1], status, body.reason ? String(body.reason) : undefined)
+      source: publicSource(reviewSource(sourceReviewMatch[1], status, body.reason ? String(body.reason) : undefined))
     });
   }
 
@@ -196,44 +280,55 @@ async function routeRequest(context: RouteContext) {
     const source = findSource(sourceEvidenceMatch[1]);
     if (!source || source.status !== "approved") return sendJson(response, 404, { error: "Source not found" });
 
+    if (process.env.PAYMENT_MODE === "real") {
+      const resourceUrl = `${process.env.PUBLIC_BACKEND_URL ?? `http://localhost:${process.env.BACKEND_PORT ?? 4000}`}${path}`;
+      const required = circlePaymentRequired(source.citationPriceUSDC, source.walletAddress, resourceUrl);
+      const paymentSignature = request.headers["payment-signature"]?.toString();
+      if (!paymentSignature) {
+        response.setHeader("PAYMENT-REQUIRED", Buffer.from(JSON.stringify(required)).toString("base64"));
+        return sendJson(response, 402, { error: "PAYMENT_REQUIRED" });
+      }
+      const payload = JSON.parse(Buffer.from(paymentSignature, "base64").toString("utf8")) as unknown;
+      const settlement = await settleCirclePayment(payload, required);
+      response.setHeader("PAYMENT-RESPONSE", Buffer.from(JSON.stringify(settlement)).toString("base64"));
+      return sendJson(response, 200, protectedEvidence(source));
+    }
+
     const proof = request.headers["x-payment-proof"]?.toString() ?? url.searchParams.get("proof");
     if (!hasValidPaymentProof(source, proof)) {
       return sendJson(response, 402, buildPaymentRequired(source));
     }
 
-    return sendJson(response, 200, {
-      id: source.id,
-      title: source.title,
-      authorName: source.authorName,
-      evidenceText: source.evidenceText,
-      citation: {
-        sourceUrl: source.sourceUrl,
-        doiOrCanonicalUrl: source.doiOrCanonicalUrl,
-        license: source.license
-      }
-    });
+    return sendJson(response, 200, protectedEvidence(source));
   }
 
   const sourceMatch = path.match(/^\/api\/sources\/([^/]+)$/);
   if (method === "GET" && sourceMatch) {
     const source = findSource(sourceMatch[1]);
     if (!source || source.status !== "approved") return sendJson(response, 404, { error: "Source not found" });
-    return sendJson(response, 200, { source });
+    return sendJson(response, 200, { source: publicSource(source) });
   }
 
   if (method === "POST" && path === "/api/payments/search-intent") {
     const body = await readJsonBody<Record<string, unknown>>(request);
     const sessionId = requireSessionId(body.sessionId);
     const walletAddress = requireWallet(body.walletAddress);
+    requireWalletAuth(request, walletAddress);
     const intent = createSearchPaymentIntent(sessionId, walletAddress);
+    const recipientWallet = process.env.MAECENAS_TREASURY_WALLET_ADDRESS ?? "";
+    const paymentRequired =
+      intent.paymentMode === "real"
+        ? circlePaymentRequired(intent.amountUSDC, requireWallet(recipientWallet), `${process.env.PUBLIC_BACKEND_URL ?? ""}/api/payments/search-proof`)
+        : undefined;
     return sendJson(response, 201, {
       paymentIntentId: intent.id,
       amountUSDC: intent.amountUSDC,
-      recipientWallet: process.env.MAECENAS_TREASURY_WALLET_ADDRESS ?? "",
-      network: process.env.X402_NETWORK ?? "arc-testnet",
+      recipientWallet,
+      network: paymentRequired?.accepts[0]?.network ?? process.env.X402_NETWORK ?? "arc-testnet",
       status: intent.status,
       paymentMode: intent.paymentMode,
-      expiresAt: intent.expiresAt
+      expiresAt: intent.expiresAt,
+      paymentRequired
     });
   }
 
@@ -241,12 +336,29 @@ async function routeRequest(context: RouteContext) {
     const body = await readJsonBody<Record<string, unknown>>(request);
     const paymentIntentId = String(body.paymentIntentId ?? "").trim();
     if (!paymentIntentId) throw new HttpError(400, "INVALID_PAYMENT_INTENT", "paymentIntentId is required");
+    const sessionId = requireSessionId(body.sessionId);
+    const walletAddress = requireWallet(body.walletAddress);
+    requireWalletAuth(request, walletAddress);
+    const intent = getSearchPaymentIntent(paymentIntentId);
+    if (!intent) throw new HttpError(404, "INVALID_PAYMENT_INTENT", "Payment intent was not found");
+    let settlement;
+    if (intent.paymentMode === "real") {
+      const recipient = requireWallet(process.env.MAECENAS_TREASURY_WALLET_ADDRESS);
+      const required = circlePaymentRequired(intent.amountUSDC, recipient, `${process.env.PUBLIC_BACKEND_URL ?? ""}/api/payments/search-proof`);
+      const paymentPayload = body.paymentPayload;
+      if (!paymentPayload) throw new HttpError(400, "PAYMENT_NOT_CONFIRMED", "paymentPayload is required");
+      settlement = await settleCirclePayment(paymentPayload, required);
+    }
     const payment = confirmSearchPayment({
       paymentIntentId,
-      sessionId: requireSessionId(body.sessionId),
-      walletAddress: requireWallet(body.walletAddress),
-      paymentProof: String(body.paymentProof ?? ""),
+      sessionId,
+      walletAddress,
+      paymentProof: settlement ? JSON.stringify(body.paymentPayload) : String(body.paymentProof ?? ""),
       txHash: body.txHash ? String(body.txHash) : undefined
+      ,
+      settlement: settlement
+        ? { payer: settlement.payer ?? "", transaction: settlement.transaction, network: settlement.network }
+        : undefined
     });
     return sendJson(response, 200, {
       searchPaymentId: payment.id,
@@ -264,6 +376,7 @@ async function routeRequest(context: RouteContext) {
     const requestedBudgetUSDC = body.budgetUSDC === undefined ? undefined : String(body.budgetUSDC);
     const strategy = String(body.strategy ?? "balanced") as ResearchStrategy;
     const walletAddress = optionalWallet(body.walletAddress);
+    if (walletAddress) requireWalletAuth(request, walletAddress);
     const searchPaymentId = body.searchPaymentId ? String(body.searchPaymentId) : undefined;
     const clientRequestId = body.clientRequestId ? String(body.clientRequestId).trim() : makeId("req");
 
@@ -303,6 +416,24 @@ async function routeRequest(context: RouteContext) {
       return sendResearchResponse(response, reservation.answer);
     }
 
+    if (process.env.RESEARCH_ASYNC === "true") {
+      enqueueResearch({
+        runId: reservation.runId,
+        question,
+        budgetUSDC: reservation.budgetUSDC,
+        strategy,
+        sessionId,
+        walletAddress,
+        searchPaymentId: reservation.searchPaymentId,
+        paymentType: reservation.paymentType
+      });
+      return sendJson(response, 202, {
+        runId: reservation.runId,
+        status: "processing",
+        pollUrl: `/api/research/runs/${reservation.runId}?sessionId=${encodeURIComponent(sessionId)}`
+      });
+    }
+
     try {
       const result = await runResearchAgent({
         question,
@@ -325,6 +456,19 @@ async function routeRequest(context: RouteContext) {
     }
   }
 
+  const researchRunMatch = path.match(/^\/api\/research\/runs\/([^/]+)$/);
+  if (method === "GET" && researchRunMatch) {
+    const sessionId = requireSessionId(url.searchParams.get("sessionId"));
+    const run = getResearchRunStatus(researchRunMatch[1], sessionId);
+    if (!run) return sendJson(response, 404, { error: "Research run not found" });
+    if (run.status === "completed" && run.answer) return sendResearchResponse(response, run.answer);
+    return sendJson(response, run.status === "failed" ? 500 : 202, {
+      runId: researchRunMatch[1],
+      status: run.status,
+      error: run.status === "failed" ? "RESEARCH_FAILED" : undefined
+    });
+  }
+
   const answerMatch = path.match(/^\/api\/answers\/([^/]+)$/);
   if (method === "GET" && answerMatch) {
     const answer = findAnswer(answerMatch[1]);
@@ -339,8 +483,22 @@ async function routeRequest(context: RouteContext) {
     return sendJson(response, 200, { receipt });
   }
 
+  const receiptVerifyMatch = path.match(/^\/api\/receipts\/([^/]+)\/verify$/);
+  if (method === "GET" && receiptVerifyMatch) {
+    const receipt = findReceipt(receiptVerifyMatch[1]);
+    if (!receipt) return sendJson(response, 404, { error: "Receipt not found" });
+    return sendJson(response, 200, {
+      receiptId: receipt.id,
+      valid: verifyReceiptSignature(receipt),
+      status: receipt.status,
+      network: receipt.network,
+      transaction: receipt.txHash
+    });
+  }
+
   if (method === "GET" && path === "/api/dashboard") {
-    const wallet = url.searchParams.get("wallet")?.toLowerCase() ?? "";
+    const wallet = requireWallet(url.searchParams.get("wallet"));
+    requireWalletAuth(request, wallet);
     const db = readDb();
     const sources = db.sources.filter((source) => !wallet || source.walletAddress.toLowerCase() === wallet);
     const sourceIds = new Set(sources.map((source) => source.id));
@@ -504,14 +662,58 @@ function requireHttpUrlOrDoi(value: unknown, field: string): string {
 }
 
 function requireAdmin(request: IncomingMessage): void {
-  const expected = process.env.ADMIN_TOKEN;
-  if (!expected) throw new HttpError(503, "ADMIN_NOT_CONFIGURED", "ADMIN_TOKEN is required for source review");
   const supplied = request.headers.authorization?.replace(/^Bearer\s+/i, "") ?? "";
+  const auth = verifyToken<{ typ: "auth"; exp: number; walletAddress: string }>(supplied, "auth");
+  const adminWallets = new Set(
+    (process.env.ADMIN_WALLETS ?? "").split(",").map((wallet) => wallet.trim().toLowerCase()).filter(Boolean)
+  );
+  if (auth && adminWallets.has(auth.walletAddress)) return;
+  const expected = process.env.ADMIN_TOKEN;
+  if (!expected) throw new HttpError(503, "ADMIN_NOT_CONFIGURED", "ADMIN_TOKEN or ADMIN_WALLETS is required for source review");
   const expectedBuffer = Buffer.from(expected);
   const suppliedBuffer = Buffer.from(supplied);
   if (expectedBuffer.length !== suppliedBuffer.length || !timingSafeEqual(expectedBuffer, suppliedBuffer)) {
     throw new HttpError(401, "UNAUTHORIZED", "Valid admin authorization is required");
   }
+}
+
+function requireWalletAuth(request: IncomingMessage, expectedWallet?: string): string {
+  const token = request.headers.authorization?.replace(/^Bearer\s+/i, "") ?? "";
+  const auth = verifyToken<{ typ: "auth"; exp: number; walletAddress: string }>(token, "auth");
+  if (!auth) throw new HttpError(401, "WALLET_AUTH_REQUIRED", "Sign in with the wallet to continue");
+  if (expectedWallet && auth.walletAddress !== expectedWallet.toLowerCase()) {
+    throw new HttpError(403, "WALLET_MISMATCH", "Authenticated wallet does not own this resource");
+  }
+  return auth.walletAddress;
+}
+
+function publicSource(source: Source): PublicSource {
+  const { evidenceText: _evidenceText, ownershipAttestation: _ownershipAttestation, walletAddress, ...metadata } = source;
+  return { ...metadata, ownerWallet: walletAddress };
+}
+
+function adminSource(source: Source) {
+  return {
+    ...publicSource(source),
+    evidencePreview: source.evidenceText.slice(0, 2_000),
+    ownershipAttestation: source.ownershipAttestation
+  };
+}
+
+function protectedEvidence(source: Source) {
+  return {
+    id: source.id,
+    sourceId: source.id,
+    title: source.title,
+    authorName: source.authorName,
+    evidenceText: source.evidenceText,
+    citationPriceUSDC: source.citationPriceUSDC,
+    citation: {
+      sourceUrl: source.sourceUrl,
+      doiOrCanonicalUrl: source.doiOrCanonicalUrl,
+      license: source.license
+    }
+  };
 }
 
 function ipHash(request: IncomingMessage): string | undefined {
@@ -530,7 +732,31 @@ function setCorsHeaders(request: IncomingMessage, response: ServerResponse) {
 
   response.setHeader("Access-Control-Allow-Origin", allowedOrigin);
   response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,x-payment-proof");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,x-payment-proof,PAYMENT-SIGNATURE");
+}
+
+function enforceRateLimit(request: IncomingMessage, response: ServerResponse, scope: "api" | "research") {
+  const forwarded = process.env.TRUST_PROXY === "true" ? request.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() : undefined;
+  const identity = forwarded ?? request.socket.remoteAddress ?? "unknown";
+  const windowMs = scope === "research" ? 60 * 60_000 : 60_000;
+  const limit = Number(scope === "research" ? process.env.RESEARCH_RATE_LIMIT_PER_HOUR ?? 20 : process.env.API_RATE_LIMIT_PER_MINUTE ?? 180);
+  const key = `${scope}:${identity}`;
+  const now = Date.now();
+  const current = rateLimits.get(key);
+  const bucket = !current || current.resetAt <= now ? { count: 0, resetAt: now + windowMs } : current;
+  bucket.count += 1;
+  rateLimits.set(key, bucket);
+  response.setHeader("X-RateLimit-Limit", String(limit));
+  response.setHeader("X-RateLimit-Remaining", String(Math.max(0, limit - bucket.count)));
+  response.setHeader("X-RateLimit-Reset", String(Math.ceil(bucket.resetAt / 1000)));
+  if (bucket.count > limit) {
+    metrics.rateLimited += 1;
+    response.setHeader("Retry-After", String(Math.ceil((bucket.resetAt - now) / 1000)));
+    throw new HttpError(429, "RATE_LIMITED", "Too many requests; retry after the current rate-limit window");
+  }
+  if (rateLimits.size > 10_000) {
+    for (const [entryKey, entry] of rateLimits) if (entry.resetAt <= now) rateLimits.delete(entryKey);
+  }
 }
 
 function sendJson(response: ServerResponse, status: number, data: unknown) {
