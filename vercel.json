@@ -7,7 +7,14 @@
     },
     "backend": {
       "root": "backend",
+      "framework": "node",
       "entrypoint": "server.ts",
+      "functions": {
+        "server.ts": {
+          "maxDuration": 300,
+          "includeFiles": "drizzle/**"
+        }
+      },
       "routes": [
         {
           "src": "/api/backend/(.*)",

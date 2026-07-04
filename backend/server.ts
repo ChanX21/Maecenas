@@ -20,9 +20,9 @@ if (process.env.PAYMENT_MODE === "real") {
 await initializeDatabase();
 await seedDatabase();
 
-const port = Number(process.env.BACKEND_PORT ?? 4000);
+const port = Number(process.env.PORT ?? process.env.BACKEND_PORT ?? 4000);
 const host = process.env.BACKEND_HOST ?? "0.0.0.0";
 
 createMaecenasServer().listen(port, host, () => {
-  console.log(`Maecenas backend listening on http://localhost:${port}`);
+  console.log(`Maecenas backend listening on http://${host}:${port}`);
 });

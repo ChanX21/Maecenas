@@ -63,55 +63,57 @@ class HttpError extends Error {
 }
 
 export function createMaecenasServer() {
-  return createServer(async (request, response) => {
-    const requestStartedAt = Date.now();
-    const requestId = makeId("http");
-    const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
-    const context: RouteContext = {
-      request,
-      response,
-      url,
-      method: request.method ?? "GET",
-      path: url.pathname
-    };
+  return createServer(handleMaecenasRequest);
+}
 
-    setCorsHeaders(request, response);
-    response.setHeader("X-Request-Id", requestId);
-    response.once("finish", () => {
-      console.log(JSON.stringify({
-        level: "info",
-        requestId,
-        method: context.method,
-        path: context.path,
-        status: response.statusCode,
-        durationMs: Date.now() - requestStartedAt
-      }));
-    });
-    metrics.requests += 1;
+export async function handleMaecenasRequest(request: IncomingMessage, response: ServerResponse) {
+  const requestStartedAt = Date.now();
+  const requestId = makeId("http");
+  const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
+  const context: RouteContext = {
+    request,
+    response,
+    url,
+    method: request.method ?? "GET",
+    path: url.pathname
+  };
 
-    if (context.method === "OPTIONS") {
-      return sendJson(response, 204, {});
-    }
-
-    try {
-      enforceRateLimit(request, response, context.path === "/api/research" ? "research" : "api");
-      if (context.path === "/api/research") metrics.researchRequests += 1;
-      await routeRequest(context);
-    } catch (error) {
-      metrics.errors += 1;
-      if (error instanceof StoreError) {
-        return sendJson(response, error.status, { error: error.code, message: error.message });
-      }
-      if (error instanceof HttpError) {
-        return sendJson(response, error.status, { error: error.code, message: error.message });
-      }
-      if (error instanceof SyntaxError) {
-        return sendJson(response, 400, { error: "INVALID_JSON", message: "Request body must be valid JSON" });
-      }
-      console.error(error);
-      sendJson(response, 500, { error: "INTERNAL_SERVER_ERROR", message: "Internal server error" });
-    }
+  setCorsHeaders(request, response);
+  response.setHeader("X-Request-Id", requestId);
+  response.once("finish", () => {
+    console.log(JSON.stringify({
+      level: "info",
+      requestId,
+      method: context.method,
+      path: context.path,
+      status: response.statusCode,
+      durationMs: Date.now() - requestStartedAt
+    }));
   });
+  metrics.requests += 1;
+
+  if (context.method === "OPTIONS") {
+    return sendJson(response, 204, {});
+  }
+
+  try {
+    enforceRateLimit(request, response, context.path === "/api/research" ? "research" : "api");
+    if (context.path === "/api/research") metrics.researchRequests += 1;
+    await routeRequest(context);
+  } catch (error) {
+    metrics.errors += 1;
+    if (error instanceof StoreError) {
+      return sendJson(response, error.status, { error: error.code, message: error.message });
+    }
+    if (error instanceof HttpError) {
+      return sendJson(response, error.status, { error: error.code, message: error.message });
+    }
+    if (error instanceof SyntaxError) {
+      return sendJson(response, 400, { error: "INVALID_JSON", message: "Request body must be valid JSON" });
+    }
+    console.error(error);
+    sendJson(response, 500, { error: "INTERNAL_SERVER_ERROR", message: "Internal server error" });
+  }
 }
 
 async function routeRequest(context: RouteContext) {

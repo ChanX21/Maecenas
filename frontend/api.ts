@@ -66,7 +66,11 @@ export type AdminSource = Source & {
 };
 
 export function getApiBaseUrl() {
-  return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+  if (configured.startsWith("/") && typeof window === "undefined") {
+    return `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}${configured}`;
+  }
+  return configured;
 }
 
 export function apiUrl(path: string) {
@@ -83,7 +87,13 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     },
     cache: "no-store"
   });
-  const data = await response.json();
+  const text = await response.text();
+  let data: Record<string, unknown>;
+  try {
+    data = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    data = { message: text || `Request failed: ${response.status}` };
+  }
   if (!response.ok) {
     throw new ApiError(response.status, data);
   }
