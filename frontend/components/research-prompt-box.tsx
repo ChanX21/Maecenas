@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Check, WalletCards } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { AnimatedResearchLoader } from "@/components/animated-research-loader";
+import { ResearchPaymentGate } from "@/components/research-payment-gate";
 import type { ResearchStrategy, TraceEvent, Usage } from "@/types";
 import {
   ApiError,
@@ -236,38 +237,14 @@ export function ResearchPromptBox() {
         {stage && <AnimatedResearchLoader key="research-loader" stage={stage} events={events} />}
 
         {!stage && paymentRequired ? (
-          <motion.div
+          <ResearchPaymentGate
             key="payment-box"
-            initial={{ opacity: 0, height: 0, filter: "blur(4px)" }}
-            animate={{ opacity: 1, height: "auto", filter: "blur(0px)" }}
-            exit={{ opacity: 0, height: 0, filter: "blur(4px)" }}
-            transition={{ type: "spring", bounce: 0.3 }}
-            className="mt-5 overflow-hidden"
-          >
-            <div className="border border-gold/30 bg-gold/5 p-4 rounded-xl shadow-[0_10px_30px_rgba(212,175,55,0.05)]">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="flex items-center gap-2 font-medium text-cream">
-                    <WalletCards size={17} className="text-gold" />
-                    Fund this commission
-                  </p>
-                  <p className="mt-1 text-sm text-muted">
-                    {usage?.paidSearchPriceUSDC ?? "0.01"} USDC funds one research run. Live settlement is off in this build.
-                  </p>
-                </div>
-                <motion.button
-                  type="button"
-                  onClick={confirmPayment}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="roman-button inline-flex items-center justify-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink hover:bg-gold-soft transition-colors"
-                >
-                  <Check size={15} />
-                  {address ? "Fund and launch" : "Connect with Dynamic"}
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
+            evidenceBudgetUSDC={budgetUSDC}
+            isWalletConnected={Boolean(address)}
+            mode={usage?.paymentMode ?? "mock"}
+            onConfirm={confirmPayment}
+            priceUSDC={usage?.paidSearchPriceUSDC ?? "0.01"}
+          />
         ) : null}
       </AnimatePresence>
 
