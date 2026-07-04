@@ -1,10 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { ShieldCheck, ShieldX } from "lucide-react";
 import QRCode from "qrcode";
 import { verifyReceipt } from "@/api";
+import { SettlementProof } from "@/components/transaction-proof-link";
+import { citationPaymentStatusLabel } from "@/lib/arc-explorer";
 import type { CitationPayment } from "@/types";
 
 export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
@@ -47,9 +50,12 @@ export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
               label="Patronage"
               value={receipt.fundedBy === "user_paid_search" ? "Patron-funded commission" : "Maecenas research grant"}
             />
-            <Row label="Status" value={receipt.status === "mock" ? "Test x402 / test USDC" : receipt.status} />
+            <Row label="Status" value={citationPaymentStatusLabel(receipt)} />
             <Row label="Network" value={receipt.network ?? "not recorded"} />
-            <Row label="Payment ID" value={receipt.paymentId ?? "pending"} />
+            <Row
+              label="On-chain proof"
+              value={<SettlementProof receipt={receipt} className="text-muted" />}
+            />
             <Row label="Timestamp" value={new Date(receipt.createdAt).toLocaleString()} />
           </dl>
         </div>
@@ -81,7 +87,7 @@ export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="grid gap-2 border-b border-white/8 pb-3 sm:grid-cols-[120px_1fr]">
       <dt className="uppercase text-dim">{label}</dt>

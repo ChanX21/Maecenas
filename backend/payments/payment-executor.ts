@@ -61,8 +61,8 @@ export async function createEvidencePayment(
   evidence?: { sourceId: string; title: string; authorName: string; evidenceText: string; citationPriceUSDC: string };
 }> {
   const mode = getPaymentMode();
-  let paymentId = `mock_${makeId("x402").replace("x402_", "")}`;
-  let txHash = `mock_tx_${source.id}`;
+  let paymentId: string | undefined = `mock_${makeId("x402").replace("x402_", "")}`;
+  let txHash: string | undefined;
   let network = process.env.X402_NETWORK ?? "arc-testnet";
   let payerWallet = process.env.MAECENAS_AGENT_WALLET_ADDRESS ?? mockWallet;
   let evidence;
@@ -74,8 +74,8 @@ export async function createEvidencePayment(
       authorName: string;
       evidenceText: string;
     }>(`${baseUrl}/api/sources/${source.id}/evidence`);
-    paymentId = payment.transaction;
-    txHash = payment.transaction;
+    paymentId = payment.paymentId;
+    txHash = payment.txHash;
     network = payment.network;
     payerWallet = payment.payer;
     evidence = { ...payment.data, sourceId: source.id, citationPriceUSDC: source.citationPriceUSDC };

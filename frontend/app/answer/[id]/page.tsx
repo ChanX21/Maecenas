@@ -4,6 +4,8 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { ShareAnswerButton } from "@/components/share-answer-button";
 import { AgentTrace } from "@/components/agent-trace";
 import { BudgetMeter } from "@/components/budget-meter";
+import { ReceiptRecordLinks } from "@/components/transaction-proof-link";
+import { citationPaymentStatusLabel } from "@/lib/arc-explorer";
 import { getAnswer, getSources } from "@/api";
 
 export const dynamic = "force-dynamic";
@@ -147,12 +149,10 @@ export default async function AnswerPage({ params }: PageProps) {
                     <div>
                       <p className="text-cream">{receipt.sourceTitle}</p>
                       <p className="mt-1 font-mono text-[11px] text-muted">
-                        {receipt.status === "mock" ? "Test record" : receipt.status} · {receipt.amountUSDC} USDC
+                        {citationPaymentStatusLabel(receipt)} · {receipt.amountUSDC} USDC
                       </p>
                     </div>
-                    <Link href={`/receipts/${receipt.id}`} className="font-mono text-xs text-gold">
-                      Open record
-                    </Link>
+                    <ReceiptRecordLinks receipt={receipt} />
                   </div>
                 ))}
               </div>

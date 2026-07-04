@@ -1,6 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { SettlementProof } from "@/components/transaction-proof-link";
+import { citationPaymentStatusLabel } from "@/lib/arc-explorer";
 import type { CitationPayment } from "@/types";
 
 export function RecentPaymentsFeed({ receipts }: { receipts: CitationPayment[] }) {
@@ -29,9 +32,13 @@ export function RecentPaymentsFeed({ receipts }: { receipts: CitationPayment[] }
               <p className="font-mono text-sm text-cream">
                 Funded {receipt.amountUSDC} USDC for &ldquo;{receipt.sourceTitle}&rdquo;
               </p>
-              <p className="mt-2 font-mono text-xs uppercase text-dim">
-                {receipt.status === "mock" ? "Test record / not settled" : receipt.status} · {receipt.paymentId}
-              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs uppercase text-dim">
+                <span>{citationPaymentStatusLabel(receipt)}</span>
+                <SettlementProof receipt={receipt} className="normal-case text-muted" />
+                <Link href={`/receipts/${receipt.id}`} className="normal-case text-muted hover:text-cream">
+                  Treasury record
+                </Link>
+              </div>
             </motion.div>
           ))
         )}

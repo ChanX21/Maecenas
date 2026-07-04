@@ -25,6 +25,7 @@ import type {
   Source,
   UserUsage
 } from "@/types";
+import { splitSettlementReference } from "@/payments/circle-gateway";
 import { signReceipt, walletAuthMessage } from "@/security";
 import { makeId } from "@/utils/ids";
 import { microsToUSDC, parseUSDCMicros } from "@/utils/money";
@@ -732,6 +733,7 @@ export async function confirmSearchPayment(input: ConfirmSearchPaymentInput): Pr
       }
     }
     const now = new Date().toISOString();
+    const settlementReference = splitSettlementReference(input.settlement?.transaction);
     const payment = {
       id: makeId("sp"),
       intentId: intent.id,
@@ -741,8 +743,8 @@ export async function confirmSearchPayment(input: ConfirmSearchPaymentInput): Pr
       status: intent.paymentMode === "mock" ? "mock" as const : "paid" as const,
       paymentMode: intent.paymentMode,
       paymentProof: input.paymentProof,
-      txHash: input.settlement?.transaction ?? input.txHash ?? null,
-      paymentId: input.settlement?.transaction ?? `mock_${makeId("pay").slice(4)}`,
+      txHash: settlementReference.txHash ?? input.txHash ?? null,
+      paymentId: settlementReference.paymentId ?? `mock_${makeId("pay").slice(4)}`,
       createdAt: now,
       paidAt: now,
       usedForAnswerId: null

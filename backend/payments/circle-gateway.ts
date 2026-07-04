@@ -26,6 +26,15 @@ export type PaymentRequired = {
   accepts: PaymentRequirements[];
 };
 
+const EVM_TX_HASH = /^0x[a-fA-F0-9]{64}$/;
+
+export function splitSettlementReference(reference?: string) {
+  return {
+    paymentId: reference || undefined,
+    txHash: reference && EVM_TX_HASH.test(reference) ? reference : undefined
+  };
+}
+
 function chainName(): SupportedChainName {
   return (process.env.CIRCLE_GATEWAY_CHAIN ?? "arcTestnet") as SupportedChainName;
 }
@@ -68,12 +77,14 @@ export async function settleCirclePayment(paymentPayload: unknown, required: Pay
     required.accepts[0] as never
   );
   if (!result.success) throw new Error(`Circle Gateway settlement failed: ${result.errorReason ?? "unknown error"}`);
+  if (!result.transaction) throw new Error("Circle Gateway settlement returned no payment reference");
   return result;
 }
 
 export async function payCircleResource<T>(url: string): Promise<{
   data: T;
-  transaction: string;
+  paymentId?: string;
+  txHash?: string;
   network: string;
   payer: string;
 }> {
@@ -85,9 +96,10 @@ export async function payCircleResource<T>(url: string): Promise<{
     rpcUrl: process.env.ARC_RPC_URL || undefined
   });
   const result = await client.pay<T>(url);
+  if (!result.transaction) throw new Error("Circle Gateway payment returned no payment reference");
   return {
     data: result.data,
-    transaction: result.transaction,
+    ...splitSettlementReference(result.transaction),
     network: `eip155:${client.chainConfig.chain.id}`,
     payer: client.address
   };
