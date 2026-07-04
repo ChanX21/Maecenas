@@ -93,7 +93,15 @@ export function OwnerDashboard() {
           <dl className="mt-5 grid overflow-hidden rounded-xl border border-marble/10 bg-panel/65 sm:grid-cols-3">
             <Metric label="Evidence assets" value={String(sources.length)} />
             <Metric label="Funded unlocks" value={String(dashboard.totalCitationsReceived)} />
-            <Metric label="Treasury value" value={`${dashboard.totalUSDCEarned} USDC`} detail="Test records are not settled funds" />
+            <Metric
+              label="Treasury value"
+              value={`${dashboard.totalUSDCEarned} USDC`}
+              detail={
+                dashboard.paymentMode === "real"
+                  ? "Circle Gateway credit; withdraw it to receive USDC in this wallet"
+                  : "Test records are not settled funds"
+              }
+            />
           </dl>
 
           <section className="roman-panel mt-5 p-5 sm:p-7">

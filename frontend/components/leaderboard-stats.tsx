@@ -11,7 +11,7 @@ export function LeaderboardStats({ metrics, paymentMode }: LeaderboardStatsProps
   const labels: Record<string, string> = {
     sourcesRegistered: "Evidence Assets",
     paidEvidenceUnlocks: "Funded Unlocks",
-    totalUSDCDistributed: paymentMode === "real" ? "USDC Distributed" : "Test Capital",
+    totalUSDCDistributed: paymentMode === "real" ? "Gateway USDC Credited" : "Test Capital",
     contributorsRewarded: "Rewarded Contributors",
     fundedCommissions: "Funded Commissions"
   };

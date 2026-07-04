@@ -121,6 +121,13 @@ return `Cache-Control: no-store`. Records are isolated by the active
 - Registered source owners and contributors who actually received a completed
   payment are reported separately.
 
+Circle Gateway nanopayments are signed off-chain and settled in batches. The
+per-payment UUID returned by Gateway is stored as `paymentId`; `txHash` is only
+set when Circle returns a real 32-byte EVM transaction hash. Creator earnings
+first appear in the creator's Gateway balance and only appear in the ordinary
+Arc wallet after that creator withdraws. Seed source wallets are demo addresses,
+so only sources registered with a wallet controlled by the creator can withdraw.
+
 The endpoints are fresh on every request. They do not push updates to an already
 open browser page; the client must reload, poll, or subscribe to a future event
 stream for continuous updates.

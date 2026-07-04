@@ -11,13 +11,15 @@ import {
 } from "lucide-react";
 import { getLeaderboard } from "@/api";
 import { ResearchPromptBox } from "@/components/research-prompt-box";
+import { SettlementProof } from "@/components/transaction-proof-link";
+import { citationPaymentStatusLabel } from "@/lib/arc-explorer";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const ledger = await getLeaderboard().catch(() => null);
   const metrics = ledger?.metrics;
-  const capitalLabel = ledger?.paymentMode === "real" ? "USDC distributed" : "Test capital recorded";
+  const capitalLabel = ledger?.paymentMode === "real" ? "Gateway USDC credited" : "Test capital recorded";
 
   return (
     <main className="home-grid min-h-[calc(100vh-65px)] px-4 pb-16 pt-14 sm:px-6 lg:px-8">
@@ -70,9 +72,16 @@ export default async function HomePage() {
                       Evidence funded · {receipt.amountUSDC} USDC
                     </p>
                   </div>
-                  <span className="font-mono text-[10px] uppercase text-gold">
-                    {receipt.status === "mock" ? "Test record" : receipt.status}
-                  </span>
+                  <div className="flex flex-col items-start gap-2 sm:items-end">
+                    <span className="font-mono text-[10px] uppercase text-gold">
+                      {citationPaymentStatusLabel(receipt)}
+                    </span>
+                    <SettlementProof
+                      receipt={receipt}
+                      className="font-mono text-[10px] normal-case text-muted"
+                      linkClassName="inline-flex items-center gap-1 font-mono text-[10px] text-gold hover:text-cream"
+                    />
+                  </div>
                 </div>
               ))
             ) : (
