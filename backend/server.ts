@@ -30,12 +30,25 @@ const readiness = (async () => {
   }
 })();
 
+function errorDetails(error: unknown): string {
+  const messages: string[] = [];
+  for (let current: unknown = error; current instanceof Error; current = current.cause) {
+    messages.push(current.message);
+  }
+  return messages.join(" | ");
+}
+
 const port = Number(process.env.PORT ?? process.env.BACKEND_PORT ?? 4000);
 const host = process.env.BACKEND_HOST ?? "0.0.0.0";
 
 createServer(async (request, response) => {
   const startupError = await readiness;
   if (startupError) {
+    console.error(JSON.stringify({
+      level: "error",
+      event: "backend_request_blocked_by_startup",
+      error: errorDetails(startupError)
+    }));
     const message = startupError instanceof Error && /required|SUPABASE_DATABASE_URL/.test(startupError.message)
       ? startupError.message
       : "Backend initialization failed. Check the backend service runtime logs.";
