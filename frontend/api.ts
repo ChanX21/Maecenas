@@ -8,6 +8,7 @@ import type {
   TraceEvent,
   Usage
 } from "@/types";
+import { getAuthToken } from "@/lib/browser-session";
 
 export class ApiError extends Error {
   constructor(
@@ -68,7 +69,7 @@ export function apiUrl(path: string) {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = typeof window === "undefined" ? "" : window.localStorage.getItem("maecenas_auth_token") ?? "";
+  const token = getAuthToken();
   const response = await fetch(apiUrl(path), {
     ...init,
     headers: {

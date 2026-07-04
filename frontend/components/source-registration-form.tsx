@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Save, WalletCards, ChevronDown } from "lucide-react";
 import { registerSource } from "@/api";
-import { connectWallet, getAuthToken, getSavedWallet, signSourceOwnership } from "@/browser";
+import { useMaecenasWallet } from "@/components/wallet/maecenas-wallet-provider";
 import type { Source } from "@/types";
 
 const initialForm = {
@@ -20,21 +20,28 @@ const initialForm = {
 };
 
 export function SourceRegistrationForm() {
+  const {
+    address,
+    authenticate,
+    openWallet,
+    signSourceOwnership
+  } = useMaecenasWallet();
   const [form, setForm] = useState(initialForm);
-  const [walletAddress, setWalletAddress] = useState("");
   const [createdSource, setCreatedSource] = useState<Source>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => setWalletAddress(getAuthToken() ? getSavedWallet() : ""), []);
 
   function update(field: keyof typeof initialForm, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
   async function ensureWallet() {
+    if (!address) {
+      openWallet();
+      return;
+    }
     try {
-      setWalletAddress(await connectWallet());
+      await authenticate();
       setError("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Wallet connection failed");
@@ -43,12 +50,17 @@ export function SourceRegistrationForm() {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!walletAddress) return ensureWallet();
+    if (!address) return ensureWallet();
     setBusy(true);
     setError("");
     try {
+      const authenticatedWallet = await authenticate();
       const ownershipAttestation = await signSourceOwnership(form.sourceUrl);
-      const { source } = await registerSource({ ...form, walletAddress, ownershipAttestation });
+      const { source } = await registerSource({
+        ...form,
+        walletAddress: authenticatedWallet,
+        ownershipAttestation
+      });
       setCreatedSource(source);
       setForm(initialForm);
     } catch (cause) {
@@ -88,7 +100,7 @@ export function SourceRegistrationForm() {
               className="roman-button inline-flex items-center gap-2 border border-marble/15 px-4 py-2.5 font-mono text-xs uppercase text-cream"
             >
               <WalletCards size={15} />
-              {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Connect wallet"}
+              {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Connect with Dynamic"}
             </button>
           </div>
         </motion.section>
@@ -160,7 +172,7 @@ export function SourceRegistrationForm() {
           className="roman-button inline-flex items-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink hover:bg-gold-soft transition-colors disabled:opacity-50"
         >
           <Save size={15} />
-          {busy ? "Sending to the forum..." : walletAddress ? "Submit to the forum" : "Connect wallet"}
+          {busy ? "Sending to the forum..." : address ? "Submit to the forum" : "Connect with Dynamic"}
         </motion.button>
         {error ? <p role="alert" className="border border-danger/40 bg-danger/10 p-3 text-sm text-red-200">{error}</p> : null}
       </motion.form>
