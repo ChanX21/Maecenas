@@ -14,7 +14,8 @@ import {
   runResearch,
   submitSearchPaymentProof
 } from "@/api";
-import { connectWallet, createCirclePaymentPayload, getAuthToken, getSavedWallet, getSessionId, notifyUsageChanged } from "@/browser";
+import { getSessionId, notifyUsageChanged } from "@/lib/browser-session";
+import { useMaecenasWallet } from "@/components/wallet/maecenas-wallet-provider";
 
 type ResearchRequest = {
   clientRequestId: string;
@@ -25,12 +26,17 @@ type ResearchRequest = {
 
 export function ResearchPromptBox() {
   const router = useRouter();
+  const {
+    address,
+    authenticate,
+    createPaymentPayload,
+    openWallet
+  } = useMaecenasWallet();
   const [question, setQuestion] = useState("");
   const [strategy, setStrategy] = useState<ResearchStrategy>("balanced");
   const [budgetUSDC, setBudgetUSDC] = useState("0.0050");
   const [sessionId, setSessionId] = useState("");
   const [usage, setUsage] = useState<Usage>();
-  const [walletAddress, setWalletAddress] = useState("");
   const [pendingRequest, setPendingRequest] = useState<ResearchRequest>();
   const [paymentRequired, setPaymentRequired] = useState(false);
   const [stage, setStage] = useState("");
@@ -39,10 +45,8 @@ export function ResearchPromptBox() {
 
   useEffect(() => {
     const id = getSessionId();
-    const wallet = getAuthToken() ? getSavedWallet() : "";
     setSessionId(id);
-    setWalletAddress(wallet);
-    getUsage(id, wallet || undefined)
+    getUsage(id)
       .then((nextUsage) => {
         setUsage(nextUsage);
         setPaymentRequired(nextUsage.requiresPayment);
@@ -119,14 +123,17 @@ export function ResearchPromptBox() {
     setPendingRequest(request);
     setError("");
     try {
-      setStage("Connecting wallet...");
-      const wallet = walletAddress || (await connectWallet());
-      setWalletAddress(wallet);
+      if (!address) {
+        openWallet();
+        return;
+      }
+      setStage("Authenticating Dynamic wallet...");
+      const wallet = await authenticate();
       setStage("Opening treasury request...");
       const intent = await createSearchPaymentIntent(sessionId, wallet);
       const paymentPayload =
         intent.paymentMode === "real"
-          ? await createCirclePaymentPayload(intent.paymentRequired!)
+          ? await createPaymentPayload(intent.paymentRequired!)
           : undefined;
       setStage(intent.paymentMode === "real" ? "Settling with Circle Gateway..." : "Recording test settlement...");
       const payment = await submitSearchPaymentProof({
@@ -256,7 +263,7 @@ export function ResearchPromptBox() {
                   className="roman-button inline-flex items-center justify-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink hover:bg-gold-soft transition-colors"
                 >
                   <Check size={15} />
-                  {walletAddress ? "Fund and launch" : "Connect wallet"}
+                  {address ? "Fund and launch" : "Connect with Dynamic"}
                 </motion.button>
               </div>
             </div>

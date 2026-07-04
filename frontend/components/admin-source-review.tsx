@@ -3,19 +3,24 @@
 import { useState } from "react";
 import { Check, ShieldCheck, X } from "lucide-react";
 import { getAdminSources, reviewAdminSource, type AdminSource } from "@/api";
-import { connectWallet } from "@/browser";
+import { useMaecenasWallet } from "@/components/wallet/maecenas-wallet-provider";
 
 export function AdminSourceReview() {
+  const { address, authenticate, openWallet } = useMaecenasWallet();
   const [sources, setSources] = useState<AdminSource[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(false);
 
   async function load() {
+    if (!address) {
+      openWallet();
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      await connectWallet();
+      await authenticate();
       const result = await getAdminSources();
       setSources(result.sources);
       setConnected(true);

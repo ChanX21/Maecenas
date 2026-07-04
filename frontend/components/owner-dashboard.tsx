@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { WalletCards } from "lucide-react";
 import { getDashboard, getOwnerSources, type DashboardResponse } from "@/api";
-import { connectWallet, getAuthToken, getSavedWallet } from "@/browser";
+import { useMaecenasWallet } from "@/components/wallet/maecenas-wallet-provider";
 import { DashboardEarningsTable } from "@/components/dashboard-earnings-table";
 import type { Source } from "@/types";
 
 export function OwnerDashboard() {
+  const { address, authenticate, openWallet } = useMaecenasWallet();
   const [wallet, setWallet] = useState("");
   const [dashboard, setDashboard] = useState<DashboardResponse>();
   const [sources, setSources] = useState<Source[]>([]);
@@ -30,18 +31,32 @@ export function OwnerDashboard() {
   }
 
   useEffect(() => {
-    const saved = getSavedWallet();
-    if (saved && getAuthToken()) {
-      setWallet(saved);
-      void load(saved);
+    if (!address) {
+      setWallet("");
+      setDashboard(undefined);
+      setSources([]);
+      return;
     }
-  }, []);
+
+    void authenticate()
+      .then((authenticatedWallet) => {
+        setWallet(authenticatedWallet);
+        return load(authenticatedWallet);
+      })
+      .catch((cause: unknown) => {
+        setError(cause instanceof Error ? cause.message : "Wallet authentication failed");
+      });
+  }, [address, authenticate]);
 
   async function connect() {
+    if (!address) {
+      openWallet();
+      return;
+    }
     try {
-      const address = await connectWallet();
-      setWallet(address);
-      await load(address);
+      const authenticatedWallet = await authenticate();
+      setWallet(authenticatedWallet);
+      await load(authenticatedWallet);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Wallet connection failed");
     }
@@ -58,7 +73,7 @@ export function OwnerDashboard() {
           onClick={connect}
           className="roman-button mt-6 inline-flex items-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink"
         >
-          <WalletCards size={15} /> Connect wallet
+          <WalletCards size={15} /> Connect with Dynamic
         </button>
         {error ? <p className="mt-4 text-sm text-red-200">{error}</p> : null}
       </div>
@@ -69,7 +84,7 @@ export function OwnerDashboard() {
     <div className="mt-8">
       <div className="roman-panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
         <span className="font-mono text-xs text-muted">{`${wallet.slice(0, 8)}...${wallet.slice(-6)}`}</span>
-        <button onClick={connect} className="font-mono text-xs uppercase text-gold">Change wallet</button>
+        <button onClick={openWallet} className="font-mono text-xs uppercase text-gold">Wallet details</button>
       </div>
 
       {busy ? <p className="mt-8 text-sm text-muted">Opening contributor treasury...</p> : null}

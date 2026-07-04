@@ -3,18 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { CircleDollarSign } from "lucide-react";
 import { getUsage } from "@/api";
-import { getAuthToken, getSavedWallet, getSessionId } from "@/browser";
+import { getAuthToken, getSessionId } from "@/lib/browser-session";
+import { useMaecenasWallet } from "@/components/wallet/maecenas-wallet-provider";
 import type { Usage } from "@/types";
 
 export function SessionStatus() {
+  const { address } = useMaecenasWallet();
   const [usage, setUsage] = useState<Usage>();
-  const [wallet, setWallet] = useState("");
 
   const refresh = useCallback(() => {
-    const savedWallet = getSavedWallet();
-    setWallet(savedWallet);
-    getUsage(getSessionId(), getAuthToken() ? savedWallet || undefined : undefined).then(setUsage).catch(() => setUsage(undefined));
-  }, []);
+    getUsage(getSessionId(), getAuthToken() ? address || undefined : undefined)
+      .then(setUsage)
+      .catch(() => setUsage(undefined));
+  }, [address]);
 
   useEffect(() => {
     refresh();
@@ -32,8 +33,8 @@ export function SessionStatus() {
       <CircleDollarSign size={14} className="text-gold" />
       {usage.freeSearchesRemaining > 0 ? (
         <span>{usage.freeSearchesRemaining} patron grants left</span>
-      ) : wallet ? (
-        <span>{`${wallet.slice(0, 6)}...${wallet.slice(-4)}`}</span>
+      ) : address ? (
+        <span>Dynamic wallet ready</span>
       ) : (
         <span>Fund with wallet</span>
       )}
