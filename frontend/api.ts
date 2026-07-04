@@ -20,11 +20,15 @@ export class ApiError extends Error {
 }
 
 export type LeaderboardResponse = {
+  paymentMode: "mock" | "real";
   metrics: {
     sourcesRegistered: number;
     sourceOwners: number;
+    contributorsRewarded: number;
     researchQuestionsAnswered: number;
+    fundedCommissions: number;
     paidEvidenceUnlocks: number;
+    totalUSDCDistributed: string;
     totalTestUSDCDistributed: string;
     questionsAnswered: number;
     freeSearchesUsed: number;
@@ -44,6 +48,7 @@ export type LeaderboardResponse = {
 };
 
 export type DashboardResponse = {
+  paymentMode: "mock" | "real";
   wallet: string;
   totalSourcesRegistered: number;
   totalCitationsReceived: number;

@@ -4,17 +4,18 @@ import { motion } from "framer-motion";
 
 type LeaderboardStatsProps = {
   metrics: Record<string, number | string>;
+  paymentMode: "mock" | "real";
 };
 
-const labels: Record<string, string> = {
-  sourcesRegistered: "Evidence Assets",
-  paidEvidenceUnlocks: "Funded Unlocks",
-  totalTestUSDCDistributed: "Capital Recorded",
-  sourceOwners: "Contributors",
-  researchQuestionsAnswered: "Commissions Run"
-};
+export function LeaderboardStats({ metrics, paymentMode }: LeaderboardStatsProps) {
+  const labels: Record<string, string> = {
+    sourcesRegistered: "Evidence Assets",
+    paidEvidenceUnlocks: "Funded Unlocks",
+    totalUSDCDistributed: paymentMode === "real" ? "USDC Distributed" : "Test Capital",
+    contributorsRewarded: "Rewarded Contributors",
+    fundedCommissions: "Funded Commissions"
+  };
 
-export function LeaderboardStats({ metrics }: LeaderboardStatsProps) {
   return (
     <motion.div 
       initial="hidden"

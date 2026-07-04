@@ -17,6 +17,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const ledger = await getLeaderboard().catch(() => null);
   const metrics = ledger?.metrics;
+  const capitalLabel = ledger?.paymentMode === "real" ? "USDC distributed" : "Test capital recorded";
 
   return (
     <main className="home-grid min-h-[calc(100vh-65px)] px-4 pb-16 pt-14 sm:px-6 lg:px-8">
@@ -36,10 +37,10 @@ export default async function HomePage() {
       </section>
 
       <section className="mx-auto mt-5 grid max-w-7xl overflow-hidden rounded-xl border border-marble/10 bg-panel/65 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric value={metrics?.researchQuestionsAnswered ?? "—"} label="Funded commissions" />
+        <Metric value={metrics?.fundedCommissions ?? "—"} label="Funded commissions" />
         <Metric value={metrics?.paidEvidenceUnlocks ?? "—"} label="Evidence unlocks" />
-        <Metric value={metrics?.sourceOwners ?? "—"} label="Contributors rewarded" />
-        <Metric value={metrics ? `${metrics.totalTestUSDCDistributed} USDC` : "—"} label="Capital recorded" />
+        <Metric value={metrics?.contributorsRewarded ?? "—"} label="Contributors rewarded" />
+        <Metric value={metrics ? `${metrics.totalUSDCDistributed} USDC` : "—"} label={capitalLabel} />
       </section>
 
       <section className="mx-auto mt-5 grid max-w-7xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">

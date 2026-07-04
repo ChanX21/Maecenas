@@ -13,10 +13,17 @@ export default async function LeaderboardPage() {
       <SectionHeading
         eyebrow="The public ledger"
         title="Capital follows useful evidence."
-        copy="See which sources shape funded research, how often they are selected, and the value they create. Test records remain clearly marked."
+        copy={
+          leaderboard.paymentMode === "real"
+            ? "Live Circle Gateway settlements from completed research runs."
+            : "Test-mode research activity. No displayed payment represents settled USDC."
+        }
       />
       <div className="mx-auto mt-10 max-w-7xl">
-        <LeaderboardStats metrics={leaderboard.metrics} />
+        <LeaderboardStats
+          metrics={leaderboard.metrics}
+          paymentMode={leaderboard.paymentMode}
+        />
       </div>
       <div className="mx-auto mt-5 grid max-w-7xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
         <section className="roman-panel p-5 sm:p-7">
