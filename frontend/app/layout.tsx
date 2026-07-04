@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { Instrument_Serif, IBM_Plex_Mono, Inter } from "next/font/google";
+import iconImg from "./icon.png";
 import { SessionStatus } from "@/components/session-status";
 import { AppWalletProvider } from "@/components/wallet/dynamic-provider";
 import { WalletButton } from "@/components/wallet/wallet-button";
@@ -48,9 +50,13 @@ export default function RootLayout({
             <header className="sticky top-0 z-40 border-b border-marble/10 bg-ink/88 backdrop-blur">
               <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
                 <Link href="/" className="flex items-center gap-3">
-                  <span className="coin-surface flex h-9 w-9 items-center justify-center rounded-full text-sm font-black text-ink shadow-gold ring-1 ring-marble/40">
-                    M
-                  </span>
+                  <Image 
+                    src={iconImg} 
+                    alt="Maecenas Logo" 
+                    width={36} 
+                    height={36} 
+                    className="h-9 w-9 rounded-full object-cover" 
+                  />
                   <span>
                     <span className="roman-inscription block text-xl leading-5 text-cream font-serif italic">Maecenas</span>
                     <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-marble/70">
