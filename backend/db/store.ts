@@ -1,11 +1,10 @@
 import { createHash } from "crypto";
-import { mkdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import Database from "better-sqlite3";
-import { and, desc, eq, inArray, or } from "drizzle-orm";
-import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+import postgres, { type Sql } from "postgres";
 import { seedSources } from "@/db/seed-data";
 import {
   answers,
@@ -30,7 +29,7 @@ import { signReceipt, walletAuthMessage } from "@/security";
 import { makeId } from "@/utils/ids";
 import { microsToUSDC, parseUSDCMicros } from "@/utils/money";
 
-type Db = BetterSQLite3Database<Record<string, never>>;
+type Db = PostgresJsDatabase<Record<string, never>>;
 
 export class StoreError extends Error {
   constructor(
@@ -42,47 +41,68 @@ export class StoreError extends Error {
   }
 }
 
-let sqlite: Database.Database | undefined;
+let client: Sql | undefined;
 let db: Db | undefined;
+let initializing: Promise<void> | undefined;
 
-export function initializeDatabase(): void {
+export async function initializeDatabase(): Promise<void> {
   if (db) return;
-  const configuredPath = process.env.DATABASE_URL || "./data/maecenas.db";
-  if (/^postgres(?:ql)?:/.test(configuredPath)) {
-    throw new Error("DATABASE_URL is PostgreSQL, but this build uses SQLite");
-  }
-  const dbPath = path.resolve(process.cwd(), configuredPath.replace(/^file:/, ""));
-  mkdirSync(path.dirname(dbPath), { recursive: true });
-  sqlite = new Database(dbPath);
-  sqlite.pragma("journal_mode = WAL");
-  sqlite.pragma("foreign_keys = ON");
-  sqlite.pragma("busy_timeout = 5000");
-  db = drizzle(sqlite);
-  const migrationsFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../drizzle");
-  migrate(db, { migrationsFolder });
-  const unsignedReceipts = db.select().from(citationPayments).where(eq(citationPayments.receiptSignature, "")).all();
-  for (const row of unsignedReceipts) {
-    const receipt = mapReceipt(row);
-    db.update(citationPayments)
-      .set({ receiptSignature: signReceipt(receipt) })
-      .where(eq(citationPayments.id, row.id))
-      .run();
+  if (initializing) return initializing;
+  initializing = (async () => {
+    const url = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+    if (!url || !/^postgres(?:ql)?:/.test(url)) {
+      throw new Error("SUPABASE_DATABASE_URL must be a Supabase PostgreSQL connection string");
+    }
+    client = postgres(url, {
+      max: Number(process.env.DATABASE_POOL_SIZE ?? 10),
+      prepare: false,
+      ssl: "require"
+    });
+    db = drizzle(client);
+    const migrationsFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../drizzle");
+    await migrate(db, { migrationsFolder });
+    const unsignedReceipts = await db.select().from(citationPayments).where(eq(citationPayments.receiptSignature, ""));
+    for (const row of unsignedReceipts) {
+      await db.update(citationPayments)
+        .set({ receiptSignature: signReceipt(mapReceipt(row)) })
+        .where(eq(citationPayments.id, row.id));
+    }
+  })();
+  try {
+    await initializing;
+  } catch (error) {
+    await client?.end();
+    client = undefined;
+    db = undefined;
+    initializing = undefined;
+    throw error;
   }
 }
 
-export function closeDatabase(): void {
-  sqlite?.close();
-  sqlite = undefined;
+export async function closeDatabase(): Promise<void> {
+  await client?.end();
+  client = undefined;
   db = undefined;
+  initializing = undefined;
 }
 
-export async function backupDatabase(destination: string): Promise<void> {
-  initializeDatabase();
-  await sqlite!.backup(destination);
+export async function resetDatabaseForTests(): Promise<void> {
+  if (process.env.NODE_ENV !== "test") throw new Error("Test reset is disabled outside NODE_ENV=test");
+  const conn = await database();
+  await conn.transaction(async (tx) => {
+    await tx.delete(citationPayments);
+    await tx.delete(researchRuns);
+    await tx.delete(answers);
+    await tx.delete(searchPayments);
+    await tx.delete(searchPaymentIntents);
+    await tx.delete(userUsages);
+    await tx.delete(walletAuthNonces);
+    await tx.delete(sources);
+  });
 }
 
-function database(): Db {
-  initializeDatabase();
+async function database(): Promise<Db> {
+  await initializeDatabase();
   return db!;
 }
 
@@ -207,8 +227,8 @@ function mapSearchPayment(row: typeof searchPayments.$inferSelect): SearchPaymen
   };
 }
 
-export function seedDatabase(): number {
-  const conn = database();
+export async function seedDatabase(): Promise<number> {
+  const conn = await database();
   for (const source of seedSources) {
     const values = {
       id: source.id,
@@ -229,30 +249,31 @@ export function seedDatabase(): number {
       rejectionReason: source.rejectionReason,
       createdAt: source.createdAt
     };
-    conn.insert(sources).values(values).onConflictDoUpdate({ target: sources.id, set: values }).run();
+    await conn.insert(sources).values(values).onConflictDoUpdate({ target: sources.id, set: values });
   }
   return seedSources.length;
 }
 
-export function listSources(options: { walletAddress?: string; includeUnapproved?: boolean } = {}): Source[] {
+export async function listSources(options: { walletAddress?: string; includeUnapproved?: boolean } = {}): Promise<Source[]> {
+  const conn = await database();
   const rows = options.walletAddress
-    ? database().select().from(sources).orderBy(desc(sources.createdAt)).all()
+    ? await conn.select().from(sources).orderBy(desc(sources.createdAt))
     : options.includeUnapproved
-      ? database().select().from(sources).orderBy(desc(sources.createdAt)).all()
-      : database().select().from(sources).where(eq(sources.status, "approved")).orderBy(desc(sources.createdAt)).all();
+      ? await conn.select().from(sources).orderBy(desc(sources.createdAt))
+      : await conn.select().from(sources).where(eq(sources.status, "approved")).orderBy(desc(sources.createdAt));
   return rows
     .filter((source) => !options.walletAddress || source.walletAddress.toLowerCase() === options.walletAddress)
     .map(mapSource);
 }
 
-export function findSource(id: string): Source | undefined {
-  const row = database().select().from(sources).where(eq(sources.id, id)).get();
+export async function findSource(id: string): Promise<Source | undefined> {
+  const row = (await (await database()).select().from(sources).where(eq(sources.id, id)).limit(1))[0];
   return row ? mapSource(row) : undefined;
 }
 
-export function createSource(source: Source): Source {
-  const conn = database();
-  const duplicate = conn
+export async function createSource(source: Source): Promise<Source> {
+  const conn = await database();
+  const duplicate = (await conn
     .select({ id: sources.id })
     .from(sources)
     .where(
@@ -260,9 +281,9 @@ export function createSource(source: Source): Source {
         ? or(eq(sources.sourceUrl, source.sourceUrl), eq(sources.doiOrCanonicalUrl, source.doiOrCanonicalUrl))
         : eq(sources.sourceUrl, source.sourceUrl)
     )
-    .get();
+    .limit(1))[0];
   if (duplicate) throw new StoreError("SOURCE_ALREADY_REGISTERED", "This source URL or canonical URL is already registered", 409);
-  conn
+  await conn
     .insert(sources)
     .values({
       id: source.id,
@@ -282,89 +303,94 @@ export function createSource(source: Source): Source {
       reviewedAt: source.reviewedAt,
       rejectionReason: source.rejectionReason,
       createdAt: source.createdAt
-    })
-    .run();
+    });
   return source;
 }
 
-export function reviewSource(id: string, status: "approved" | "rejected", rejectionReason?: string): Source {
-  const conn = database();
-  const existing = conn.select().from(sources).where(eq(sources.id, id)).get();
+export async function reviewSource(id: string, status: "approved" | "rejected", rejectionReason?: string): Promise<Source> {
+  const conn = await database();
+  const existing = (await conn.select().from(sources).where(eq(sources.id, id)).limit(1))[0];
   if (!existing) throw new StoreError("SOURCE_NOT_FOUND", "Source was not found", 404);
-  conn.update(sources)
+  await conn.update(sources)
     .set({
       status,
       ownershipVerifiedAt: status === "approved" ? existing.ownershipVerifiedAt ?? new Date().toISOString() : existing.ownershipVerifiedAt,
       reviewedAt: new Date().toISOString(),
       rejectionReason: status === "rejected" ? rejectionReason ?? "Source did not pass review" : null
     })
-    .where(eq(sources.id, id))
-    .run();
-  return mapSource(conn.select().from(sources).where(eq(sources.id, id)).get()!);
+    .where(eq(sources.id, id));
+  return mapSource((await conn.select().from(sources).where(eq(sources.id, id)).limit(1))[0]!);
 }
 
-export function findAnswer(id: string): Answer | undefined {
-  const row = database().select().from(answers).where(eq(answers.id, id)).get();
+export async function findAnswer(id: string): Promise<Answer | undefined> {
+  const row = (await (await database()).select().from(answers).where(eq(answers.id, id)).limit(1))[0];
   return row ? mapAnswer(row) : undefined;
 }
 
-export function findReceipt(id: string): CitationPayment | undefined {
-  const row = database().select().from(citationPayments).where(eq(citationPayments.id, id)).get();
+export async function findReceipt(id: string): Promise<CitationPayment | undefined> {
+  const row = (await (await database()).select().from(citationPayments).where(eq(citationPayments.id, id)).limit(1))[0];
   return row ? mapReceipt(row) : undefined;
 }
 
-export function createWalletAuthNonce(walletAddress: string): { id: string; message: string; expiresAt: string } {
+export async function createWalletAuthNonce(walletAddress: string): Promise<{ id: string; message: string; expiresAt: string }> {
   const id = makeId("nonce");
   const createdAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 5 * 60_000).toISOString();
   const message = walletAuthMessage(walletAddress, id, expiresAt);
-  database().insert(walletAuthNonces).values({ id, walletAddress, message, expiresAt, createdAt }).run();
+  await (await database()).insert(walletAuthNonces).values({ id, walletAddress, message, expiresAt, createdAt });
   return { id, message, expiresAt };
 }
 
-export function consumeWalletAuthNonce(id: string, walletAddress: string): string {
-  return database().transaction((rawTx) => {
+export async function consumeWalletAuthNonce(id: string, walletAddress: string): Promise<string> {
+  return (await database()).transaction(async (rawTx) => {
     const tx = rawTx as Db;
-    const nonce = tx.select().from(walletAuthNonces).where(eq(walletAuthNonces.id, id)).get();
+    const nonce = (await tx.select().from(walletAuthNonces).where(eq(walletAuthNonces.id, id)).for("update").limit(1))[0];
     if (!nonce || nonce.walletAddress !== walletAddress || nonce.usedAt || Date.parse(nonce.expiresAt) <= Date.now()) {
       throw new StoreError("INVALID_AUTH_NONCE", "Wallet authentication challenge is invalid or expired", 401);
     }
-    tx.update(walletAuthNonces).set({ usedAt: new Date().toISOString() }).where(eq(walletAuthNonces.id, id)).run();
+    await tx.update(walletAuthNonces).set({ usedAt: new Date().toISOString() }).where(eq(walletAuthNonces.id, id));
     return nonce.message;
   });
 }
 
-export function readDb(): MaecenasDatabase {
-  const conn = database();
+export async function readDb(): Promise<MaecenasDatabase> {
+  const conn = await database();
+  const [sourceRows, answerRows, receiptRows, usageRows, intentRows, paymentRows] = await Promise.all([
+    conn.select().from(sources).orderBy(desc(sources.createdAt)),
+    conn.select().from(answers).orderBy(desc(answers.createdAt)),
+    conn.select().from(citationPayments).orderBy(desc(citationPayments.createdAt)),
+    conn.select().from(userUsages),
+    conn.select().from(searchPaymentIntents),
+    conn.select().from(searchPayments)
+  ]);
   return {
-    sources: conn.select().from(sources).orderBy(desc(sources.createdAt)).all().map(mapSource),
-    answers: conn.select().from(answers).orderBy(desc(answers.createdAt)).all().map(mapAnswer),
-    receipts: conn.select().from(citationPayments).orderBy(desc(citationPayments.createdAt)).all().map(mapReceipt),
-    userUsages: conn.select().from(userUsages).all().map(mapUsage),
-    searchPaymentIntents: conn.select().from(searchPaymentIntents).all().map(mapIntent),
-    searchPayments: conn.select().from(searchPayments).all().map(mapSearchPayment)
+    sources: sourceRows.map(mapSource),
+    answers: answerRows.map(mapAnswer),
+    receipts: receiptRows.map(mapReceipt),
+    userUsages: usageRows.map(mapUsage),
+    searchPaymentIntents: intentRows.map(mapIntent),
+    searchPayments: paymentRows.map(mapSearchPayment)
   };
 }
 
-function getOrCreateUsageInTransaction(
+async function getOrCreateUsageInTransaction(
   tx: Db,
   sessionId: string,
   walletAddress?: string,
   ipHash?: string
-): typeof userUsages.$inferSelect {
-  const existing = tx.select().from(userUsages).where(eq(userUsages.sessionId, sessionId)).get();
+): Promise<typeof userUsages.$inferSelect> {
+  const existing = (await tx.select().from(userUsages).where(eq(userUsages.sessionId, sessionId)).for("update").limit(1))[0];
   const now = new Date().toISOString();
   if (existing) {
     if ((walletAddress && !existing.walletAddress) || (ipHash && !existing.ipHash)) {
-      tx.update(userUsages)
+      await tx.update(userUsages)
         .set({
           walletAddress: existing.walletAddress ?? walletAddress,
           ipHash: existing.ipHash ?? ipHash,
           updatedAt: now
         })
-        .where(eq(userUsages.id, existing.id))
-        .run();
-      return tx.select().from(userUsages).where(eq(userUsages.id, existing.id)).get()!;
+        .where(eq(userUsages.id, existing.id));
+      return (await tx.select().from(userUsages).where(eq(userUsages.id, existing.id)).limit(1))[0]!;
     }
     return existing;
   }
@@ -379,16 +405,16 @@ function getOrCreateUsageInTransaction(
     createdAt: now,
     updatedAt: now
   };
-  tx.insert(userUsages).values(usage).run();
-  return tx.select().from(userUsages).where(eq(userUsages.id, usage.id)).get()!;
+  await tx.insert(userUsages).values(usage).onConflictDoNothing({ target: userUsages.sessionId });
+  return (await tx.select().from(userUsages).where(eq(userUsages.sessionId, sessionId)).for("update").limit(1))[0]!;
 }
 
-export function getOrCreateUsage(sessionId: string, walletAddress?: string, ipHash?: string): UserUsage {
-  return database().transaction((tx) => mapUsage(getOrCreateUsageInTransaction(tx as Db, sessionId, walletAddress, ipHash)));
+export async function getOrCreateUsage(sessionId: string, walletAddress?: string, ipHash?: string): Promise<UserUsage> {
+  return (await database()).transaction(async (tx) => mapUsage(await getOrCreateUsageInTransaction(tx as Db, sessionId, walletAddress, ipHash)));
 }
 
-export function getUsageBySession(sessionId: string): UserUsage | undefined {
-  const row = database().select().from(userUsages).where(eq(userUsages.sessionId, sessionId)).get();
+export async function getUsageBySession(sessionId: string): Promise<UserUsage | undefined> {
+  const row = (await (await database()).select().from(userUsages).where(eq(userUsages.sessionId, sessionId)).limit(1))[0];
   return row ? mapUsage(row) : undefined;
 }
 
@@ -413,41 +439,42 @@ export type BeginResearchResult =
       budgetUSDC: string;
     };
 
-export function beginResearch(input: BeginResearchInput): BeginResearchResult {
-  const conn = database();
+export async function beginResearch(input: BeginResearchInput): Promise<BeginResearchResult> {
+  const conn = await database();
   const requestHash = createHash("sha256")
     .update(JSON.stringify([input.question, input.strategy, input.requestedBudgetUSDC ?? null, input.walletAddress ?? null, input.searchPaymentId ?? null]))
     .digest("hex");
 
-  return conn.transaction((rawTx) => {
+  return conn.transaction(async (rawTx) => {
     const tx = rawTx as Db;
-    const existing = tx
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`research:${input.ipHash ?? input.sessionId}`}))`);
+    const existing = (await tx
       .select()
       .from(researchRuns)
       .where(and(eq(researchRuns.sessionId, input.sessionId), eq(researchRuns.clientRequestId, input.clientRequestId)))
-      .get();
+      .limit(1))[0];
     if (existing) {
       if (existing.requestHash !== requestHash) {
         throw new StoreError("IDEMPOTENCY_KEY_CONFLICT", "clientRequestId was already used for a different request", 409);
       }
       if (existing.status === "completed" && existing.answerId) {
-        const answer = tx.select().from(answers).where(eq(answers.id, existing.answerId)).get();
+        const answer = (await tx.select().from(answers).where(eq(answers.id, existing.answerId)).limit(1))[0];
         if (answer) return { kind: "existing", answer: mapAnswer(answer) };
       }
       const timeoutMs = Number(process.env.RESEARCH_RUN_TIMEOUT_MINUTES ?? 15) * 60_000;
       if (existing.status === "processing" && Date.now() - Date.parse(existing.updatedAt) < timeoutMs) {
         throw new StoreError("RESEARCH_IN_PROGRESS", "This research request is already processing", 409);
       }
-      tx.delete(researchRuns).where(eq(researchRuns.id, existing.id)).run();
+      await tx.delete(researchRuns).where(eq(researchRuns.id, existing.id));
     }
 
-    const usage = getOrCreateUsageInTransaction(tx, input.sessionId, input.walletAddress, input.ipHash);
+    const usage = await getOrCreateUsageInTransaction(tx, input.sessionId, input.walletAddress, input.ipHash);
     const scopedUsages = input.ipHash
-      ? tx.select().from(userUsages).where(eq(userUsages.ipHash, input.ipHash)).all()
+      ? await tx.select().from(userUsages).where(eq(userUsages.ipHash, input.ipHash))
       : [usage];
     const scopedSessionIds = scopedUsages.map((entry) => entry.sessionId);
     const scopedFreeSearchesUsed = scopedUsages.reduce((total, entry) => total + entry.freeSearchesUsed, 0);
-    const processingFreeRuns = tx
+    const processingFreeRuns = (await tx
       .select({ id: researchRuns.id })
       .from(researchRuns)
       .where(
@@ -456,14 +483,12 @@ export function beginResearch(input: BeginResearchInput): BeginResearchResult {
           eq(researchRuns.status, "processing"),
           eq(researchRuns.paymentType, "free_sponsored")
         )
-      )
-      .all().length;
+      )).length;
     const sponsoredLimitMicros = parseUSDCMicros(process.env.SPONSORED_TREASURY_LIMIT_USDC ?? "1");
-    const sponsoredSpentMicros = tx
+    const sponsoredSpentMicros = (await tx
       .select({ amountMicros: citationPayments.amountMicros })
       .from(citationPayments)
-      .where(eq(citationPayments.fundedBy, "maecenas_sponsored"))
-      .all()
+      .where(eq(citationPayments.fundedBy, "maecenas_sponsored")))
       .reduce((total, receipt) => total + receipt.amountMicros, 0);
     const sponsoredReservationMicros =
       processingFreeRuns * parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01");
@@ -486,7 +511,7 @@ export function beginResearch(input: BeginResearchInput): BeginResearchResult {
       }
       if (!input.walletAddress) throw new StoreError("MISSING_WALLET_ADDRESS", "Wallet address is required", 402);
       if (!input.searchPaymentId) throw new StoreError("PAYMENT_REQUIRED", "A confirmed search payment is required", 402);
-      const payment = tx.select().from(searchPayments).where(eq(searchPayments.id, input.searchPaymentId)).get();
+      const payment = (await tx.select().from(searchPayments).where(eq(searchPayments.id, input.searchPaymentId)).for("update").limit(1))[0];
       if (!payment || !["paid", "mock"].includes(payment.status)) {
         throw new StoreError("PAYMENT_NOT_CONFIRMED", "Search payment is not confirmed", 402);
       }
@@ -496,7 +521,7 @@ export function beginResearch(input: BeginResearchInput): BeginResearchResult {
       if (payment.walletAddress !== input.walletAddress) {
         throw new StoreError("SEARCH_PAYMENT_WALLET_MISMATCH", "Search payment belongs to another wallet", 409);
       }
-      const activeUse = tx
+      const activeUse = (await tx
         .select({ id: researchRuns.id })
         .from(researchRuns)
         .where(
@@ -505,7 +530,7 @@ export function beginResearch(input: BeginResearchInput): BeginResearchResult {
             inArray(researchRuns.status, ["processing", "completed"])
           )
         )
-        .get();
+        .limit(1))[0];
       if (payment.usedForAnswerId || activeUse) {
         throw new StoreError("SEARCH_PAYMENT_ALREADY_USED", "Search payment has already funded an answer", 409);
       }
@@ -519,7 +544,7 @@ export function beginResearch(input: BeginResearchInput): BeginResearchResult {
 
     const now = new Date().toISOString();
     const runId = makeId("run");
-    tx.insert(researchRuns)
+    await tx.insert(researchRuns)
       .values({
         id: runId,
         sessionId: input.sessionId,
@@ -530,19 +555,18 @@ export function beginResearch(input: BeginResearchInput): BeginResearchResult {
         searchPaymentId,
         createdAt: now,
         updatedAt: now
-      })
-      .run();
+      });
     return { kind: "started", runId, paymentType, searchPaymentId, budgetUSDC: microsToUSDC(budgetMicros) };
   });
 }
 
-export function completeResearch(runId: string, answer: Answer, receipts: CitationPayment[]): Answer {
-  return database().transaction((rawTx) => {
+export async function completeResearch(runId: string, answer: Answer, receipts: CitationPayment[]): Promise<Answer> {
+  return (await database()).transaction(async (rawTx) => {
     const tx = rawTx as Db;
-    const run = tx.select().from(researchRuns).where(eq(researchRuns.id, runId)).get();
+    const run = (await tx.select().from(researchRuns).where(eq(researchRuns.id, runId)).for("update").limit(1))[0];
     if (!run || run.status !== "processing") throw new StoreError("RESEARCH_RUN_INVALID", "Research run is not active", 409);
 
-    tx.insert(answers)
+    await tx.insert(answers)
       .values({
         id: answer.id,
         prompt: answer.prompt,
@@ -557,11 +581,10 @@ export function completeResearch(runId: string, answer: Answer, receipts: Citati
         sessionId: answer.sessionId,
         walletAddress: answer.walletAddress,
         createdAt: answer.createdAt
-      })
-      .run();
+      });
 
     if (receipts.length) {
-      tx.insert(citationPayments)
+      await tx.insert(citationPayments)
         .values(
           receipts.map((receipt) => ({
             id: receipt.id,
@@ -582,71 +605,65 @@ export function completeResearch(runId: string, answer: Answer, receipts: Citati
             network: receipt.network,
             createdAt: receipt.createdAt
           }))
-        )
-        .run();
+        );
     }
 
     const now = new Date().toISOString();
-    const usage = tx.select().from(userUsages).where(eq(userUsages.sessionId, run.sessionId)).get()!;
-    tx.update(userUsages)
+    const usage = (await tx.select().from(userUsages).where(eq(userUsages.sessionId, run.sessionId)).for("update").limit(1))[0]!;
+    await tx.update(userUsages)
       .set({
         freeSearchesUsed: usage.freeSearchesUsed + (run.paymentType === "free_sponsored" ? 1 : 0),
         paidSearchesUsed: usage.paidSearchesUsed + (run.paymentType === "user_paid" ? 1 : 0),
         updatedAt: now
       })
-      .where(eq(userUsages.id, usage.id))
-      .run();
+      .where(eq(userUsages.id, usage.id));
 
     if (run.searchPaymentId) {
-      const payment = tx.select().from(searchPayments).where(eq(searchPayments.id, run.searchPaymentId)).get()!;
-      tx.update(searchPayments)
+      const payment = (await tx.select().from(searchPayments).where(eq(searchPayments.id, run.searchPaymentId)).for("update").limit(1))[0]!;
+      await tx.update(searchPayments)
         .set({ usedForAnswerId: answer.id })
-        .where(eq(searchPayments.id, payment.id))
-        .run();
-      tx.update(searchPaymentIntents)
+        .where(eq(searchPayments.id, payment.id));
+      await tx.update(searchPaymentIntents)
         .set({ status: "used" })
-        .where(eq(searchPaymentIntents.id, payment.intentId))
-        .run();
+        .where(eq(searchPaymentIntents.id, payment.intentId));
     }
-    tx.update(researchRuns)
+    await tx.update(researchRuns)
       .set({ status: "completed", answerId: answer.id, updatedAt: now })
-      .where(eq(researchRuns.id, run.id))
-      .run();
+      .where(eq(researchRuns.id, run.id));
     return answer;
   });
 }
 
-export function failResearch(runId: string): void {
-  database()
+export async function failResearch(runId: string): Promise<void> {
+  await (await database())
     .update(researchRuns)
     .set({ status: "failed", searchPaymentId: null, updatedAt: new Date().toISOString() })
-    .where(eq(researchRuns.id, runId))
-    .run();
+    .where(eq(researchRuns.id, runId));
 }
 
-export function getResearchRunStatus(runId: string, sessionId: string): {
+export async function getResearchRunStatus(runId: string, sessionId: string): Promise<{
   status: "processing" | "completed" | "failed";
   answer?: Answer;
-} | undefined {
-  const run = database()
+} | undefined> {
+  const run = (await (await database())
     .select()
     .from(researchRuns)
     .where(and(eq(researchRuns.id, runId), eq(researchRuns.sessionId, sessionId)))
-    .get();
+    .limit(1))[0];
   if (!run) return undefined;
-  const answer = run.answerId ? findAnswer(run.answerId) : undefined;
+  const answer = run.answerId ? await findAnswer(run.answerId) : undefined;
   return { status: run.status, answer };
 }
 
-export function createSearchPaymentIntent(sessionId: string, walletAddress: string): SearchPaymentIntent {
-  return database().transaction((rawTx) => {
+export async function createSearchPaymentIntent(sessionId: string, walletAddress: string): Promise<SearchPaymentIntent> {
+  return (await database()).transaction(async (rawTx) => {
     const tx = rawTx as Db;
-    const usage = getOrCreateUsageInTransaction(tx, sessionId, walletAddress);
+    const usage = await getOrCreateUsageInTransaction(tx, sessionId, walletAddress);
     if (usage.freeSearchesUsed < usage.freeSearchLimit) {
       throw new StoreError("FREE_QUOTA_AVAILABLE", "Free quota still available", 400);
     }
     const now = new Date();
-    const reusable = tx
+    const reusable = (await tx
       .select()
       .from(searchPaymentIntents)
       .where(
@@ -655,8 +672,7 @@ export function createSearchPaymentIntent(sessionId: string, walletAddress: stri
           eq(searchPaymentIntents.walletAddress, walletAddress),
           eq(searchPaymentIntents.status, "requires_payment")
         )
-      )
-      .all()
+      ))
       .find((intent) => Date.parse(intent.expiresAt) > now.getTime());
     if (reusable) return mapIntent(reusable);
 
@@ -670,7 +686,7 @@ export function createSearchPaymentIntent(sessionId: string, walletAddress: stri
       expiresAt: new Date(now.getTime() + Number(process.env.SEARCH_PAYMENT_EXPIRY_MINUTES ?? 15) * 60_000).toISOString(),
       createdAt: now.toISOString()
     };
-    tx.insert(searchPaymentIntents).values(intent).run();
+    await tx.insert(searchPaymentIntents).values(intent);
     return mapIntent(intent);
   });
 }
@@ -688,10 +704,10 @@ export type ConfirmSearchPaymentInput = {
   };
 };
 
-export function confirmSearchPayment(input: ConfirmSearchPaymentInput): SearchPayment {
-  return database().transaction((rawTx) => {
+export async function confirmSearchPayment(input: ConfirmSearchPaymentInput): Promise<SearchPayment> {
+  return (await database()).transaction(async (rawTx) => {
     const tx = rawTx as Db;
-    const intent = tx.select().from(searchPaymentIntents).where(eq(searchPaymentIntents.id, input.paymentIntentId)).get();
+    const intent = (await tx.select().from(searchPaymentIntents).where(eq(searchPaymentIntents.id, input.paymentIntentId)).for("update").limit(1))[0];
     if (!intent) throw new StoreError("INVALID_PAYMENT_INTENT", "Payment intent was not found", 404);
     if (intent.sessionId !== input.sessionId) {
       throw new StoreError("SEARCH_PAYMENT_SESSION_MISMATCH", "Payment intent belongs to another session", 409);
@@ -699,7 +715,7 @@ export function confirmSearchPayment(input: ConfirmSearchPaymentInput): SearchPa
     if (intent.walletAddress !== input.walletAddress) {
       throw new StoreError("SEARCH_PAYMENT_WALLET_MISMATCH", "Payment intent belongs to another wallet", 409);
     }
-    const existing = tx.select().from(searchPayments).where(eq(searchPayments.intentId, intent.id)).get();
+    const existing = (await tx.select().from(searchPayments).where(eq(searchPayments.intentId, intent.id)).limit(1))[0];
     if (existing) return mapSearchPayment(existing);
     if (Date.parse(intent.expiresAt) <= Date.now()) {
       throw new StoreError("PAYMENT_INTENT_EXPIRED", "Payment intent has expired", 410);
@@ -731,18 +747,18 @@ export function confirmSearchPayment(input: ConfirmSearchPaymentInput): SearchPa
       paidAt: now,
       usedForAnswerId: null
     };
-    tx.insert(searchPayments).values(payment).run();
-    tx.update(searchPaymentIntents).set({ status: "paid" }).where(eq(searchPaymentIntents.id, intent.id)).run();
+    await tx.insert(searchPayments).values(payment);
+    await tx.update(searchPaymentIntents).set({ status: "paid" }).where(eq(searchPaymentIntents.id, intent.id));
     return mapSearchPayment(payment);
   });
 }
 
-export function getSearchPaymentIntent(id: string): SearchPaymentIntent | undefined {
-  const row = database().select().from(searchPaymentIntents).where(eq(searchPaymentIntents.id, id)).get();
+export async function getSearchPaymentIntent(id: string): Promise<SearchPaymentIntent | undefined> {
+  const row = (await (await database()).select().from(searchPaymentIntents).where(eq(searchPaymentIntents.id, id)).limit(1))[0];
   return row ? mapIntent(row) : undefined;
 }
 
-export function getSearchPayment(id: string): SearchPayment | undefined {
-  const row = database().select().from(searchPayments).where(eq(searchPayments.id, id)).get();
+export async function getSearchPayment(id: string): Promise<SearchPayment | undefined> {
+  const row = (await (await database()).select().from(searchPayments).where(eq(searchPayments.id, id)).limit(1))[0];
   return row ? mapSearchPayment(row) : undefined;
 }

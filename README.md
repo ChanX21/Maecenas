@@ -7,11 +7,11 @@ Evidence-grounded research with transparent budgets and source-owner receipts.
 - Five sponsored answers per anonymous browser session.
 - OpenAI planning, source assessment and evidence-grounded synthesis.
 - Only approved registry sources can enter research.
-- SQLite persistence with Drizzle migrations.
+- Supabase Postgres persistence with Drizzle migrations.
 - Idempotent quota and payment reservations.
 - Mock or Circle Gateway search payments and source payouts.
 - Wallet-authenticated source submission and owner dashboard.
-- Signed receipts, queued research, rate limits, admin review, and SQLite backups.
+- Signed receipts, queued research, rate limits, admin review, and Supabase backups.
 
 Real mode fails closed unless Circle/Arc settlement configuration is complete.
 
@@ -44,7 +44,8 @@ Open http://localhost:3000. The API runs on http://localhost:4000.
 `backend/.env`:
 
 ```env
-DATABASE_URL=./data/maecenas.db
+SUPABASE_DATABASE_URL=postgresql://postgres.PROJECT_REF:PASSWORD@REGION.pooler.supabase.com:6543/postgres
+DATABASE_POOL_SIZE=10
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5-mini
 
@@ -63,7 +64,6 @@ TOKEN_SIGNING_SECRET=
 PLATFORM_FEE_BPS=1000
 RESEARCH_ASYNC=true
 RESEARCH_WORKER_CONCURRENCY=2
-BACKUP_INTERVAL_MINUTES=60
 ```
 
 Without `OPENAI_API_KEY`, research returns `503 AI_NOT_CONFIGURED` and consumes

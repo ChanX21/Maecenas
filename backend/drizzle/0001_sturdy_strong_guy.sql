@@ -1,1 +1,0 @@
-ALTER TABLE `answers` ADD `content_json` text;

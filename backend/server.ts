@@ -1,7 +1,5 @@
 import { createMaecenasServer } from "@/http";
-import path from "path";
-import { mkdirSync } from "fs";
-import { backupDatabase, initializeDatabase, seedDatabase } from "@/db/store";
+import { initializeDatabase, seedDatabase } from "@/db/store";
 import { loadEnv } from "@/env";
 
 loadEnv();
@@ -19,8 +17,8 @@ if (process.env.PAYMENT_MODE === "real") {
   }
 }
 
-initializeDatabase();
-seedDatabase();
+await initializeDatabase();
+await seedDatabase();
 
 const port = Number(process.env.BACKEND_PORT ?? 4000);
 const host = process.env.BACKEND_HOST ?? "0.0.0.0";
@@ -28,13 +26,3 @@ const host = process.env.BACKEND_HOST ?? "0.0.0.0";
 createMaecenasServer().listen(port, host, () => {
   console.log(`Maecenas backend listening on http://localhost:${port}`);
 });
-
-const backupMinutes = Number(process.env.BACKUP_INTERVAL_MINUTES ?? 0);
-if (backupMinutes > 0) {
-  const directory = path.resolve(process.cwd(), process.env.BACKUP_DIRECTORY ?? "./data/backups");
-  mkdirSync(directory, { recursive: true });
-  setInterval(() => {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    void backupDatabase(path.join(directory, `maecenas-${timestamp}.db`)).catch(console.error);
-  }, backupMinutes * 60_000).unref();
-}

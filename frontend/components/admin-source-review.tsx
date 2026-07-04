@@ -49,7 +49,7 @@ export function AdminSourceReview() {
     return (
       <div className="roman-panel mx-auto mt-10 max-w-xl p-8 text-center">
         <ShieldCheck className="mx-auto text-gold" />
-        <p className="mt-4 text-sm leading-6 text-muted">Sign with a wallet listed in `ADMIN_WALLETS` to open the review queue.</p>
+        <p className="mt-4 text-sm leading-6 text-muted">Sign with an Admin Wallet to open the review queue.</p>
         <button onClick={load} disabled={busy} className="roman-button mt-6 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink disabled:opacity-50">
           {busy ? "Authenticating..." : "Open review queue"}
         </button>

@@ -1,14 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
 import type { AddressInfo } from "node:net";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import test from "node:test";
 import { privateKeyToAccount } from "viem/accounts";
 
-test("free quota, mock payment, idempotency, and funding links", async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "maecenas-"));
-  process.env.DATABASE_URL = path.join(dir, "test.db");
+test("free quota, mock payment, idempotency, and funding links", { skip: !process.env.TEST_DATABASE_URL }, async () => {
+  process.env.NODE_ENV = "test";
+  process.env.SUPABASE_DATABASE_URL = process.env.TEST_DATABASE_URL;
   process.env.PAYMENT_MODE = "mock";
   process.env.AI_MODE = "test";
   process.env.FREE_SEARCH_LIMIT = "5";
@@ -20,8 +17,9 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
   const store = await import("@/db/store");
   const { createMaecenasServer } = await import("@/http");
   const { circlePaymentRequired } = await import("@/payments/circle-gateway");
-  store.initializeDatabase();
-  store.seedDatabase();
+  await store.initializeDatabase();
+  await store.resetDatabaseForTests();
+  await store.seedDatabase();
 
   const server = createMaecenasServer();
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -207,14 +205,14 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
     assert.equal(reused.response.status, 409);
     assert.equal(reused.body.error, "SEARCH_PAYMENT_ALREADY_USED");
 
-    const secondIntent = store.createSearchPaymentIntent(sessionId, walletAddress);
-    const secondPayment = store.confirmSearchPayment({
+    const secondIntent = await store.createSearchPaymentIntent(sessionId, walletAddress);
+    const secondPayment = await store.confirmSearchPayment({
       paymentIntentId: secondIntent.id,
       sessionId,
       walletAddress,
       paymentProof: "mock_second_payment"
     });
-    const failedPaidRun = store.beginResearch({
+    const failedPaidRun = await store.beginResearch({
       sessionId,
       walletAddress,
       searchPaymentId: secondPayment.id,
@@ -223,9 +221,9 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
       strategy: "balanced"
     });
     assert.equal(failedPaidRun.kind, "started");
-    if (failedPaidRun.kind === "started") store.failResearch(failedPaidRun.runId);
-    assert.equal(store.getSearchPayment(secondPayment.id)?.usedForAnswerId, undefined);
-    const paidRetry = store.beginResearch({
+    if (failedPaidRun.kind === "started") await store.failResearch(failedPaidRun.runId);
+    assert.equal((await store.getSearchPayment(secondPayment.id))?.usedForAnswerId, undefined);
+    const paidRetry = await store.beginResearch({
       sessionId,
       walletAddress,
       searchPaymentId: secondPayment.id,
@@ -234,7 +232,7 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
       strategy: "balanced"
     });
     assert.equal(paidRetry.kind, "started");
-    if (paidRetry.kind === "started") store.failResearch(paidRetry.runId);
+    if (paidRetry.kind === "started") await store.failResearch(paidRetry.runId);
 
     const usageResponse = await fetch(`${base}/api/usage?sessionId=${sessionId}&wallet=${walletAddress}`, {
       headers: { Authorization: `Bearer ${walletAuth}` }
@@ -244,26 +242,26 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
     assert.equal(usage.paidSearchesUsed, 1);
 
     const failedSession = "sess_failure_001";
-    const run = store.beginResearch({
+    const run = await store.beginResearch({
       sessionId: failedSession,
       clientRequestId: "request_failure_001",
       question: "This run fails after reservation",
       strategy: "balanced"
     });
     assert.equal(run.kind, "started");
-    if (run.kind === "started") store.failResearch(run.runId);
-    assert.equal(store.getUsageBySession(failedSession)?.freeSearchesUsed, 0);
+    if (run.kind === "started") await store.failResearch(run.runId);
+    assert.equal((await store.getUsageBySession(failedSession))?.freeSearchesUsed, 0);
 
     const concurrentSession = "sess_concurrent_001";
-    const reservations = Array.from({ length: 5 }, (_, index) =>
+    const reservations = await Promise.all(Array.from({ length: 5 }, (_, index) =>
       store.beginResearch({
         sessionId: concurrentSession,
         clientRequestId: `request_concurrent_${index}`,
         question: "Reserve one free quota slot",
         strategy: "balanced"
       })
-    );
-    assert.throws(
+    ));
+    await assert.rejects(
       () =>
         store.beginResearch({
           sessionId: concurrentSession,
@@ -274,7 +272,7 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
       (error: unknown) => error instanceof store.StoreError && error.code === "FREE_QUOTA_BUSY"
     );
     for (const reservation of reservations) {
-      if (reservation.kind === "started") store.failResearch(reservation.runId);
+      if (reservation.kind === "started") await store.failResearch(reservation.runId);
     }
 
     process.env.RESEARCH_ASYNC = "true";
@@ -304,11 +302,10 @@ test("free quota, mock payment, idempotency, and funding links", async () => {
     });
     assert.equal(unconfigured.response.status, 503);
     assert.equal(unconfigured.body.error, "AI_NOT_CONFIGURED");
-    assert.equal(store.getUsageBySession("sess_no_ai_key_001")?.freeSearchesUsed, 0);
+    assert.equal((await store.getUsageBySession("sess_no_ai_key_001"))?.freeSearchesUsed, 0);
     process.env.AI_MODE = "test";
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
-    store.closeDatabase();
-    rmSync(dir, { recursive: true, force: true });
+    await store.closeDatabase();
   }
 });

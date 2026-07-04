@@ -10,20 +10,18 @@
     "source:review": "tsx scripts/review-source.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:backup": "tsx scripts/backup.ts",
     "test": "tsx --test test/backend.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@circle-fin/x402-batching": "^3.2.0",
     "@x402/evm": "^2.17.0",
-    "better-sqlite3": "^12.11.1",
     "drizzle-orm": "^0.45.2",
     "openai": "^6.45.0",
+    "postgres": "^3.4.7",
     "viem": "^2.54.1"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.29",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.20.3",

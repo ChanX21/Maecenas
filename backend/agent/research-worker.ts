@@ -45,10 +45,10 @@ async function run(job: ResearchJob): Promise<void> {
         if (list) list.push(event);
       }
     });
-    completeResearch(job.runId, result.answer, result.receipts);
+    await completeResearch(job.runId, result.answer, result.receipts);
   } catch (error) {
     console.error(JSON.stringify({ level: "error", event: "research_job_failed", runId: job.runId, error: String(error) }));
-    failResearch(job.runId);
+    await failResearch(job.runId);
   } finally {
     activeEvents.delete(job.runId);
   }

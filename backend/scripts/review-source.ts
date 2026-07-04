@@ -8,6 +8,6 @@ if (!sourceId || (status !== "approved" && status !== "rejected")) {
 }
 
 loadEnv();
-initializeDatabase();
-const source = reviewSource(sourceId, status, reasonParts.join(" ") || undefined);
+await initializeDatabase();
+const source = await reviewSource(sourceId, status, reasonParts.join(" ") || undefined);
 console.log(`${source.id}: ${source.status}`);

@@ -57,13 +57,22 @@ Do not add new Next.js API routes in the frontend. Backend APIs belong here in `
 
 ## Persistence
 
-SQLite with Drizzle migrations:
+Supabase Postgres with Drizzle migrations. Set `SUPABASE_DATABASE_URL` to the
+Supabase transaction-pooler URI from **Dashboard → Connect**, then run:
 
-```txt
-data/maecenas.db
+```bash
+npm run db:migrate
+npm run seed
 ```
 
 `npm run seed` is idempotent and does not reset usage or payment records.
+
+The acceptance test requires a disposable Postgres database because it clears
+all application tables:
+
+```bash
+TEST_DATABASE_URL=postgresql://... npm test
+```
 
 New source submissions remain pending until reviewed:
 
@@ -93,7 +102,7 @@ Deployment requirements:
 
 ```txt
 funded Circle Gateway agent wallet
-off-site SQLite backup retention
+Supabase backups and point-in-time recovery configured
 production monitoring and alert routing
 legal and payout compliance review
 ```

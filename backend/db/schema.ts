@@ -1,6 +1,6 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 
-export const sources = sqliteTable("sources", {
+export const sources = pgTable("sources", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   authorName: text("author_name").notNull(),
@@ -21,9 +21,9 @@ export const sources = sqliteTable("sources", {
 }, (table) => [
   uniqueIndex("sources_source_url_unique").on(table.sourceUrl),
   uniqueIndex("sources_canonical_url_unique").on(table.doiOrCanonicalUrl)
-]);
+]).enableRLS();
 
-export const userUsages = sqliteTable(
+export const userUsages = pgTable(
   "user_usages",
   {
     id: text("id").primaryKey(),
@@ -37,9 +37,9 @@ export const userUsages = sqliteTable(
     updatedAt: text("updated_at").notNull()
   },
   (table) => [uniqueIndex("user_usages_session_id_unique").on(table.sessionId)]
-);
+).enableRLS();
 
-export const searchPaymentIntents = sqliteTable(
+export const searchPaymentIntents = pgTable(
   "search_payment_intents",
   {
     id: text("id").primaryKey(),
@@ -52,9 +52,9 @@ export const searchPaymentIntents = sqliteTable(
     createdAt: text("created_at").notNull()
   },
   (table) => [index("search_payment_intents_owner_idx").on(table.sessionId, table.walletAddress)]
-);
+).enableRLS();
 
-export const searchPayments = sqliteTable(
+export const searchPayments = pgTable(
   "search_payments",
   {
     id: text("id").primaryKey(),
@@ -77,9 +77,9 @@ export const searchPayments = sqliteTable(
     uniqueIndex("search_payments_intent_id_unique").on(table.intentId),
     uniqueIndex("search_payments_answer_id_unique").on(table.usedForAnswerId)
   ]
-);
+).enableRLS();
 
-export const answers = sqliteTable(
+export const answers = pgTable(
   "answers",
   {
     id: text("id").primaryKey(),
@@ -97,9 +97,9 @@ export const answers = sqliteTable(
     createdAt: text("created_at").notNull()
   },
   (table) => [uniqueIndex("answers_search_payment_id_unique").on(table.searchPaymentId)]
-);
+).enableRLS();
 
-export const citationPayments = sqliteTable(
+export const citationPayments = pgTable(
   "citation_payments",
   {
     id: text("id").primaryKey(),
@@ -128,9 +128,9 @@ export const citationPayments = sqliteTable(
     index("citation_payments_answer_idx").on(table.answerId),
     index("citation_payments_source_idx").on(table.sourceId)
   ]
-);
+).enableRLS();
 
-export const walletAuthNonces = sqliteTable(
+export const walletAuthNonces = pgTable(
   "wallet_auth_nonces",
   {
     id: text("id").primaryKey(),
@@ -141,9 +141,9 @@ export const walletAuthNonces = sqliteTable(
     createdAt: text("created_at").notNull()
   },
   (table) => [index("wallet_auth_nonces_wallet_idx").on(table.walletAddress)]
-);
+).enableRLS();
 
-export const researchRuns = sqliteTable(
+export const researchRuns = pgTable(
   "research_runs",
   {
     id: text("id").primaryKey(),
@@ -161,4 +161,4 @@ export const researchRuns = sqliteTable(
     uniqueIndex("research_runs_request_unique").on(table.sessionId, table.clientRequestId),
     index("research_runs_payment_idx").on(table.searchPaymentId)
   ]
-);
+).enableRLS();

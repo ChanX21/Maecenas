@@ -27,7 +27,7 @@ import {
 import { buildPaymentRequired, hasValidPaymentProof } from "@/payments/payment-executor";
 import { circlePaymentRequired, settleCirclePayment } from "@/payments/circle-gateway";
 import { createAuthToken, sourceOwnershipMessage, verifyReceiptSignature, verifyToken, verifyWalletSignature } from "@/security";
-import type { PublicSource, ResearchStrategy, Source } from "@/types";
+import type { Answer, PublicSource, ResearchStrategy, Source, UserUsage } from "@/types";
 import { makeId } from "@/utils/ids";
 import { microsToUSDC, parseUSDCMicros, sumUSDC } from "@/utils/money";
 
@@ -117,13 +117,13 @@ async function routeRequest(context: RouteContext) {
   const { method, path, response, url, request } = context;
 
   if (method === "GET" && path === "/api/health") {
-    const snapshot = readDb();
+    const snapshot = await readDb();
     return sendJson(response, 200, {
       ok: true,
       service: "maecenas-backend",
       version: "0.2.0",
       uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
-      database: "sqlite",
+      database: "supabase-postgres",
       paymentMode: process.env.PAYMENT_MODE === "real" ? "real" : "mock",
       aiConfigured: Boolean(process.env.OPENAI_API_KEY),
       records: {
@@ -148,13 +148,13 @@ async function routeRequest(context: RouteContext) {
   if (method === "GET" && path === "/api/sources") {
     const walletAddress = optionalWallet(url.searchParams.get("wallet"));
     if (walletAddress) requireWalletAuth(request, walletAddress);
-    return sendJson(response, 200, { sources: listSources({ walletAddress }).map(publicSource) });
+    return sendJson(response, 200, { sources: (await listSources({ walletAddress })).map(publicSource) });
   }
 
   if (method === "POST" && path === "/api/auth/nonce") {
     const body = await readJsonBody<Record<string, unknown>>(request);
     const walletAddress = requireWallet(body.walletAddress);
-    return sendJson(response, 201, createWalletAuthNonce(walletAddress));
+    return sendJson(response, 201, await createWalletAuthNonce(walletAddress));
   }
 
   if (method === "POST" && path === "/api/auth/verify") {
@@ -162,7 +162,7 @@ async function routeRequest(context: RouteContext) {
     const walletAddress = requireWallet(body.walletAddress);
     const nonceId = String(body.nonceId ?? "");
     const signature = String(body.signature ?? "");
-    const message = consumeWalletAuthNonce(nonceId, walletAddress);
+    const message = await consumeWalletAuthNonce(nonceId, walletAddress);
     if (!(await verifyWalletSignature(walletAddress, message, signature))) {
       throw new HttpError(401, "INVALID_WALLET_SIGNATURE", "Wallet signature could not be verified");
     }
@@ -176,7 +176,7 @@ async function routeRequest(context: RouteContext) {
   if (method === "GET" && path === "/api/admin/sources") {
     requireAdmin(request);
     const status = url.searchParams.get("status");
-    const allSources = listSources({ includeUnapproved: true });
+    const allSources = await listSources({ includeUnapproved: true });
     return sendJson(response, 200, {
       sources: (status ? allSources.filter((source) => source.status === status) : allSources).map(adminSource)
     });
@@ -186,7 +186,7 @@ async function routeRequest(context: RouteContext) {
     const sessionId = requireSessionId(url.searchParams.get("sessionId"));
     const walletAddress = optionalWallet(url.searchParams.get("wallet"));
     if (walletAddress) requireWalletAuth(request, walletAddress);
-    const usage = getOrCreateUsage(sessionId, walletAddress, ipHash(request));
+    const usage = await getOrCreateUsage(sessionId, walletAddress, ipHash(request));
     return sendJson(response, 200, usageResponse(usage));
   }
 
@@ -244,7 +244,7 @@ async function routeRequest(context: RouteContext) {
     if (parseUSDCMicros(source.citationPriceUSDC) === 0) {
       throw new HttpError(400, "INVALID_USDC_AMOUNT", "citationPriceUSDC must be greater than zero");
     }
-    return sendJson(response, 201, { source: publicSource(createSource(source)) });
+    return sendJson(response, 201, { source: publicSource(await createSource(source)) });
   }
 
   const sourceReviewMatch = path.match(/^\/api\/admin\/sources\/([^/]+)\/review$/);
@@ -256,13 +256,13 @@ async function routeRequest(context: RouteContext) {
       throw new HttpError(400, "INVALID_SOURCE_STATUS", "status must be approved or rejected");
     }
     return sendJson(response, 200, {
-      source: publicSource(reviewSource(sourceReviewMatch[1], status, body.reason ? String(body.reason) : undefined))
+      source: publicSource(await reviewSource(sourceReviewMatch[1], status, body.reason ? String(body.reason) : undefined))
     });
   }
 
   const sourcePreviewMatch = path.match(/^\/api\/sources\/([^/]+)\/preview$/);
   if (method === "GET" && sourcePreviewMatch) {
-    const source = findSource(sourcePreviewMatch[1]);
+    const source = await findSource(sourcePreviewMatch[1]);
     if (!source || source.status !== "approved") return sendJson(response, 404, { error: "Source not found" });
 
     return sendJson(response, 200, {
@@ -277,7 +277,7 @@ async function routeRequest(context: RouteContext) {
 
   const sourceEvidenceMatch = path.match(/^\/api\/sources\/([^/]+)\/evidence$/);
   if (method === "GET" && sourceEvidenceMatch) {
-    const source = findSource(sourceEvidenceMatch[1]);
+    const source = await findSource(sourceEvidenceMatch[1]);
     if (!source || source.status !== "approved") return sendJson(response, 404, { error: "Source not found" });
 
     if (process.env.PAYMENT_MODE === "real") {
@@ -304,7 +304,7 @@ async function routeRequest(context: RouteContext) {
 
   const sourceMatch = path.match(/^\/api\/sources\/([^/]+)$/);
   if (method === "GET" && sourceMatch) {
-    const source = findSource(sourceMatch[1]);
+    const source = await findSource(sourceMatch[1]);
     if (!source || source.status !== "approved") return sendJson(response, 404, { error: "Source not found" });
     return sendJson(response, 200, { source: publicSource(source) });
   }
@@ -314,7 +314,7 @@ async function routeRequest(context: RouteContext) {
     const sessionId = requireSessionId(body.sessionId);
     const walletAddress = requireWallet(body.walletAddress);
     requireWalletAuth(request, walletAddress);
-    const intent = createSearchPaymentIntent(sessionId, walletAddress);
+    const intent = await createSearchPaymentIntent(sessionId, walletAddress);
     const recipientWallet = process.env.MAECENAS_TREASURY_WALLET_ADDRESS ?? "";
     const paymentRequired =
       intent.paymentMode === "real"
@@ -339,7 +339,7 @@ async function routeRequest(context: RouteContext) {
     const sessionId = requireSessionId(body.sessionId);
     const walletAddress = requireWallet(body.walletAddress);
     requireWalletAuth(request, walletAddress);
-    const intent = getSearchPaymentIntent(paymentIntentId);
+    const intent = await getSearchPaymentIntent(paymentIntentId);
     if (!intent) throw new HttpError(404, "INVALID_PAYMENT_INTENT", "Payment intent was not found");
     let settlement;
     if (intent.paymentMode === "real") {
@@ -349,7 +349,7 @@ async function routeRequest(context: RouteContext) {
       if (!paymentPayload) throw new HttpError(400, "PAYMENT_NOT_CONFIRMED", "paymentPayload is required");
       settlement = await settleCirclePayment(paymentPayload, required);
     }
-    const payment = confirmSearchPayment({
+    const payment = await confirmSearchPayment({
       paymentIntentId,
       sessionId,
       walletAddress,
@@ -392,7 +392,7 @@ async function routeRequest(context: RouteContext) {
 
     let reservation;
     try {
-      reservation = beginResearch({
+      reservation = await beginResearch({
         sessionId,
         walletAddress,
         searchPaymentId,
@@ -444,10 +444,10 @@ async function routeRequest(context: RouteContext) {
         searchPaymentId: reservation.searchPaymentId,
         paymentType: reservation.paymentType
       });
-      const answer = completeResearch(reservation.runId, result.answer, result.receipts);
+      const answer = await completeResearch(reservation.runId, result.answer, result.receipts);
       return sendResearchResponse(response, answer);
     } catch (error) {
-      failResearch(reservation.runId);
+      await failResearch(reservation.runId);
       if (error instanceof AgentError) {
         return sendJson(response, error.status, { error: error.code, message: error.message });
       }
@@ -459,7 +459,7 @@ async function routeRequest(context: RouteContext) {
   const researchRunMatch = path.match(/^\/api\/research\/runs\/([^/]+)$/);
   if (method === "GET" && researchRunMatch) {
     const sessionId = requireSessionId(url.searchParams.get("sessionId"));
-    const run = getResearchRunStatus(researchRunMatch[1], sessionId);
+    const run = await getResearchRunStatus(researchRunMatch[1], sessionId);
     if (!run) return sendJson(response, 404, { error: "Research run not found" });
     if (run.status === "completed" && run.answer) return sendResearchResponse(response, run.answer);
     const events = activeEvents.get(researchRunMatch[1]) ?? [];
@@ -473,21 +473,21 @@ async function routeRequest(context: RouteContext) {
 
   const answerMatch = path.match(/^\/api\/answers\/([^/]+)$/);
   if (method === "GET" && answerMatch) {
-    const answer = findAnswer(answerMatch[1]);
+    const answer = await findAnswer(answerMatch[1]);
     if (!answer) return sendJson(response, 404, { error: "Answer not found" });
     return sendJson(response, 200, { answer });
   }
 
   const receiptMatch = path.match(/^\/api\/receipts\/([^/]+)$/);
   if (method === "GET" && receiptMatch) {
-    const receipt = findReceipt(receiptMatch[1]);
+    const receipt = await findReceipt(receiptMatch[1]);
     if (!receipt) return sendJson(response, 404, { error: "Receipt not found" });
     return sendJson(response, 200, { receipt });
   }
 
   const receiptVerifyMatch = path.match(/^\/api\/receipts\/([^/]+)\/verify$/);
   if (method === "GET" && receiptVerifyMatch) {
-    const receipt = findReceipt(receiptVerifyMatch[1]);
+    const receipt = await findReceipt(receiptVerifyMatch[1]);
     if (!receipt) return sendJson(response, 404, { error: "Receipt not found" });
     return sendJson(response, 200, {
       receiptId: receipt.id,
@@ -501,7 +501,7 @@ async function routeRequest(context: RouteContext) {
   if (method === "GET" && path === "/api/dashboard") {
     const wallet = requireWallet(url.searchParams.get("wallet"));
     requireWalletAuth(request, wallet);
-    const db = readDb();
+    const db = await readDb();
     const sources = db.sources.filter((source) => !wallet || source.walletAddress.toLowerCase() === wallet);
     const sourceIds = new Set(sources.map((source) => source.id));
     const receipts = db.receipts.filter((receipt) => sourceIds.has(receipt.sourceId));
@@ -523,7 +523,7 @@ async function routeRequest(context: RouteContext) {
   }
 
   if (method === "GET" && path === "/api/leaderboard") {
-    const db = readDb();
+    const db = await readDb();
     const owners = new Set(db.sources.map((source) => source.walletAddress.toLowerCase()));
     const topEarningSources = db.sources
       .map((source) => {
@@ -563,8 +563,8 @@ async function routeRequest(context: RouteContext) {
   return sendJson(response, 404, { error: "Not found" });
 }
 
-function sendResearchResponse(response: ServerResponse, answer: ReturnType<typeof findAnswer> & {}) {
-  const usage = getUsageByAnswer(answer);
+async function sendResearchResponse(response: ServerResponse, answer: Answer) {
+  const usage = await getUsageByAnswer(answer);
   const fundedMicros = parseUSDCMicros(answer.budgetUSDC);
   const spentMicros = parseUSDCMicros(answer.spentUSDC);
   return sendJson(response, 200, {
@@ -585,12 +585,12 @@ function sendResearchResponse(response: ServerResponse, answer: ReturnType<typeo
   });
 }
 
-function getUsageByAnswer(answer: NonNullable<ReturnType<typeof findAnswer>>) {
+async function getUsageByAnswer(answer: Answer) {
   return answer.sessionId ? getOrCreateUsage(answer.sessionId, answer.walletAddress) : undefined;
 }
 
-function sendPaymentRequired(response: ServerResponse, sessionId: string) {
-  const usage = getOrCreateUsage(sessionId);
+async function sendPaymentRequired(response: ServerResponse, sessionId: string) {
+  const usage = await getOrCreateUsage(sessionId);
   const price = process.env.PAID_SEARCH_PRICE_USDC ?? "0.01";
   return sendJson(response, 402, {
     error: "PAYMENT_REQUIRED",
@@ -603,7 +603,7 @@ function sendPaymentRequired(response: ServerResponse, sessionId: string) {
   });
 }
 
-function usageResponse(usage: ReturnType<typeof getOrCreateUsage>) {
+function usageResponse(usage: UserUsage) {
   const remaining = Math.max(0, usage.freeSearchLimit - usage.freeSearchesUsed);
   return {
     sessionId: usage.sessionId,
