@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Check, WalletCards } from "lucide-react";
 import { AnimatedResearchLoader } from "@/components/animated-research-loader";
-import type { ResearchStrategy, Usage } from "@/types";
+import type { ResearchStrategy, TraceEvent, Usage } from "@/types";
 import {
   ApiError,
   createSearchPaymentIntent,
@@ -34,6 +34,7 @@ export function ResearchPromptBox() {
   const [pendingRequest, setPendingRequest] = useState<ResearchRequest>();
   const [paymentRequired, setPaymentRequired] = useState(false);
   const [stage, setStage] = useState("");
+  const [events, setEvents] = useState<TraceEvent[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export function ResearchPromptBox() {
     payment?: { walletAddress: string; searchPaymentId: string }
   ) {
     setStage("Scouting the approved archive...");
+    setEvents([]);
     setError("");
     try {
       const data = await runResearch({ sessionId, ...request, ...payment });
@@ -64,6 +66,7 @@ export function ResearchPromptBox() {
           await new Promise((resolve) => window.setTimeout(resolve, 1500));
           const run = await getResearchRun(data.runId, sessionId);
           if (run.status === "failed") throw new Error("Research commission failed");
+          if (run.events) setEvents(run.events);
           if (run.status === "completed") {
             answerId = run.answerId;
             break;
@@ -223,7 +226,9 @@ export function ResearchPromptBox() {
       </div>
 
       <AnimatePresence mode="wait">
-        {paymentRequired && !stage ? (
+        {stage && <AnimatedResearchLoader key="research-loader" stage={stage} events={events} />}
+
+        {!stage && paymentRequired ? (
           <motion.div
             key="payment-box"
             initial={{ opacity: 0, height: 0, filter: "blur(4px)" }}
@@ -259,11 +264,7 @@ export function ResearchPromptBox() {
         ) : null}
       </AnimatePresence>
 
-      <AnimatePresence mode="wait">
-        {stage ? (
-          <AnimatedResearchLoader key="research-loader" stage={stage} />
-        ) : null}
-      </AnimatePresence>
+
       {error ? (
         <p role="alert" className="mt-4 border border-danger/40 bg-danger/10 p-3 text-sm text-red-200">
           {error}

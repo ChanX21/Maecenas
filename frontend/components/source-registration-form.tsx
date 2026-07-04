@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Save, WalletCards } from "lucide-react";
+import { CheckCircle2, Save, WalletCards, ChevronDown } from "lucide-react";
 import { registerSource } from "@/api";
 import { connectWallet, getAuthToken, getSavedWallet, signSourceOwnership } from "@/browser";
 import type { Source } from "@/types";
@@ -100,13 +100,41 @@ export function SourceRegistrationForm() {
             <TextField label="Author or publisher" value={form.authorName} onChange={(value) => update("authorName", value)} required />
             <TextField label="Source URL" type="url" value={form.sourceUrl} onChange={(value) => update("sourceUrl", value)} required />
             <TextField label="DOI or canonical URL" value={form.doiOrCanonicalUrl} onChange={(value) => update("doiOrCanonicalUrl", value)} />
-            <TextField
-              label="Unlock price in USDC"
-              value={form.citationPriceUSDC}
-              onChange={(value) => update("citationPriceUSDC", value)}
-              required
+            <div className="block">
+              <span className="font-mono text-xs uppercase text-muted">Unlock price in USDC</span>
+              <div className="mt-2 flex flex-col gap-2">
+                <input
+                  type="number"
+                  min="0.0001"
+                  step="0.0001"
+                  value={form.citationPriceUSDC}
+                  onChange={(e) => update("citationPriceUSDC", e.target.value)}
+                  required
+                  className="w-full rounded-md border border-marble/10 bg-ink-2 px-3 py-3 text-sm text-cream outline-none transition focus:border-gold/60"
+                />
+                <div>
+                  <input
+                    type="range"
+                    min="0.0001"
+                    max="0.0100"
+                    step="0.0001"
+                    value={form.citationPriceUSDC}
+                    onChange={(e) => update("citationPriceUSDC", Number(e.target.value).toFixed(4))}
+                    className="w-full accent-gold h-1 bg-marble/10 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="mt-1 flex justify-between font-mono text-[9px] text-dim">
+                    <span>0.0001 min</span>
+                    <span>0.0100 max</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <SelectField 
+              label="License" 
+              value={form.license} 
+              onChange={(value) => update("license", value)} 
+              options={["CC BY 4.0", "CC BY-SA 4.0", "MIT", "Apache 2.0", "BSD", "Public Domain (CC0)", "Proprietary"]}
             />
-            <TextField label="License" value={form.license} onChange={(value) => update("license", value)} />
             <div className="sm:col-span-2">
               <TextField label="Tags, comma separated" value={form.tags} onChange={(value) => update("tags", value)} required />
             </div>
@@ -177,6 +205,39 @@ export function SourceRegistrationForm() {
         </AnimatePresence>
       </motion.aside>
     </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <label className="block">
+      <span className="font-mono text-xs uppercase text-muted">{label}</span>
+      <div className="relative mt-2">
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full rounded-md border border-marble/10 bg-ink-2 px-3 py-3 text-sm text-cream outline-none transition focus:border-gold/60 appearance-none pr-10"
+        >
+          <option value="" disabled>Select a license</option>
+          {options.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+        <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted">
+          <ChevronDown size={16} />
+        </div>
+      </div>
+    </label>
   );
 }
 

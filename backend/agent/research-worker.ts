@@ -1,6 +1,6 @@
 import { runResearchAgent } from "@/agent/research-agent";
 import { completeResearch, failResearch } from "@/db/store";
-import type { ResearchStrategy } from "@/types";
+import type { ResearchStrategy, TraceEvent } from "@/types";
 
 type ResearchJob = {
   runId: string;
@@ -15,6 +15,8 @@ type ResearchJob = {
 
 const queue: ResearchJob[] = [];
 let active = 0;
+
+export const activeEvents = new Map<string, TraceEvent[]>();
 
 export function enqueueResearch(job: ResearchJob): void {
   queue.push(job);
@@ -34,12 +36,21 @@ function drain(): void {
 }
 
 async function run(job: ResearchJob): Promise<void> {
+  activeEvents.set(job.runId, []);
   try {
-    const result = await runResearchAgent(job);
+    const result = await runResearchAgent({
+      ...job,
+      onEvent: (event) => {
+        const list = activeEvents.get(job.runId);
+        if (list) list.push(event);
+      }
+    });
     completeResearch(job.runId, result.answer, result.receipts);
   } catch (error) {
     console.error(JSON.stringify({ level: "error", event: "research_job_failed", runId: job.runId, error: String(error) }));
     failResearch(job.runId);
+  } finally {
+    activeEvents.delete(job.runId);
   }
 }
 

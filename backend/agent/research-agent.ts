@@ -17,21 +17,27 @@ type RunResearchInput = {
   walletAddress?: string;
   searchPaymentId?: string;
   paymentType: "free_sponsored" | "user_paid";
+  onEvent?: (event: TraceEvent) => void;
 };
 
 export async function runResearchAgent(input: RunResearchInput): Promise<{ answer: Answer; receipts: Answer["decisionTraceJson"]["receipts"] }> {
   const answerId = makeId("ans");
   const allSources = await listSources();
   const events: TraceEvent[] = [];
+  const pushEvent = (event: TraceEvent) => {
+    events.push(event);
+    if (input.onEvent) input.onEvent(event);
+  };
+
   const candidates = scoutSources(input.question, allSources);
-  events.push(traceEvent("scout", "Archive scouted", `${candidates.length} candidate sources surfaced.`));
+  pushEvent(traceEvent("scout", "Archive scouted", `${candidates.length} candidate sources surfaced.`));
 
   const { plan, scoredSources } = await analyzeResearch(input.question, input.budgetUSDC, input.strategy, candidates);
-  events.push(traceEvent("plan", "Mandate mapped", `${plan.subquestions.length} subquestions and ${plan.evidenceNeeds.length} evidence needs defined.`));
-  events.push(traceEvent("score", "Evidence ranked", `Leading score: ${scoredSources[0]?.finalScore ?? 0}.`));
+  pushEvent(traceEvent("plan", "Mandate mapped", `${plan.subquestions.length} subquestions and ${plan.evidenceNeeds.length} evidence needs defined.`));
+  pushEvent(traceEvent("score", "Evidence ranked", `Leading score: ${scoredSources[0]?.finalScore ?? 0}.`));
 
   const budgetDecision = allocateBudget(scoredSources, input.budgetUSDC, input.strategy);
-  events.push(
+  pushEvent(
     traceEvent(
       "budget",
       "Budget allocated",
@@ -47,7 +53,7 @@ export async function runResearchAgent(input: RunResearchInput): Promise<{ answe
     if (!source) continue;
     const firstAttempt = requestProtectedEvidence(source);
     if (firstAttempt.ok) continue;
-    events.push(
+    pushEvent(
       traceEvent(
         "payment-required",
         "402 Payment Required",
@@ -61,7 +67,7 @@ export async function runResearchAgent(input: RunResearchInput): Promise<{ answe
       input.paymentType === "user_paid" ? "user_paid_search" : "maecenas_sponsored",
       input.searchPaymentId
     );
-    events.push(
+    pushEvent(
       traceEvent(
         "payment-sent",
         getPaymentMode() === "mock" ? "Test funding recorded" : "USDC funding submitted",
@@ -73,8 +79,8 @@ export async function runResearchAgent(input: RunResearchInput): Promise<{ answe
       ? { ok: true as const, evidence: payment.evidence }
       : requestProtectedEvidence(source, payment.paymentProof);
     if (!secondAttempt.ok) continue;
-    events.push(traceEvent("evidence-unlocked", "Funded evidence opened", `${source.title} returned protected evidence.`));
-    events.push(traceEvent("receipt-saved", "Treasury record sealed", `${payment.receipt.id} created for this funded citation.`));
+    pushEvent(traceEvent("evidence-unlocked", "Funded evidence opened", `${source.title} returned protected evidence.`));
+    pushEvent(traceEvent("receipt-saved", "Treasury record sealed", `${payment.receipt.id} created for this funded citation.`));
     unlockedEvidence.push({
       ...secondAttempt.evidence,
       receipt: payment.receipt
@@ -85,7 +91,7 @@ export async function runResearchAgent(input: RunResearchInput): Promise<{ answe
 
   const contentJson = await synthesizeAnswer(plan, unlockedEvidence, budgetDecision);
   const response = answerContentToText(contentJson);
-  events.push(traceEvent("synthesis", "Research brief delivered", `The brief draws on ${unlockedEvidence.length} funded evidence sources.`));
+  pushEvent(traceEvent("synthesis", "Research brief delivered", `The brief draws on ${unlockedEvidence.length} funded evidence sources.`));
 
   const trace: ResearchTrace = {
     plan,
