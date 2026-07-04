@@ -53,9 +53,9 @@ export default function RootLayout({
                   <Image 
                     src={iconImg} 
                     alt="Maecenas Logo" 
-                    width={36} 
-                    height={36} 
-                    className="h-9 w-9 rounded-full object-cover" 
+                    width={44} 
+                    height={44} 
+                    className="h-11 w-11 shrink-0 rounded-full object-cover" 
                   />
                   <span>
                     <span className="roman-inscription block text-xl leading-5 text-cream font-serif italic">Maecenas</span>
