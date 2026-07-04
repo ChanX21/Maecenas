@@ -1,6 +1,7 @@
+
 # Maecenas
 
-<img width="1728" height="972" alt="image" src="https://github.com/user-attachments/assets/0f8e0ea2-0b51-4274-8c73-41da094830d6" />
+<img width="1577" height="869" alt="image" src="https://github.com/user-attachments/assets/e9ee5b8f-93fd-4e16-82f6-71e4930df989" />
 
 Evidence-grounded research with transparent budgets and source-owner receipts.
 
