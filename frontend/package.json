@@ -10,6 +10,10 @@
   },
   "dependencies": {
     "@circle-fin/x402-batching": "^3.2.0",
+    "@dynamic-labs-sdk/client": "^1.17.1",
+    "@dynamic-labs-sdk/evm": "^1.17.1",
+    "@dynamic-labs-sdk/react-hooks": "^1.17.1",
+    "@tanstack/react-query": "^5.101.2",
     "@x402/evm": "^2.17.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.0",
