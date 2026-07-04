@@ -27,6 +27,12 @@ import {
 } from "@/db/store";
 import { buildPaymentRequired, hasValidPaymentProof } from "@/payments/payment-executor";
 import { circlePaymentRequired, settleCirclePayment } from "@/payments/circle-gateway";
+import {
+  createGatewayWithdrawalQuote,
+  executeGatewayWithdrawal,
+  GatewayWithdrawalError,
+  type GatewayBurnIntent
+} from "@/payments/gateway-withdrawal";
 import { createAuthToken, sourceOwnershipMessage, verifyReceiptSignature, verifyToken, verifyWalletSignature } from "@/security";
 import type { Answer, PublicSource, ResearchStrategy, Source, UserUsage } from "@/types";
 import { makeId } from "@/utils/ids";
@@ -106,6 +112,9 @@ export async function handleMaecenasRequest(request: IncomingMessage, response: 
       return sendJson(response, error.status, { error: error.code, message: error.message });
     }
     if (error instanceof HttpError) {
+      return sendJson(response, error.status, { error: error.code, message: error.message });
+    }
+    if (error instanceof GatewayWithdrawalError) {
       return sendJson(response, error.status, { error: error.code, message: error.message });
     }
     if (error instanceof SyntaxError) {
@@ -526,6 +535,30 @@ async function routeRequest(context: RouteContext) {
       latestPaidCitations: receipts.slice(0, 10),
       topEarningSource: topSource ?? null
     });
+  }
+
+  if (method === "GET" && path === "/api/gateway/withdrawal-quote") {
+    const wallet = requireWallet(url.searchParams.get("wallet"));
+    requireWalletAuth(request, wallet);
+    return sendJson(response, 200, await createGatewayWithdrawalQuote(wallet));
+  }
+
+  if (method === "POST" && path === "/api/gateway/withdraw") {
+    const body = await readJsonBody<Record<string, unknown>>(request);
+    const wallet = requireWallet(body.walletAddress);
+    requireWalletAuth(request, wallet);
+    const signature = String(body.signature ?? "");
+    if (!body.burnIntent || typeof body.burnIntent !== "object") {
+      throw new HttpError(400, "INVALID_WITHDRAWAL_INTENT", "Circle Gateway withdrawal intent is required");
+    }
+    if (!/^0x[a-fA-F0-9]{130}$/.test(signature)) {
+      throw new HttpError(400, "INVALID_WITHDRAWAL_SIGNATURE", "A 65-byte creator wallet signature is required");
+    }
+    return sendJson(
+      response,
+      200,
+      await executeGatewayWithdrawal(wallet, body.burnIntent as GatewayBurnIntent, signature)
+    );
   }
 
   if (method === "GET" && path === "/api/leaderboard") {

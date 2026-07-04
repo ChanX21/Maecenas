@@ -2,6 +2,8 @@ import type {
   Answer,
   CitationPayment,
   ResearchStrategy,
+  GatewayBurnIntent,
+  GatewayWithdrawalQuote,
   SearchPaymentIntentResponse,
   SearchPaymentResponse,
   Source,
@@ -149,6 +151,29 @@ export async function getLeaderboard() {
 export async function getDashboard(wallet: string) {
   const query = wallet ? `?wallet=${encodeURIComponent(wallet)}` : "";
   return apiFetch<DashboardResponse>(`/api/dashboard${query}`);
+}
+
+export async function getGatewayWithdrawalQuote(walletAddress: string) {
+  return apiFetch<GatewayWithdrawalQuote>(
+    `/api/gateway/withdrawal-quote?wallet=${encodeURIComponent(walletAddress)}`
+  );
+}
+
+export async function withdrawGatewayBalance(input: {
+  walletAddress: string;
+  burnIntent: GatewayBurnIntent;
+  signature: string;
+}) {
+  return apiFetch<{
+    txHash: `0x${string}`;
+    transferId?: string;
+    amountUSDC: string;
+    feeUSDC: string;
+  }>("/api/gateway/withdraw", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
 }
 
 export async function getAdminSources(status = "pending") {

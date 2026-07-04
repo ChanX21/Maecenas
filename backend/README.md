@@ -128,6 +128,11 @@ first appear in the creator's Gateway balance and only appear in the ordinary
 Arc wallet after that creator withdraws. Seed source wallets are demo addresses,
 so only sources registered with a wallet controlled by the creator can withdraw.
 
+Authenticated creators can call `GET /api/gateway/withdrawal-quote` and sign
+the returned EIP-712 burn intent, then submit it to `POST /api/gateway/withdraw`.
+The backend sponsors the Arc mint transaction and returns its Arc transaction
+hash. Circle's estimated transfer fee must be covered by the Gateway balance.
+
 The endpoints are fresh on every request. They do not push updates to an already
 open browser page; the client must reload, poll, or subscribe to a future event
 stream for continuous updates.

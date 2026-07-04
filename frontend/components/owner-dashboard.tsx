@@ -2,19 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { WalletCards } from "lucide-react";
-import { getDashboard, getOwnerSources, type DashboardResponse } from "@/api";
+import { ArrowUpRight, LoaderCircle, WalletCards } from "lucide-react";
+import {
+  getDashboard,
+  getGatewayWithdrawalQuote,
+  getOwnerSources,
+  withdrawGatewayBalance,
+  type DashboardResponse
+} from "@/api";
 import { useMaecenasWallet } from "@/components/wallet/maecenas-wallet-provider";
 import { DashboardEarningsTable } from "@/components/dashboard-earnings-table";
-import type { Source } from "@/types";
+import { arcExplorerTxUrl, shortenTxHash } from "@/lib/arc-explorer";
+import type { GatewayWithdrawalQuote, Source } from "@/types";
 
 export function OwnerDashboard() {
-  const { address, authenticate, openWallet } = useMaecenasWallet();
+  const { address, authenticate, openWallet, signGatewayWithdrawal } = useMaecenasWallet();
   const [wallet, setWallet] = useState("");
   const [dashboard, setDashboard] = useState<DashboardResponse>();
   const [sources, setSources] = useState<Source[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [withdrawal, setWithdrawal] = useState<GatewayWithdrawalQuote>();
+  const [withdrawalError, setWithdrawalError] = useState("");
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawalTx, setWithdrawalTx] = useState("");
 
   async function load(address: string) {
     setBusy(true);
@@ -23,10 +34,38 @@ export function OwnerDashboard() {
       const [nextDashboard, ownerSources] = await Promise.all([getDashboard(address), getOwnerSources(address)]);
       setDashboard(nextDashboard);
       setSources(ownerSources.sources);
+      if (nextDashboard.paymentMode === "real") {
+        try {
+          setWithdrawal(await getGatewayWithdrawalQuote(address));
+        } catch (cause) {
+          setWithdrawalError(cause instanceof Error ? cause.message : "Could not load Circle Gateway balance");
+        }
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load contributor treasury");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function withdraw() {
+    if (!withdrawal?.canWithdraw || !withdrawal.burnIntent || !wallet) return;
+    setWithdrawing(true);
+    setWithdrawalError("");
+    try {
+      const authenticatedWallet = await authenticate();
+      const signature = await signGatewayWithdrawal(withdrawal.burnIntent);
+      const result = await withdrawGatewayBalance({
+        walletAddress: authenticatedWallet,
+        burnIntent: withdrawal.burnIntent,
+        signature
+      });
+      setWithdrawalTx(result.txHash);
+      await load(authenticatedWallet);
+    } catch (cause) {
+      setWithdrawalError(cause instanceof Error ? cause.message : "Gateway withdrawal failed");
+    } finally {
+      setWithdrawing(false);
     }
   }
 
@@ -35,6 +74,8 @@ export function OwnerDashboard() {
       setWallet("");
       setDashboard(undefined);
       setSources([]);
+      setWithdrawal(undefined);
+      setWithdrawalTx("");
       return;
     }
 
@@ -103,6 +144,44 @@ export function OwnerDashboard() {
               }
             />
           </dl>
+
+          {dashboard.paymentMode === "real" && withdrawal ? (
+            <section className="roman-panel mt-5 p-5 sm:p-7">
+              <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Circle Gateway withdrawal</p>
+                  <p className="mt-2 font-mono text-sm text-cream">
+                    {withdrawal.balanceUSDC} USDC available · {withdrawal.feeUSDC} USDC estimated fee
+                  </p>
+                  {!withdrawal.canWithdraw ? (
+                    <p className="mt-2 text-xs text-muted">
+                      Withdrawal becomes available at {withdrawal.minimumBalanceUSDC ?? "a positive balance"} USDC.
+                    </p>
+                  ) : null}
+                  {withdrawalTx ? (
+                    <a
+                      href={arcExplorerTxUrl(withdrawalTx)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex items-center gap-1 font-mono text-xs text-gold hover:text-cream"
+                    >
+                      {shortenTxHash(withdrawalTx)} <ArrowUpRight size={12} />
+                    </a>
+                  ) : null}
+                  {withdrawalError ? <p className="mt-2 text-xs text-danger">{withdrawalError}</p> : null}
+                </div>
+                <button
+                  type="button"
+                  disabled={!withdrawal.canWithdraw || withdrawing}
+                  onClick={withdraw}
+                  className="roman-button inline-flex min-h-11 items-center justify-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {withdrawing ? <LoaderCircle className="animate-spin" size={15} /> : <WalletCards size={15} />}
+                  {withdrawing ? "Withdrawing" : `Withdraw ${withdrawal.amountUSDC} USDC`}
+                </button>
+              </div>
+            </section>
+          ) : null}
 
           <section className="roman-panel mt-5 p-5 sm:p-7">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Contributor assets</p>

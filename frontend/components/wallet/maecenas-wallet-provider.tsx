@@ -29,12 +29,13 @@ import {
   createCirclePaymentPayload,
   type X402TypedData
 } from "@/lib/circle-payment";
+import { signCircleGatewayWithdrawal } from "@/lib/circle-withdrawal";
 import {
   dynamicClient,
   isDynamicConfigured
 } from "@/lib/dynamic-client";
 import { signSourceOwnership as createSourceAttestation } from "@/lib/source-attestation";
-import type { SearchPaymentIntentResponse } from "@/types";
+import type { GatewayBurnIntent, SearchPaymentIntentResponse } from "@/types";
 import { DynamicWalletDialog } from "@/components/wallet/dynamic-wallet-dialog";
 
 type PaymentRequired = NonNullable<SearchPaymentIntentResponse["paymentRequired"]>;
@@ -48,6 +49,7 @@ type MaecenasWalletContextValue = {
   isReady: boolean;
   logout: () => Promise<void>;
   openWallet: () => void;
+  signGatewayWithdrawal: (burnIntent: GatewayBurnIntent) => Promise<string>;
   signSourceOwnership: (sourceUrl: string) => Promise<string>;
 };
 
@@ -153,6 +155,15 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     );
   }, [requireWallet]);
 
+  const signGatewayWithdrawal = useCallback(async (burnIntent: GatewayBurnIntent) => {
+    const account = requireWallet();
+    const walletClient = await createWalletClientForWalletAccount(
+      { walletAccount: account },
+      dynamicClient
+    );
+    return signCircleGatewayWithdrawal(walletClient, burnIntent);
+  }, [requireWallet]);
+
   const handleLogout = useCallback(async () => {
     await logout(dynamicClient);
     clearWalletSession();
@@ -168,6 +179,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     isReady: initStatus === "finished",
     logout: handleLogout,
     openWallet: () => setWalletOpen(true),
+    signGatewayWithdrawal,
     signSourceOwnership
   }), [
     address,
@@ -175,6 +187,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     createPaymentPayload,
     handleLogout,
     initStatus,
+    signGatewayWithdrawal,
     signSourceOwnership
   ]);
 

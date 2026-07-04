@@ -181,3 +181,35 @@ export type SearchPaymentResponse = {
   amountUSDC: string;
   paymentMode: "mock" | "real";
 };
+
+export type GatewayTransferSpec = {
+  version: number;
+  sourceDomain: number;
+  destinationDomain: number;
+  sourceContract: `0x${string}`;
+  destinationContract: `0x${string}`;
+  sourceToken: `0x${string}`;
+  destinationToken: `0x${string}`;
+  sourceDepositor: `0x${string}`;
+  destinationRecipient: `0x${string}`;
+  sourceSigner: `0x${string}`;
+  destinationCaller: `0x${string}`;
+  value: string;
+  salt: `0x${string}`;
+  hookData: `0x${string}`;
+};
+
+export type GatewayBurnIntent = {
+  maxBlockHeight: string;
+  maxFee: string;
+  spec: GatewayTransferSpec;
+};
+
+export type GatewayWithdrawalQuote = {
+  canWithdraw: boolean;
+  balanceUSDC: string;
+  feeUSDC: string;
+  amountUSDC: string;
+  minimumBalanceUSDC?: string;
+  burnIntent?: GatewayBurnIntent;
+};
