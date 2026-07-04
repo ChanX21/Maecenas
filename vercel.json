@@ -10,7 +10,7 @@
       "entrypoint": "server.ts",
       "routes": [
         {
-          "src": "/api/backend(.*)",
+          "src": "/api/backend/(.*)",
           "transforms": [
             {
               "type": "request.path",
