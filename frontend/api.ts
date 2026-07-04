@@ -5,6 +5,7 @@ import type {
   SearchPaymentIntentResponse,
   SearchPaymentResponse,
   Source,
+  TraceEvent,
   Usage
 } from "@/types";
 
@@ -203,5 +204,6 @@ export async function getResearchRun(runId: string, sessionId: string) {
     answerId?: string;
     runId?: string;
     status: "completed" | "processing" | "failed";
+    events?: TraceEvent[];
   }>(`/api/research/runs/${encodeURIComponent(runId)}?sessionId=${encodeURIComponent(sessionId)}`);
 }

@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { createHmac, timingSafeEqual } from "crypto";
 import { URL } from "url";
 import { runResearchAgent } from "@/agent/research-agent";
-import { enqueueResearch, researchQueueStatus } from "@/agent/research-worker";
+import { activeEvents, enqueueResearch, researchQueueStatus } from "@/agent/research-worker";
 import { AgentError } from "@/agent/ai";
 import {
   beginResearch,
@@ -462,9 +462,11 @@ async function routeRequest(context: RouteContext) {
     const run = getResearchRunStatus(researchRunMatch[1], sessionId);
     if (!run) return sendJson(response, 404, { error: "Research run not found" });
     if (run.status === "completed" && run.answer) return sendResearchResponse(response, run.answer);
+    const events = activeEvents.get(researchRunMatch[1]) ?? [];
     return sendJson(response, run.status === "failed" ? 500 : 202, {
       runId: researchRunMatch[1],
       status: run.status,
+      events,
       error: run.status === "failed" ? "RESEARCH_FAILED" : undefined
     });
   }

@@ -89,3 +89,37 @@ a {
     background-position: 200% center;
   }
 }
+
+/* Custom Magical Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(141, 216, 168, 0.2); /* gold with low opacity */
+  border-radius: 8px;
+  border: 1px solid rgba(227, 231, 226, 0.05);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(141, 216, 168, 0.5); /* brighter on hover */
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-resizer {
+  background: transparent;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(141, 216, 168, 0.3) transparent;
+}

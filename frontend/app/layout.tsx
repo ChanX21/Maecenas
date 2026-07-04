@@ -72,6 +72,22 @@ export default function RootLayout({
             </div>
           </header>
           {children}
+          <footer className="border-t border-marble/10 mt-16">
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
+              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-dim">
+                © {new Date().getFullYear()} Maecenas · Research Funding Protocol
+              </p>
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-marble/10 bg-ink-2 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
+                  <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
+                  Built on Arc
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-gold/20 bg-gold/5 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-gold">
+                  Powered by Circle
+                </span>
+              </div>
+            </div>
+          </footer>
         </div>
       </body>
     </html>
