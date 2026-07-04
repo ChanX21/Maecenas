@@ -8,9 +8,11 @@
     "start": "tsx server.ts",
     "seed": "tsx scripts/seed.ts",
     "source:review": "tsx scripts/review-source.ts",
+    "gateway:deposit": "tsx scripts/gateway-deposit.ts",
+    "gateway:balance": "tsx scripts/gateway-deposit.ts --check",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "test": "tsx --test test/backend.test.ts",
+    "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

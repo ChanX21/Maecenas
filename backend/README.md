@@ -96,6 +96,35 @@ wallet, signing secret, or public URL configuration is missing.
 Research requires `OPENAI_API_KEY`; `OPENAI_MODEL` defaults to `gpt-5-mini`.
 Without a key the API returns `503 AI_NOT_CONFIGURED` and does not consume quota.
 
+### Gateway funding
+
+The agent wallet must have USDC available in Circle Gateway before real evidence
+purchases can succeed.
+
+```bash
+# Read-only balance check
+npm run gateway:balance
+
+# Deposit 5 USDC, or another explicit amount
+npm run gateway:deposit -- 5
+```
+
+### Live ledger semantics
+
+`GET /api/leaderboard` and `GET /api/dashboard` read current database state and
+return `Cache-Control: no-store`. Records are isolated by the active
+`PAYMENT_MODE`:
+
+- `mock` reports only completed mock receipts.
+- `real` reports only successfully paid Circle Gateway receipts.
+- Pending and failed receipts never contribute to payout totals.
+- Registered source owners and contributors who actually received a completed
+  payment are reported separately.
+
+The endpoints are fresh on every request. They do not push updates to an already
+open browser page; the client must reload, poll, or subscribe to a future event
+stream for continuous updates.
+
 ## Production Notes
 
 Deployment requirements:

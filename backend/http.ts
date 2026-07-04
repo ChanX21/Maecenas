@@ -4,6 +4,7 @@ import { URL } from "url";
 import { runResearchAgent } from "@/agent/research-agent";
 import { activeEvents, enqueueResearch, researchQueueStatus } from "@/agent/research-worker";
 import { AgentError } from "@/agent/ai";
+import { buildLeaderboard, completedReceipts, type PaymentMode } from "@/analytics/leaderboard";
 import {
   beginResearch,
   completeResearch,
@@ -502,9 +503,11 @@ async function routeRequest(context: RouteContext) {
     const wallet = requireWallet(url.searchParams.get("wallet"));
     requireWalletAuth(request, wallet);
     const db = await readDb();
+    const paymentMode = currentPaymentMode();
     const sources = db.sources.filter((source) => !wallet || source.walletAddress.toLowerCase() === wallet);
     const sourceIds = new Set(sources.map((source) => source.id));
-    const receipts = db.receipts.filter((receipt) => sourceIds.has(receipt.sourceId));
+    const receipts = completedReceipts(db.receipts, paymentMode)
+      .filter((receipt) => sourceIds.has(receipt.sourceId));
     const topSource = sources
       .map((source) => ({
         source,
@@ -513,6 +516,7 @@ async function routeRequest(context: RouteContext) {
       .sort((a, b) => Number(b.earnedUSDC) - Number(a.earnedUSDC))[0];
 
     return sendJson(response, 200, {
+      paymentMode,
       wallet,
       totalSourcesRegistered: sources.length,
       totalCitationsReceived: receipts.length,
@@ -523,41 +527,11 @@ async function routeRequest(context: RouteContext) {
   }
 
   if (method === "GET" && path === "/api/leaderboard") {
-    const db = await readDb();
-    const owners = new Set(db.sources.map((source) => source.walletAddress.toLowerCase()));
-    const topEarningSources = db.sources
-      .map((source) => {
-        const receipts = db.receipts.filter((receipt) => receipt.sourceId === source.id);
-        return {
-          sourceId: source.id,
-          title: source.title,
-          authorName: source.authorName,
-          citations: receipts.length,
-          earnedUSDC: sumUSDC(receipts.map((receipt) => receipt.amountUSDC))
-        };
-      })
-      .sort((a, b) => Number(b.earnedUSDC) - Number(a.earnedUSDC))
-      .slice(0, 8);
-
-    return sendJson(response, 200, {
-      metrics: {
-        sourcesRegistered: db.sources.length,
-        sourceOwners: owners.size,
-        researchQuestionsAnswered: db.answers.length,
-        paidEvidenceUnlocks: db.receipts.length,
-        totalTestUSDCDistributed: sumUSDC(db.receipts.map((receipt) => receipt.amountUSDC)),
-        questionsAnswered: db.answers.length,
-        freeSearchesUsed: db.userUsages.reduce((total, usage) => total + usage.freeSearchesUsed, 0),
-        paidSearchesCompleted: db.userUsages.reduce((total, usage) => total + usage.paidSearchesUsed, 0),
-        paidSearchRevenueUSDC: sumUSDC(
-          db.searchPayments.filter((payment) => payment.usedForAnswerId).map((payment) => payment.amountUSDC)
-        ),
-        sourcePayoutsUSDC: sumUSDC(db.receipts.map((receipt) => receipt.amountUSDC)),
-        paidCitations: db.receipts.length
-      },
-      topEarningSources,
-      recentPaymentStream: db.receipts.slice(0, 12)
-    });
+    return sendJson(
+      response,
+      200,
+      buildLeaderboard(await readDb(), currentPaymentMode())
+    );
   }
 
   return sendJson(response, 404, { error: "Not found" });
@@ -625,6 +599,10 @@ function requireSessionId(value: unknown): string {
     throw new HttpError(400, "MISSING_SESSION_ID", "sessionId must be 8-128 letters, numbers, underscores, or hyphens");
   }
   return sessionId;
+}
+
+function currentPaymentMode(): PaymentMode {
+  return process.env.PAYMENT_MODE === "real" ? "real" : "mock";
 }
 
 function requireWallet(value: unknown): string {
@@ -764,6 +742,7 @@ function enforceRateLimit(request: IncomingMessage, response: ServerResponse, sc
 function sendJson(response: ServerResponse, status: number, data: unknown) {
   response.statusCode = status;
   response.setHeader("Content-Type", "application/json");
+  response.setHeader("Cache-Control", "no-store");
   response.end(status === 204 ? undefined : JSON.stringify(data));
 }
 
