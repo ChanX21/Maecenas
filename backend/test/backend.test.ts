@@ -56,6 +56,29 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     });
     assert.equal(authentication.response.status, 200);
     walletAuth = authentication.body.token;
+
+    const earlyPaidIntent = await store.createSearchPaymentIntent(sessionId, walletAddress, true);
+    const earlyPaidPayment = await store.confirmSearchPayment({
+      paymentIntentId: earlyPaidIntent.id,
+      sessionId,
+      walletAddress,
+      paymentProof: "mock_early_paid_search"
+    });
+    const earlyPaidRun = await store.beginResearch({
+      sessionId,
+      walletAddress,
+      searchPaymentId: earlyPaidPayment.id,
+      clientRequestId: "request_early_paid",
+      question: "Use wallet funding before consuming a patron grant",
+      strategy: "balanced"
+    });
+    assert.equal(earlyPaidRun.kind, "started");
+    if (earlyPaidRun.kind === "started") {
+      assert.equal(earlyPaidRun.paymentType, "user_paid");
+      await store.failResearch(earlyPaidRun.runId);
+    }
+    assert.equal((await store.getUsageBySession(sessionId))?.freeSearchesUsed, 0);
+
     const sourceUrl = "https://example.org/independent-nanopayment-evidence";
     const ownershipAttestation = await account.signMessage({
       message: [

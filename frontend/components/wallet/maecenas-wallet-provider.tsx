@@ -10,7 +10,12 @@ import {
   useState
 } from "react";
 import { createWaasWalletAccounts, getChainsMissingWaasWalletAccounts } from "@dynamic-labs-sdk/client/waas";
-import { logout, signMessage } from "@dynamic-labs-sdk/client";
+import {
+  getNetworksData,
+  logout,
+  signMessage,
+  switchActiveNetwork
+} from "@dynamic-labs-sdk/client";
 import type { EvmWalletAccount } from "@dynamic-labs-sdk/evm";
 import { createWalletClientForWalletAccount } from "@dynamic-labs-sdk/evm/viem";
 import {
@@ -27,6 +32,7 @@ import {
 } from "@/lib/browser-session";
 import {
   createCirclePaymentPayload,
+  ensureCircleGatewayFunds,
   type X402TypedData
 } from "@/lib/circle-payment";
 import { signCircleGatewayWithdrawal } from "@/lib/circle-withdrawal";
@@ -45,6 +51,7 @@ type MaecenasWalletContextValue = {
   authenticate: () => Promise<string>;
   closeWallet: () => void;
   createPaymentPayload: (paymentRequired: PaymentRequired) => Promise<unknown>;
+  ensureGatewayFunds: (amountUSDC: string) => Promise<void>;
   isConfigured: boolean;
   isReady: boolean;
   logout: () => Promise<void>;
@@ -155,6 +162,33 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     );
   }, [requireWallet]);
 
+  const ensureGatewayFunds = useCallback(async (amountUSDC: string) => {
+    const account = requireWallet();
+    const arcNetwork = getNetworksData(dynamicClient).find(
+      (network) =>
+        network.chain === "EVM" &&
+        (network.networkId === "5042002" ||
+          network.networkId === "evm-5042002" ||
+          network.networkId.endsWith("-5042002"))
+    );
+    if (!arcNetwork) {
+      throw new Error("Arc Testnet must be enabled in the Dynamic environment");
+    }
+    await switchActiveNetwork(
+      { networkId: arcNetwork.networkId, walletAccount: account },
+      dynamicClient
+    );
+    const walletClient = await createWalletClientForWalletAccount(
+      { walletAccount: account },
+      dynamicClient
+    );
+    await ensureCircleGatewayFunds(
+      walletClient,
+      account.address as Address,
+      amountUSDC
+    );
+  }, [requireWallet]);
+
   const signGatewayWithdrawal = useCallback(async (burnIntent: GatewayBurnIntent) => {
     const account = requireWallet();
     const walletClient = await createWalletClientForWalletAccount(
@@ -175,6 +209,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     authenticate,
     closeWallet: () => setWalletOpen(false),
     createPaymentPayload,
+    ensureGatewayFunds,
     isConfigured: isDynamicConfigured,
     isReady: initStatus === "finished",
     logout: handleLogout,
@@ -185,6 +220,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     address,
     authenticate,
     createPaymentPayload,
+    ensureGatewayFunds,
     handleLogout,
     initStatus,
     signGatewayWithdrawal,
