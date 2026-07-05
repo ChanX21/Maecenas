@@ -1,26 +1,18 @@
 import Link from "next/link";
 import {
-  ArrowUpRight,
   BookOpenCheck,
   CircleDollarSign,
   FileCheck2,
   Landmark,
   Scale,
   SearchCheck,
-  UsersRound
+  UsersRound,
+  ArrowUpRight
 } from "lucide-react";
-import { getLeaderboard } from "@/api";
 import { ResearchPromptBox } from "@/components/research-prompt-box";
-import { SettlementProof } from "@/components/transaction-proof-link";
-import { citationPaymentStatusLabel } from "@/lib/arc-explorer";
+import { LiveLedgerMetrics, LiveLedgerStream } from "@/components/live-ledger";
 
-export const dynamic = "force-dynamic";
-
-export default async function HomePage() {
-  const ledger = await getLeaderboard().catch(() => null);
-  const metrics = ledger?.metrics;
-  const capitalLabel = ledger?.paymentMode === "real" ? "Gateway USDC credited" : "Test capital recorded";
-
+export default function HomePage() {
   return (
     <main className="home-grid min-h-[calc(100vh-65px)] px-4 pb-16 pt-14 sm:px-6 lg:px-8">
       <section className="mx-auto max-w-4xl text-center">
@@ -39,10 +31,7 @@ export default async function HomePage() {
       </section>
 
       <section className="mx-auto mt-5 grid max-w-7xl overflow-hidden rounded-xl border border-marble/10 bg-panel/65 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric value={metrics?.fundedCommissions ?? "—"} label="Funded commissions" />
-        <Metric value={metrics?.paidEvidenceUnlocks ?? "—"} label="Evidence unlocks" />
-        <Metric value={metrics?.contributorsRewarded ?? "—"} label="Contributors rewarded" />
-        <Metric value={metrics ? `${metrics.totalUSDCDistributed} USDC` : "—"} label={capitalLabel} />
+        <LiveLedgerMetrics />
       </section>
 
       <section className="mx-auto mt-5 grid max-w-7xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
@@ -62,37 +51,7 @@ export default async function HomePage() {
               View ledger <ArrowUpRight size={12} />
             </Link>
           </div>
-          <div className="mt-5 divide-y divide-marble/10 border-y border-marble/10">
-            {ledger?.recentPaymentStream.length ? (
-              ledger.recentPaymentStream.slice(0, 3).map((receipt) => (
-                <div key={receipt.id} className="grid gap-2 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm text-cream">{receipt.sourceTitle}</p>
-                    <p className="mt-1 font-mono text-[10px] uppercase text-dim">
-                      Evidence funded · {receipt.amountUSDC} USDC
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-start gap-2 sm:items-end">
-                    <span className="font-mono text-[10px] uppercase text-gold">
-                      {citationPaymentStatusLabel(receipt)}
-                    </span>
-                    <SettlementProof
-                      receipt={receipt}
-                      className="font-mono text-[10px] normal-case text-muted"
-                      linkClassName="inline-flex items-center gap-1 font-mono text-[10px] text-gold hover:text-cream"
-                    />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-10 text-center">
-                <p className="text-sm text-muted">The ledger is ready for its first funded citation.</p>
-                <Link href="/sources" className="mt-3 inline-flex items-center gap-1 font-mono text-[10px] uppercase text-gold">
-                  Explore the archive <ArrowUpRight size={12} />
-                </Link>
-              </div>
-            )}
-          </div>
+          <LiveLedgerStream />
         </article>
       </section>
 
@@ -103,15 +62,6 @@ export default async function HomePage() {
         <Pillar icon={<CircleDollarSign size={17} />} title="Evidence-first" copy="Useful sources earn value and attribution." />
       </section>
     </main>
-  );
-}
-
-function Metric({ value, label }: { value: string | number; label: string }) {
-  return (
-    <div className="border-b border-marble/10 px-5 py-5 text-center last:border-b-0 sm:border-b-0 sm:border-r sm:[&:nth-child(2)]:border-r-0 lg:[&:nth-child(2)]:border-r lg:last:border-r-0">
-      <p className="font-mono text-xl text-gold sm:text-2xl">{value}</p>
-      <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">{label}</p>
-    </div>
   );
 }
 
