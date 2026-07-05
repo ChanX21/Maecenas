@@ -752,11 +752,18 @@ function ipHash(request: IncomingMessage): string | undefined {
 
 function setCorsHeaders(request: IncomingMessage, response: ServerResponse) {
   const requestOrigin = request.headers.origin;
-  const configuredOrigin = process.env.CORS_ORIGIN;
+  const configuredOrigins = (process.env.CORS_ORIGIN ?? "")
+    .split(",")
+    .map((origin) => origin.trim().replace(/\/$/, ""))
+    .filter(Boolean);
   const isLocalDevOrigin = requestOrigin ? /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(requestOrigin) : false;
-  const allowedOrigin = configuredOrigin ?? (isLocalDevOrigin && requestOrigin ? requestOrigin : "http://localhost:3000");
+  const allowedOrigin = requestOrigin
+    && (configuredOrigins.includes(requestOrigin) || (configuredOrigins.length === 0 && isLocalDevOrigin))
+    ? requestOrigin
+    : undefined;
 
-  response.setHeader("Access-Control-Allow-Origin", allowedOrigin);
+  if (allowedOrigin) response.setHeader("Access-Control-Allow-Origin", allowedOrigin);
+  response.setHeader("Vary", "Origin");
   response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   response.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,x-payment-proof,PAYMENT-SIGNATURE");
 }

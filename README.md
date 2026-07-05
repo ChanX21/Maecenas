@@ -278,8 +278,8 @@ NEXT_PUBLIC_APP_URL=https://maecenas.vercel.app
 NEXT_PUBLIC_API_BASE_URL=https://maecenas.onrender.com
 
 # Backend
-CORS_ORIGIN=https://maecenas.vercel.app
-APP_ORIGIN=https://maecenas.vercel.app
+CORS_ORIGIN=https://www.maecenas.in,https://maecenas.in,https://maecenas.vercel.app
+APP_ORIGIN=https://www.maecenas.in
 PUBLIC_BACKEND_URL=https://maecenas.onrender.com
 TRUST_PROXY=true
 ```
