@@ -490,6 +490,9 @@ async function routeRequest(context: RouteContext) {
             amountUSDC: payment.amountUSDC,
             status: payment.status,
             paymentMode: payment.paymentMode,
+            protocol: "x402",
+            network: `eip155:${process.env.ARC_CHAIN_ID || "5042002"}`,
+            recipientWallet: process.env.MAECENAS_TREASURY_WALLET_ADDRESS,
             paymentId: payment.paymentId,
             txHash: payment.txHash,
             paidAt: payment.paidAt

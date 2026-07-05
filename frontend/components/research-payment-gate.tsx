@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, WalletCards } from "lucide-react";
+import { Check, FileKey2, Landmark, WalletCards } from "lucide-react";
 
 type ResearchPaymentGateProps = {
   evidenceBudgetUSDC: string;
@@ -40,6 +40,19 @@ export function ResearchPaymentGate({
                 ? `${priceUSDC} USDC unlocks this research run. The ${evidenceBudgetUSDC} USDC evidence budget is separate and limits what the agent may pay selected sources.`
                 : `Test mode: no real USDC will move. Confirm to simulate the ${priceUSDC} USDC access payment, create a demo receipt, and start this research run.`}
             </p>
+            {isRealPayment ? (
+              <div className="mt-4 flex flex-wrap gap-2 font-mono text-[10px] uppercase text-muted">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-marble/10 px-2 py-1">
+                  <span className="text-gold">402</span> Payment required
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-marble/10 px-2 py-1">
+                  <FileKey2 size={11} className="text-gold" /> EIP-712 authorization
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-marble/10 px-2 py-1">
+                  <Landmark size={11} className="text-gold" /> Circle Gateway receipt
+                </span>
+              </div>
+            ) : null}
           </div>
           <motion.button
             type="button"
@@ -51,7 +64,7 @@ export function ResearchPaymentGate({
             <Check size={15} />
             {isWalletConnected
               ? isRealPayment
-                ? "Pay and start"
+                ? `Pay ${priceUSDC} USDC via x402`
                 : "Start test run"
               : "Connect wallet"}
           </motion.button>

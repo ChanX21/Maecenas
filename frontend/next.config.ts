@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
         crypto: "node:crypto",
       };
     }
+    config.resolve.fallback = { ...config.resolve.fallback, crypto: false };
     return config;
   },
 };

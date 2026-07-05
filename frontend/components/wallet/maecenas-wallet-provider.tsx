@@ -62,6 +62,22 @@ type MaecenasWalletContextValue = {
 
 const MaecenasWalletContext = createContext<MaecenasWalletContextValue | null>(null);
 
+function isArcTestnetNetwork(network: {
+  chain: string;
+  displayName?: string;
+  name?: string;
+  networkId: string;
+  testnet?: boolean;
+}) {
+  if (network.chain !== "EVM") return false;
+  const haystack = [
+    network.networkId,
+    network.name ?? "",
+    network.displayName ?? ""
+  ].join(" ").toLowerCase();
+  return haystack.includes("5042002") || haystack.includes("arc testnet") || haystack.includes("arc-testnet");
+}
+
 export function MaecenasWalletProvider({ children }: { children: React.ReactNode }) {
   const { data: accounts = [] } = useGetWalletAccounts();
   const { data: initStatus, error: initError } = useInitStatus();
@@ -164,15 +180,18 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
 
   const ensureGatewayFunds = useCallback(async (amountUSDC: string) => {
     const account = requireWallet();
-    const arcNetwork = getNetworksData(dynamicClient).find(
-      (network) =>
-        network.chain === "EVM" &&
-        (network.networkId === "5042002" ||
-          network.networkId === "evm-5042002" ||
-          network.networkId.endsWith("-5042002"))
-    );
+    const networks = getNetworksData(dynamicClient);
+    const arcNetwork = networks.find(isArcTestnetNetwork);
     if (!arcNetwork) {
-      throw new Error("Arc Testnet must be enabled in the Dynamic environment");
+      const availableEvmNetworks = networks
+        .filter((network) => network.chain === "EVM")
+        .map((network) => `${network.displayName || network.name} (${network.networkId})`)
+        .join(", ");
+      throw new Error(
+        availableEvmNetworks
+          ? `Arc Testnet is missing from this Dynamic environment. EVM networks returned: ${availableEvmNetworks}`
+          : "Dynamic returned no EVM networks. Enable EVM and Arc Testnet in this environment."
+      );
     }
     await switchActiveNetwork(
       { networkId: arcNetwork.networkId, walletAccount: account },

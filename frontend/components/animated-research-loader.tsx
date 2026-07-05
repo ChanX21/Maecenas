@@ -6,7 +6,8 @@ import { Coins, Cpu, CheckCircle2, ChevronRight } from "lucide-react";
 import type { TraceEvent } from "@/types";
 
 export function AnimatedResearchLoader({ stage, events = [] }: { stage: string; events?: TraceEvent[] }) {
-  const isPayment = stage.toLowerCase().includes("payment") || stage.toLowerCase().includes("wallet");
+  const normalizedStage = stage.toLowerCase();
+  const isPayment = ["payment", "wallet", "gateway", "treasury", "x402"].some((word) => normalizedStage.includes(word));
   
   // Rotating text for research phase
   const researchPhrases = [
@@ -74,7 +75,7 @@ export function AnimatedResearchLoader({ stage, events = [] }: { stage: string; 
 
       <div className="flex flex-col gap-1 overflow-hidden">
         <p className={`font-mono text-[10px] uppercase tracking-widest ${isPayment ? "text-gold/80" : "text-dim"}`}>
-          {isPayment ? "Treasury protocol" : "Research envoy"}
+          {isPayment ? "x402 · Circle Gateway · Arc Testnet" : "Research envoy"}
         </p>
         <AnimatePresence mode="wait">
           <motion.p
