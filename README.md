@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://maecenas.vercel.app">Live application</a>
+  <a href="https://www.maecenas.in">Live application</a>
   ·
   <a href="https://maecenas.onrender.com/api/health">API health</a>
   ·
