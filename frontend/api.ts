@@ -137,6 +137,9 @@ export async function getAnswer(id: string) {
       amountUSDC: string;
       status: "pending" | "paid" | "failed" | "mock";
       paymentMode: "mock" | "real";
+      protocol: "x402";
+      network: string;
+      recipientWallet?: string;
       paymentId?: string;
       txHash?: string;
       paidAt?: string;

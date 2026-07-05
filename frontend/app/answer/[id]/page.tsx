@@ -55,10 +55,17 @@ export default async function AnswerPage({ params }: PageProps) {
             skipped={trace.budgetDecision.skippedSources.length}
           />
           {commissionPayment ? (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-marble/10 pt-4 font-mono text-xs">
-              <span className="text-muted">
-                Research commission · <span className="text-cream">{commissionPayment.amountUSDC} USDC</span>
-              </span>
+            <div className="mt-4 grid gap-3 border-t border-marble/10 pt-4 font-mono text-xs sm:grid-cols-[1fr_auto] sm:items-center">
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-muted">
+                <span><span className="text-gold">x402</span> research commission</span>
+                <span><span className="text-cream">{commissionPayment.amountUSDC} USDC</span></span>
+                <span>{commissionPayment.network}</span>
+                {commissionPayment.recipientWallet ? (
+                  <span title={commissionPayment.recipientWallet}>
+                    To {commissionPayment.recipientWallet.slice(0, 8)}…{commissionPayment.recipientWallet.slice(-6)}
+                  </span>
+                ) : null}
+              </div>
               <SettlementProof receipt={commissionPayment} />
             </div>
           ) : null}

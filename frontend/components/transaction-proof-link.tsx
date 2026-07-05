@@ -2,6 +2,7 @@ import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import {
   arcExplorerTxUrl,
+  circleGatewayPaymentUrl,
   getCitationSettlementHash,
   shortenTxHash
 } from "@/lib/arc-explorer";
@@ -66,6 +67,20 @@ export function SettlementProof({
   }
 
   if (receipt.paymentId) {
+    const gatewayUrl = circleGatewayPaymentUrl(receipt.paymentId);
+    if (gatewayUrl) {
+      return (
+        <a
+          href={gatewayUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={linkClassName}
+          title={`Verify x402 payment ${receipt.paymentId} with Circle Gateway`}
+        >
+          Verify x402 with Circle <ArrowUpRight size={11} />
+        </a>
+      );
+    }
     return <span className={className}>Gateway payment · {receipt.paymentId}</span>;
   }
 

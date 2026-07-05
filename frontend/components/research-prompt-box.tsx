@@ -141,9 +141,12 @@ export function ResearchPromptBox() {
       }
       const paymentPayload =
         intent.paymentMode === "real"
-          ? await createPaymentPayload(intent.paymentRequired!)
+          ? await (async () => {
+              setStage("Signing x402 EIP-712 authorization...");
+              return createPaymentPayload(intent.paymentRequired!);
+            })()
           : undefined;
-      setStage(intent.paymentMode === "real" ? "Settling with Circle Gateway..." : "Recording test settlement...");
+      setStage(intent.paymentMode === "real" ? "Submitting x402 payment to Circle Gateway..." : "Recording test settlement...");
       const payment = await submitSearchPaymentProof({
         paymentIntentId: intent.paymentIntentId,
         sessionId,
