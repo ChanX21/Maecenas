@@ -19,12 +19,17 @@ function validateEnvironment() {
   }
 }
 
+let startupStage = "validating environment";
 const readiness = (async () => {
   try {
     validateEnvironment();
+    startupStage = "initializing database";
     await initializeDatabase();
+    startupStage = "seeding database";
     await seedDatabase();
+    startupStage = "ready";
   } catch (error) {
+    startupStage = "failed";
     console.error(JSON.stringify({ level: "error", event: "backend_startup_failed", error: String(error) }));
     return error;
   }
@@ -42,6 +47,12 @@ const port = Number(process.env.PORT ?? process.env.BACKEND_PORT ?? 4000);
 const host = process.env.BACKEND_HOST ?? "0.0.0.0";
 
 createServer(async (request, response) => {
+  if (request.url?.split("?", 1)[0] === "/api/health" && startupStage !== "ready" && startupStage !== "failed") {
+    response.statusCode = 503;
+    response.setHeader("Content-Type", "application/json");
+    response.end(JSON.stringify({ ok: false, service: "maecenas-backend", startupStage }));
+    return;
+  }
   const startupError = await readiness;
   if (startupError) {
     console.error(JSON.stringify({

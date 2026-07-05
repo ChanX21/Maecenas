@@ -131,7 +131,17 @@ export async function registerSource(input: {
 }
 
 export async function getAnswer(id: string) {
-  return apiFetch<{ answer: Answer }>(`/api/answers/${id}`);
+  return apiFetch<{
+    answer: Answer;
+    commissionPayment?: {
+      amountUSDC: string;
+      status: "pending" | "paid" | "failed" | "mock";
+      paymentMode: "mock" | "real";
+      paymentId?: string;
+      txHash?: string;
+      paidAt?: string;
+    };
+  }>(`/api/answers/${id}`);
 }
 
 export async function getReceipt(id: string) {
@@ -194,11 +204,11 @@ export async function getUsage(sessionId: string, walletAddress?: string) {
   return apiFetch<Usage>(`/api/usage?${query}`);
 }
 
-export async function createSearchPaymentIntent(sessionId: string, walletAddress: string) {
+export async function createSearchPaymentIntent(sessionId: string, walletAddress: string, usePaidSearch = false) {
   return apiFetch<SearchPaymentIntentResponse>("/api/payments/search-intent", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId, walletAddress })
+    body: JSON.stringify({ sessionId, walletAddress, usePaidSearch })
   });
 }
 

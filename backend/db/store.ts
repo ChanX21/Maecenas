@@ -500,7 +500,7 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
     let budgetMicros: number;
     let searchPaymentId: string | undefined;
 
-    if (freeQuotaAvailable && sponsoredRemainingMicros > 0) {
+    if (!input.searchPaymentId && freeQuotaAvailable && sponsoredRemainingMicros > 0) {
       paymentType = "free_sponsored";
       const funded = parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01");
       budgetMicros = input.requestedBudgetUSDC
@@ -656,11 +656,15 @@ export async function getResearchRunStatus(runId: string, sessionId: string): Pr
   return { status: run.status, answer };
 }
 
-export async function createSearchPaymentIntent(sessionId: string, walletAddress: string): Promise<SearchPaymentIntent> {
+export async function createSearchPaymentIntent(
+  sessionId: string,
+  walletAddress: string,
+  allowWhileFree = false
+): Promise<SearchPaymentIntent> {
   return (await database()).transaction(async (rawTx) => {
     const tx = rawTx as Db;
     const usage = await getOrCreateUsageInTransaction(tx, sessionId, walletAddress);
-    if (usage.freeSearchesUsed < usage.freeSearchLimit) {
+    if (!allowWhileFree && usage.freeSearchesUsed < usage.freeSearchLimit) {
       throw new StoreError("FREE_QUOTA_AVAILABLE", "Free quota still available", 400);
     }
     const now = new Date();

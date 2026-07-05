@@ -4,7 +4,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { ShareAnswerButton } from "@/components/share-answer-button";
 import { AgentTrace } from "@/components/agent-trace";
 import { BudgetMeter } from "@/components/budget-meter";
-import { ReceiptRecordLinks } from "@/components/transaction-proof-link";
+import { ReceiptRecordLinks, SettlementProof } from "@/components/transaction-proof-link";
 import { citationPaymentStatusLabel } from "@/lib/arc-explorer";
 import { getAnswer, getSources } from "@/api";
 
@@ -16,13 +16,16 @@ type PageProps = {
 
 export default async function AnswerPage({ params }: PageProps) {
   const { id } = await params;
-  const [{ answer }, { sources }] = await Promise.all([getAnswer(id).catch(() => ({ answer: null })), getSources()]);
+  const [{ answer, commissionPayment }, { sources }] = await Promise.all([
+    getAnswer(id).catch(() => ({ answer: null, commissionPayment: undefined })),
+    getSources()
+  ]);
   if (!answer) notFound();
   const trace = answer.decisionTraceJson;
   const sourceById = new Map(sources.map((source) => [source.id, source]));
   const content = answer.contentJson;
-  const fundingLabel = answer.paymentType === "user_paid" ? "Patron-funded research" : "Maecenas grant";
-  const paymentLabel = trace.paymentMode === "mock" ? "Test treasury" : "Settled treasury";
+  const fundingLabel = answer.paymentType === "user_paid" ? "User-paid research" : "Maecenas grant";
+  const paymentLabel = trace.paymentMode === "mock" ? "Test treasury" : "Circle Gateway";
 
   return (
     <main className="home-grid min-h-[calc(100vh-65px)] px-4 py-10 sm:px-6 lg:px-8">
@@ -51,6 +54,14 @@ export default async function AnswerPage({ params }: PageProps) {
             purchased={trace.receipts.length}
             skipped={trace.budgetDecision.skippedSources.length}
           />
+          {commissionPayment ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-marble/10 pt-4 font-mono text-xs">
+              <span className="text-muted">
+                Research commission · <span className="text-cream">{commissionPayment.amountUSDC} USDC</span>
+              </span>
+              <SettlementProof receipt={commissionPayment} />
+            </div>
+          ) : null}
         </div>
 
         <article className="roman-panel mx-auto mt-5 max-w-4xl p-6 sm:p-10">

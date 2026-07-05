@@ -31,11 +31,13 @@ export function ResearchPromptBox() {
     address,
     authenticate,
     createPaymentPayload,
+    ensureGatewayFunds,
     openWallet
   } = useMaecenasWallet();
   const [question, setQuestion] = useState("");
   const [strategy, setStrategy] = useState<ResearchStrategy>("balanced");
   const [budgetUSDC, setBudgetUSDC] = useState("0.0050");
+  const [fundingMode, setFundingMode] = useState<"grant" | "wallet">("grant");
   const [sessionId, setSessionId] = useState("");
   const [usage, setUsage] = useState<Usage>();
   const [pendingRequest, setPendingRequest] = useState<ResearchRequest>();
@@ -51,6 +53,7 @@ export function ResearchPromptBox() {
       .then((nextUsage) => {
         setUsage(nextUsage);
         setPaymentRequired(nextUsage.requiresPayment);
+        if (nextUsage.requiresPayment) setFundingMode("wallet");
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Could not load research access"));
   }, []);
@@ -104,7 +107,7 @@ export function ResearchPromptBox() {
       budgetUSDC
     };
     setPendingRequest(request);
-    if (usage?.requiresPayment || paymentRequired) {
+    if (fundingMode === "wallet" || usage?.requiresPayment || paymentRequired) {
       setPaymentRequired(true);
       return;
     }
@@ -131,7 +134,11 @@ export function ResearchPromptBox() {
       setStage("Authenticating Dynamic wallet...");
       const wallet = await authenticate();
       setStage("Opening treasury request...");
-      const intent = await createSearchPaymentIntent(sessionId, wallet);
+      const intent = await createSearchPaymentIntent(sessionId, wallet, fundingMode === "wallet");
+      if (intent.paymentMode === "real") {
+        setStage("Checking Circle Gateway funds...");
+        await ensureGatewayFunds(intent.amountUSDC);
+      }
       const paymentPayload =
         intent.paymentMode === "real"
           ? await createPaymentPayload(intent.paymentRequired!)
@@ -182,6 +189,29 @@ export function ResearchPromptBox() {
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-marble/10 pt-5">
         <div className="flex flex-wrap items-center gap-2">
+          <div className="flex overflow-hidden rounded-md border border-marble/10 bg-ink-2 font-mono text-[11px]">
+            <button
+              type="button"
+              disabled={!usage?.freeSearchesRemaining}
+              onClick={() => {
+                setFundingMode("grant");
+                setPaymentRequired(false);
+              }}
+              className={`px-3 py-2 transition ${fundingMode === "grant" ? "bg-marble/10 text-cream" : "text-muted hover:text-cream"} disabled:cursor-not-allowed disabled:opacity-40`}
+            >
+              Patron grant
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFundingMode("wallet");
+                setPaymentRequired(false);
+              }}
+              className={`px-3 py-2 transition ${fundingMode === "wallet" ? "bg-gold/15 text-gold" : "text-muted hover:text-cream"}`}
+            >
+              Pay {usage?.paidSearchPriceUSDC ?? "0.01"} USDC
+            </button>
+          </div>
           <label className="flex items-center gap-2 rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted">
             Posture
             <select

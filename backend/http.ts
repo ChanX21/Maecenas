@@ -19,6 +19,7 @@ import {
   findSource,
   getOrCreateUsage,
   getResearchRunStatus,
+  getSearchPayment,
   getSearchPaymentIntent,
   listSources,
   readDb,
@@ -129,7 +130,6 @@ async function routeRequest(context: RouteContext) {
   const { method, path, response, url, request } = context;
 
   if (method === "GET" && path === "/api/health") {
-    const snapshot = await readDb();
     return sendJson(response, 200, {
       ok: true,
       service: "maecenas-backend",
@@ -137,12 +137,7 @@ async function routeRequest(context: RouteContext) {
       uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
       database: "supabase-postgres",
       paymentMode: process.env.PAYMENT_MODE === "real" ? "real" : "mock",
-      aiConfigured: Boolean(process.env.OPENAI_API_KEY),
-      records: {
-        sources: snapshot.sources.length,
-        answers: snapshot.answers.length,
-        receipts: snapshot.receipts.length
-      }
+      aiConfigured: Boolean(process.env.OPENAI_API_KEY)
     });
   }
 
@@ -326,7 +321,7 @@ async function routeRequest(context: RouteContext) {
     const sessionId = requireSessionId(body.sessionId);
     const walletAddress = requireWallet(body.walletAddress);
     requireWalletAuth(request, walletAddress);
-    const intent = await createSearchPaymentIntent(sessionId, walletAddress);
+    const intent = await createSearchPaymentIntent(sessionId, walletAddress, body.usePaidSearch === true);
     const recipientWallet = process.env.MAECENAS_TREASURY_WALLET_ADDRESS ?? "";
     const paymentRequired =
       intent.paymentMode === "real"
@@ -487,7 +482,20 @@ async function routeRequest(context: RouteContext) {
   if (method === "GET" && answerMatch) {
     const answer = await findAnswer(answerMatch[1]);
     if (!answer) return sendJson(response, 404, { error: "Answer not found" });
-    return sendJson(response, 200, { answer });
+    const payment = answer.searchPaymentId ? await getSearchPayment(answer.searchPaymentId) : undefined;
+    return sendJson(response, 200, {
+      answer,
+      commissionPayment: payment
+        ? {
+            amountUSDC: payment.amountUSDC,
+            status: payment.status,
+            paymentMode: payment.paymentMode,
+            paymentId: payment.paymentId,
+            txHash: payment.txHash,
+            paidAt: payment.paidAt
+          }
+        : undefined
+    });
   }
 
   const receiptMatch = path.match(/^\/api\/receipts\/([^/]+)$/);
