@@ -27,10 +27,10 @@ export function SourceCard({ source }: { source: Source }) {
         ))}
       </div>
       <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-4 font-mono text-xs">
-        <Link href={previewUrl} className="text-gold hover:text-gold-soft">
+        <Link href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-soft">
           Inspect record
         </Link>
-        <Link href={source.sourceUrl} className="inline-flex items-center gap-1 text-muted hover:text-cream">
+        <Link href={source.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-muted hover:text-cream">
           Visit source <ExternalLink size={13} />
         </Link>
       </div>
