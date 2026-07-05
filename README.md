@@ -5,6 +5,9 @@
 
 Evidence-grounded research with transparent budgets and source-owner receipts.
 
+<img width="1152" height="648" alt="Maecenas-flow" src="https://github.com/user-attachments/assets/599d1af2-608e-435e-914d-3e1453a42119" />
+
+
 ## Current Product
 
 - Five sponsored answers per anonymous browser session.
