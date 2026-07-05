@@ -130,7 +130,6 @@ async function routeRequest(context: RouteContext) {
   const { method, path, response, url, request } = context;
 
   if (method === "GET" && path === "/api/health") {
-    const snapshot = await readDb();
     return sendJson(response, 200, {
       ok: true,
       service: "maecenas-backend",
@@ -138,12 +137,7 @@ async function routeRequest(context: RouteContext) {
       uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
       database: "supabase-postgres",
       paymentMode: process.env.PAYMENT_MODE === "real" ? "real" : "mock",
-      aiConfigured: Boolean(process.env.OPENAI_API_KEY),
-      records: {
-        sources: snapshot.sources.length,
-        answers: snapshot.answers.length,
-        receipts: snapshot.receipts.length
-      }
+      aiConfigured: Boolean(process.env.OPENAI_API_KEY)
     });
   }
 
