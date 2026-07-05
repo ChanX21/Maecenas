@@ -28,6 +28,10 @@ export type X402TypedData = {
 export type X402TypedDataSigner = (typedData: X402TypedData) => Promise<Hex>;
 
 const arc = CHAIN_CONFIGS.arcTestnet;
+const arcRpcUrl =
+  process.env.NEXT_PUBLIC_ARC_RPC_URL ??
+  arc.rpcUrl ??
+  arc.chain.rpcUrls.default.http[0];
 const gatewayWalletAbi = [{
   type: "function",
   name: "deposit",
@@ -64,9 +68,12 @@ export async function ensureCircleGatewayFunds(
   if (available >= required) return;
 
   const depositAmount = required - available;
+  if (!arcRpcUrl) {
+    throw new Error("Arc Testnet RPC URL is missing from the frontend configuration");
+  }
   const publicClient = createPublicClient({
     chain: arc.chain,
-    transport: http(arc.rpcUrl)
+    transport: http(arcRpcUrl)
   });
   const walletBalance = await publicClient.readContract({
     address: arc.usdc,
