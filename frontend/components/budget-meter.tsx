@@ -42,16 +42,7 @@ export function BudgetMeter({ budgetUSDC, spentUSDC, considered, purchased, skip
         <Metric label="Deployed" value={<span className="text-gold"><AnimatedNumber value={spent} isUSDC /> USDC</span>} />
         <Metric label="Reserve" value={<><AnimatedNumber value={remaining} isUSDC /> USDC</>} detail={`${skipped} passed over`} />
       </dl>
-      
-      {/* Animated liquid progress bar */}
-      <div className="h-1.5 w-full bg-ink-2 overflow-hidden flex rounded-full border border-marble/10 shadow-inner">
-        <motion.div 
-          className="h-full bg-gold shadow-[0_0_10px_rgba(141,216,168,0.5)]"
-          initial={{ width: 0 }}
-          animate={{ width: `${progressPercent}%` }}
-          transition={{ type: "spring", bounce: 0.2, duration: 0.8 }}
-        />
-      </div>
+
     </div>
   );
 }

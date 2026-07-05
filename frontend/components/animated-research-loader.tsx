@@ -99,29 +99,32 @@ export function AnimatedResearchLoader({ stage, events = [] }: { stage: string; 
           animate={{ opacity: 1, height: "auto" }}
           className="mt-4 flex w-full flex-col gap-2 border-t border-white/5 pt-4"
         >
-          {events.map((event, idx) => (
-            <motion.div
-              key={event.id}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 * (events.length - idx) }}
-              className="flex items-start gap-2"
-            >
-              <div className="mt-0.5 shrink-0">
-                {event.status === "completed" ? (
-                  <CheckCircle2 size={14} className="text-gold" />
-                ) : event.status === "mock" ? (
-                  <CheckCircle2 size={14} className="text-marble/60" />
-                ) : (
-                  <ChevronRight size={14} className="text-dim" />
-                )}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-cream">{event.title}</span>
-                <span className="text-[10px] text-dim">{event.detail}</span>
-              </div>
-            </motion.div>
-          ))}
+          {events.slice(-3).map((event, idx, arr) => {
+            const isOldest = events.length > 3 && idx === 0;
+            return (
+              <motion.div
+                key={event.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: isOldest ? 0.4 : 1, x: 0, filter: isOldest ? "blur(1px)" : "blur(0px)" }}
+                transition={{ delay: 0.1 * (arr.length - idx) }}
+                className="flex items-start gap-2"
+              >
+                <div className="mt-0.5 shrink-0">
+                  {event.status === "completed" ? (
+                    <CheckCircle2 size={14} className="text-gold" />
+                  ) : event.status === "mock" ? (
+                    <CheckCircle2 size={14} className="text-marble/60" />
+                  ) : (
+                    <ChevronRight size={14} className="text-dim" />
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-cream">{event.title}</span>
+                  <span className="text-[10px] text-dim">{event.detail}</span>
+                </div>
+              </motion.div>
+            );
+          })}
         </motion.div>
       )}
     </motion.div>

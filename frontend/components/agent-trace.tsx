@@ -24,7 +24,7 @@ function TypewriterText({ text }: { text: string }) {
 export function AgentTrace({ events, scoredSources }: { events: TraceEvent[]; scoredSources?: ScoredSource[] }) {
   return (
     <div className="space-y-8">
-      <ol className="space-y-3">
+      <ol className="space-y-3 max-h-[300px] overflow-y-auto pr-3 custom-scrollbar">
         {events.map((event, i) => {
           const isPayment = event.title?.toLowerCase().includes("payment") || event.title?.toLowerCase().includes("receipt") || event.phase?.toLowerCase().includes("x402");
           

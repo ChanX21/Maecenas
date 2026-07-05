@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Instrument_Serif, IBM_Plex_Mono, Inter } from "next/font/google";
-import iconImg from "./icon.png";
 import { SessionStatus } from "@/components/session-status";
 import { AppWalletProvider } from "@/components/wallet/dynamic-provider";
 import { WalletButton } from "@/components/wallet/wallet-button";
@@ -12,7 +11,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Maecenas | Research Funding Protocol",
-  description: "Fund rigorous research. Reward the evidence behind it."
+  description: "Fund rigorous research. Reward the evidence behind it.",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 const serif = Instrument_Serif({
@@ -53,7 +55,7 @@ export default function RootLayout({
               <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
                 <Link href="/" className="flex items-center gap-3">
                   <Image 
-                    src={iconImg} 
+                    src="/icon.png" 
                     alt="Maecenas Logo" 
                     width={44} 
                     height={44} 
