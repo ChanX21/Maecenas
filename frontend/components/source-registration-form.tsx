@@ -35,6 +35,8 @@ export function SourceRegistrationForm() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  const [showToast, setShowToast] = useState(false);
+
   async function ensureWallet() {
     if (!address) {
       openWallet();
@@ -63,6 +65,8 @@ export function SourceRegistrationForm() {
       });
       setCreatedSource(source);
       setForm(initialForm);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 5000);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Evidence submission failed");
     } finally {
@@ -216,6 +220,22 @@ export function SourceRegistrationForm() {
         )}
         </AnimatePresence>
       </motion.aside>
+
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full border border-gold/30 bg-ink-2 px-6 py-3 shadow-[0_10px_40px_rgba(141,216,168,0.15)]"
+          >
+            <CheckCircle2 size={18} className="text-gold" />
+            <span className="font-mono text-xs uppercase tracking-wider text-cream">
+              Source added to Archive Pending
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
