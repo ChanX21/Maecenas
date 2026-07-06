@@ -1,4 +1,5 @@
 import { LeaderboardStats } from "@/components/leaderboard-stats";
+import { LedgerAutoRefresh } from "@/components/ledger-auto-refresh";
 import { RecentPaymentsFeed } from "@/components/recent-payments-feed";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getLeaderboard } from "@/api";
@@ -10,6 +11,7 @@ export default async function LeaderboardPage() {
 
   return (
     <main className="home-grid min-h-[calc(100vh-65px)] px-4 py-14 sm:px-6 lg:px-8">
+      <LedgerAutoRefresh />
       <SectionHeading
         eyebrow="The public ledger"
         title="Capital follows useful evidence."

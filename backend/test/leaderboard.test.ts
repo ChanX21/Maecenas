@@ -156,3 +156,17 @@ test("real leaderboard excludes mock, failed, and pending records", () => {
     ["source_b"]
   );
 });
+
+test("leaderboard orders completed receipts newest first", () => {
+  const older = receipt("receipt_older", "answer_real", "source_a", ownerA, "paid", "0.0001");
+  older.createdAt = "2026-01-01T00:00:00.000Z";
+  const newer = receipt("receipt_newer", "answer_real", "source_b", ownerB, "paid", "0.0002");
+  newer.createdAt = "2026-01-02T00:00:00.000Z";
+
+  const leaderboard = buildLeaderboard({ ...database, receipts: [older, newer] }, "real");
+
+  assert.deepEqual(
+    leaderboard.recentPaymentStream.map((item) => item.id),
+    ["receipt_newer", "receipt_older"]
+  );
+});
