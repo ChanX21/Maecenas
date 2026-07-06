@@ -37,7 +37,8 @@ export function buildLeaderboard(
   database: MaecenasDatabase,
   paymentMode: PaymentMode
 ) {
-  const receipts = completedReceipts(database.receipts, paymentMode);
+  const receipts = completedReceipts(database.receipts, paymentMode)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   const searchPayments = completedSearchPayments(
     database.searchPayments,
     paymentMode
