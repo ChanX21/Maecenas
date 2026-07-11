@@ -24,13 +24,14 @@ import {
   useOnEvent,
   useUser
 } from "@dynamic-labs-sdk/react-hooks";
-import type { Address } from "viem";
+import { http, type Address } from "viem";
 import { authenticateBackendWallet } from "@/lib/backend-wallet-auth";
 import {
   clearWalletSession,
   syncWalletAddress
 } from "@/lib/browser-session";
 import {
+  arcRpcUrl,
   createCirclePaymentPayload,
   ensureCircleGatewayFunds,
   type X402TypedData
@@ -61,6 +62,18 @@ type MaecenasWalletContextValue = {
 };
 
 const MaecenasWalletContext = createContext<MaecenasWalletContextValue | null>(null);
+
+function createArcWalletClient(walletAccount: EvmWalletAccount) {
+  return createWalletClientForWalletAccount(
+    {
+      walletAccount,
+      walletClientConfig: {
+        transport: http(arcRpcUrl)
+      } as never
+    },
+    dynamicClient
+  );
+}
 
 function isArcTestnetNetwork(network: {
   chain: string;
@@ -165,10 +178,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
 
   const createPaymentPayload = useCallback(async (paymentRequired: PaymentRequired) => {
     const account = requireWallet();
-    const walletClient = await createWalletClientForWalletAccount(
-      { walletAccount: account },
-      dynamicClient
-    );
+    const walletClient = await createArcWalletClient(account);
 
     return createCirclePaymentPayload(
       paymentRequired,
@@ -197,12 +207,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
       { networkId: arcNetwork.networkId, walletAccount: account },
       dynamicClient
     );
-    const walletClient = await createWalletClientForWalletAccount(
-      { walletAccount: account },
-      dynamicClient
-    );
     await ensureCircleGatewayFunds(
-      walletClient,
       account.address as Address,
       amountUSDC
     );
@@ -210,10 +215,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
 
   const signGatewayWithdrawal = useCallback(async (burnIntent: GatewayBurnIntent) => {
     const account = requireWallet();
-    const walletClient = await createWalletClientForWalletAccount(
-      { walletAccount: account },
-      dynamicClient
-    );
+    const walletClient = await createArcWalletClient(account);
     return signCircleGatewayWithdrawal(walletClient, burnIntent);
   }, [requireWallet]);
 
