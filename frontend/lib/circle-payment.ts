@@ -1,13 +1,9 @@
 import { BatchEvmScheme, CHAIN_CONFIGS } from "@circle-fin/x402-batching/client";
 import {
-  createPublicClient,
-  erc20Abi,
   formatUnits,
-  http,
   parseUnits,
   type Address,
-  type Hex,
-  type WalletClient
+  type Hex
 } from "viem";
 import type { SearchPaymentIntentResponse } from "@/types";
 
@@ -28,20 +24,11 @@ export type X402TypedData = {
 export type X402TypedDataSigner = (typedData: X402TypedData) => Promise<Hex>;
 
 const arc = CHAIN_CONFIGS.arcTestnet;
-const arcRpcUrl =
+export const arcRpcUrl =
   process.env.NEXT_PUBLIC_ARC_RPC_URL ??
   arc.rpcUrl ??
-  arc.chain.rpcUrls.default.http[0];
-const gatewayWalletAbi = [{
-  type: "function",
-  name: "deposit",
-  stateMutability: "nonpayable",
-  inputs: [
-    { name: "token", type: "address" },
-    { name: "value", type: "uint256" }
-  ],
-  outputs: []
-}] as const;
+  arc.chain.rpcUrls.default.http[0] ??
+  "https://rpc.testnet.arc.network";
 
 async function gatewayBalance(address: Address): Promise<bigint> {
   const response = await fetch("https://gateway-api-testnet.circle.com/v1/balances", {
@@ -58,66 +45,16 @@ async function gatewayBalance(address: Address): Promise<bigint> {
 }
 
 export async function ensureCircleGatewayFunds(
-  walletClient: WalletClient,
   address: Address,
   requiredUSDC: string
 ) {
-  if (!walletClient.account) throw new Error("Dynamic wallet account is unavailable");
   const required = parseUnits(requiredUSDC, 6);
   const available = await gatewayBalance(address);
   if (available >= required) return;
 
-  const depositAmount = required - available;
-  if (!arcRpcUrl) {
-    throw new Error("Arc Testnet RPC URL is missing from the frontend configuration");
-  }
-  const publicClient = createPublicClient({
-    chain: arc.chain,
-    transport: http(arcRpcUrl)
-  });
-  const walletBalance = await publicClient.readContract({
-    address: arc.usdc,
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: [address]
-  });
-  if (walletBalance < depositAmount) {
-    throw new Error(`Wallet needs ${formatUnits(depositAmount, 6)} USDC on Arc Testnet`);
-  }
-
-  const allowance = await publicClient.readContract({
-    address: arc.usdc,
-    abi: erc20Abi,
-    functionName: "allowance",
-    args: [address, arc.gatewayWallet]
-  });
-  if (allowance < depositAmount) {
-    const approval = await walletClient.writeContract({
-      account: walletClient.account,
-      chain: arc.chain,
-      address: arc.usdc,
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [arc.gatewayWallet, depositAmount]
-    });
-    await publicClient.waitForTransactionReceipt({ hash: approval });
-  }
-
-  const deposit = await walletClient.writeContract({
-    account: walletClient.account,
-    chain: arc.chain,
-    address: arc.gatewayWallet,
-    abi: gatewayWalletAbi,
-    functionName: "deposit",
-    args: [arc.usdc, depositAmount]
-  });
-  await publicClient.waitForTransactionReceipt({ hash: deposit });
-
-  for (let attempt = 0; attempt < 15; attempt += 1) {
-    if (await gatewayBalance(address) >= required) return;
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
-  }
-  throw new Error("Circle Gateway deposit is still finalizing; retry the payment shortly");
+  throw new Error(
+    `Circle Gateway balance is too low. Available: ${formatUnits(available, 6)} USDC. Required: ${requiredUSDC} USDC.`
+  );
 }
 
 export async function createCirclePaymentPayload(
