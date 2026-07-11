@@ -32,6 +32,7 @@ export function ResearchPromptBox() {
     authenticate,
     createPaymentPayload,
     ensureGatewayFunds,
+    fundGateway,
     openWallet
   } = useMaecenasWallet();
   const [question, setQuestion] = useState("");
@@ -45,6 +46,7 @@ export function ResearchPromptBox() {
   const [stage, setStage] = useState("");
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [error, setError] = useState("");
+  const [gatewayFundAmount, setGatewayFundAmount] = useState("");
 
   useEffect(() => {
     const id = getSessionId();
@@ -137,6 +139,7 @@ export function ResearchPromptBox() {
       const intent = await createSearchPaymentIntent(sessionId, wallet, fundingMode === "wallet");
       if (intent.paymentMode === "real") {
         setStage("Checking Circle Gateway funds...");
+        setGatewayFundAmount(intent.amountUSDC);
         await ensureGatewayFunds(intent.amountUSDC);
       }
       const paymentPayload =
@@ -156,6 +159,7 @@ export function ResearchPromptBox() {
         txHash: paymentPayload ? undefined : `mock_tx_${window.crypto.randomUUID()}`
       });
       setPaymentRequired(false);
+      setGatewayFundAmount("");
       await executeResearch(request, { walletAddress: wallet, searchPaymentId: payment.searchPaymentId });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Treasury settlement failed");
@@ -164,6 +168,21 @@ export function ResearchPromptBox() {
   }
 
   const busy = Boolean(stage);
+  const canFundGateway = error.startsWith("Circle Gateway balance is too low.") && gatewayFundAmount;
+
+  async function fundGatewayBalance() {
+    if (!gatewayFundAmount) return;
+    setError("");
+    setStage("Funding Circle Gateway...");
+    try {
+      await fundGateway(gatewayFundAmount);
+      setStage("");
+      await confirmPayment();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Gateway funding failed");
+      setStage("");
+    }
+  }
 
   return (
     <form onSubmit={submitResearch} className="roman-panel overflow-hidden p-5 sm:p-7">
@@ -283,9 +302,19 @@ export function ResearchPromptBox() {
 
 
       {error ? (
-        <p role="alert" className="mt-4 border border-danger/40 bg-danger/10 p-3 text-sm text-red-200">
-          {error}
-        </p>
+        <div role="alert" className="mt-4 border border-danger/40 bg-danger/10 p-3 text-sm text-red-200">
+          <p>{error}</p>
+          {canFundGateway ? (
+            <button
+              type="button"
+              onClick={fundGatewayBalance}
+              disabled={busy}
+              className="mt-3 roman-button inline-flex items-center justify-center bg-gold px-4 py-2 font-mono text-[11px] font-semibold uppercase text-ink transition hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Fund Gateway {gatewayFundAmount} USDC
+            </button>
+          ) : null}
+        </div>
       ) : null}
       <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 border-t border-marble/10 pt-4 font-mono text-[9px] uppercase tracking-[0.12em] text-dim">
         <span><i className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gold" />Archive online</span>

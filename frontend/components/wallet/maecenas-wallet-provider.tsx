@@ -34,6 +34,7 @@ import {
   arcRpcUrl,
   createCirclePaymentPayload,
   ensureCircleGatewayFunds,
+  fundCircleGateway,
   type X402TypedData
 } from "@/lib/circle-payment";
 import { signCircleGatewayWithdrawal } from "@/lib/circle-withdrawal";
@@ -53,6 +54,7 @@ type MaecenasWalletContextValue = {
   closeWallet: () => void;
   createPaymentPayload: (paymentRequired: PaymentRequired) => Promise<unknown>;
   ensureGatewayFunds: (amountUSDC: string) => Promise<void>;
+  fundGateway: (amountUSDC: string) => Promise<void>;
   isConfigured: boolean;
   isReady: boolean;
   logout: () => Promise<void>;
@@ -213,6 +215,12 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     );
   }, [requireWallet]);
 
+  const fundGateway = useCallback(async (amountUSDC: string) => {
+    const account = requireWallet();
+    const walletClient = await createArcWalletClient(account);
+    await fundCircleGateway(walletClient, account.address as Address, amountUSDC);
+  }, [requireWallet]);
+
   const signGatewayWithdrawal = useCallback(async (burnIntent: GatewayBurnIntent) => {
     const account = requireWallet();
     const walletClient = await createArcWalletClient(account);
@@ -231,6 +239,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     closeWallet: () => setWalletOpen(false),
     createPaymentPayload,
     ensureGatewayFunds,
+    fundGateway,
     isConfigured: isDynamicConfigured,
     isReady: initStatus === "finished",
     logout: handleLogout,
@@ -242,6 +251,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     authenticate,
     createPaymentPayload,
     ensureGatewayFunds,
+    fundGateway,
     handleLogout,
     initStatus,
     signGatewayWithdrawal,
