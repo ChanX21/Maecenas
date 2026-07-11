@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icon.png",
   },
+  other: {
+    "talentapp:project_verification": "15b33bdb1cbbefaa7060742fd498bd0083025f38ecd94ce54ff72ae1eb33d2058eed8de5027cd546f1cf868e0edfb3e7632e14c4ae4f9e5810c75073be1388b5",
+  },
 };
 
 const serif = Instrument_Serif({
