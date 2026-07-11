@@ -181,7 +181,10 @@ function GatewayProofDialog({
                   <CheckCircle2 className="shrink-0 text-success" size={21} />
                   <div>
                     <p className="font-mono text-xs uppercase text-success">Verified by Circle</p>
-                    <p className="mt-1 text-sm text-muted">Gateway transfer {proof.status}</p>
+                    <p className="mt-1 text-sm text-muted">
+                      Gateway transfer {proof.status}
+                      {proof.status === "received" ? " · awaiting completion" : ""}
+                    </p>
                   </div>
                 </div>
                 <dl className="mt-6 grid gap-4 font-mono text-xs sm:grid-cols-2">

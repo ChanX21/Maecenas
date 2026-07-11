@@ -151,11 +151,11 @@ export function OwnerDashboard() {
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Circle Gateway withdrawal</p>
                   <p className="mt-2 font-mono text-sm text-cream">
-                    {withdrawal.balanceUSDC} USDC available · {withdrawal.feeUSDC} USDC estimated fee
+                    {dashboard.totalUSDCEarned} USDC credited · {withdrawal.balanceUSDC} USDC available · {withdrawal.feeUSDC} USDC estimated fee
                   </p>
                   {!withdrawal.canWithdraw ? (
                     <p className="mt-2 text-xs text-muted">
-                      Withdrawal becomes available at {withdrawal.minimumBalanceUSDC ?? "a positive balance"} USDC.
+                      Withdrawal uses Circle's available balance. Transfers marked received may need to complete before they can be withdrawn. Withdrawal becomes available at {withdrawal.minimumBalanceUSDC ?? "a positive balance"} USDC.
                     </p>
                   ) : null}
                   {withdrawalTx ? (

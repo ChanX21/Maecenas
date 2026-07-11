@@ -529,7 +529,10 @@ async function routeRequest(context: RouteContext) {
     const sources = db.sources.filter((source) => !wallet || source.walletAddress.toLowerCase() === wallet);
     const sourceIds = new Set(sources.map((source) => source.id));
     const receipts = completedReceipts(db.receipts, paymentMode)
-      .filter((receipt) => sourceIds.has(receipt.sourceId));
+      .filter((receipt) =>
+        sourceIds.has(receipt.sourceId) &&
+        receipt.recipientWallet.toLowerCase() === wallet
+      );
     const topSource = sources
       .map((source) => ({
         source,
