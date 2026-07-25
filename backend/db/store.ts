@@ -113,6 +113,10 @@ function freeSearchLimit(): number {
   return value;
 }
 
+function researchGuardrailsDisabled(): boolean {
+  return process.env.DISABLE_RESEARCH_GUARDRAILS === "true";
+}
+
 function paymentMode(): "mock" | "real" {
   return process.env.PAYMENT_MODE === "real" ? "real" : "mock";
 }
@@ -475,7 +479,8 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
       : [usage];
     const scopedSessionIds = scopedUsages.map((entry) => entry.sessionId);
     const scopedFreeSearchesUsed = scopedUsages.reduce((total, entry) => total + entry.freeSearchesUsed, 0);
-    const processingFreeRuns = (await tx
+    const disableLimits = researchGuardrailsDisabled();
+    const processingFreeRuns = disableLimits ? 0 : (await tx
       .select({ id: researchRuns.id })
       .from(researchRuns)
       .where(
@@ -493,8 +498,10 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
       .reduce((total, receipt) => total + receipt.amountMicros, 0);
     const sponsoredReservationMicros =
       processingFreeRuns * parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01");
-    const sponsoredRemainingMicros = Math.max(0, sponsoredLimitMicros - sponsoredSpentMicros - sponsoredReservationMicros);
-    const freeQuotaAvailable = scopedFreeSearchesUsed + processingFreeRuns < usage.freeSearchLimit;
+    const sponsoredRemainingMicros = disableLimits
+      ? parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01")
+      : Math.max(0, sponsoredLimitMicros - sponsoredSpentMicros - sponsoredReservationMicros);
+    const freeQuotaAvailable = disableLimits || scopedFreeSearchesUsed + processingFreeRuns < usage.freeSearchLimit;
 
     let paymentType: "free_sponsored" | "user_paid";
     let budgetMicros: number;
@@ -507,7 +514,7 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
         ? Math.min(parseUSDCMicros(input.requestedBudgetUSDC), funded, sponsoredRemainingMicros)
         : Math.min(funded, sponsoredRemainingMicros);
     } else {
-      if (!freeQuotaAvailable && scopedFreeSearchesUsed < usage.freeSearchLimit) {
+      if (!disableLimits && !freeQuotaAvailable && scopedFreeSearchesUsed < usage.freeSearchLimit) {
         throw new StoreError("FREE_QUOTA_BUSY", "The remaining free search is already processing", 409);
       }
       if (!input.walletAddress) throw new StoreError("MISSING_WALLET_ADDRESS", "Wallet address is required", 402);

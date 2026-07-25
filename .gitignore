@@ -9,6 +9,7 @@ backend/data/*.db-wal
 backend/data/backups/
 frontend/.next
 backend/.env
+backend/.agents
 frontend/.env.local
 *.log
 *.tsbuildinfo

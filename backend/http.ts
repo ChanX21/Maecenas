@@ -130,15 +130,7 @@ async function routeRequest(context: RouteContext) {
   const { method, path, response, url, request } = context;
 
   if (method === "GET" && path === "/api/health") {
-    return sendJson(response, 200, {
-      ok: true,
-      service: "maecenas-backend",
-      version: "0.2.0",
-      uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
-      database: "supabase-postgres",
-      paymentMode: process.env.PAYMENT_MODE === "real" ? "real" : "mock",
-      aiConfigured: Boolean(process.env.OPENAI_API_KEY)
-    });
+    return sendJson(response, 200, { status: "ok" });
   }
 
   if (method === "GET" && path === "/api/admin/metrics") {
@@ -627,7 +619,9 @@ async function sendPaymentRequired(response: ServerResponse, sessionId: string) 
 }
 
 function usageResponse(usage: UserUsage) {
-  const remaining = Math.max(0, usage.freeSearchLimit - usage.freeSearchesUsed);
+  const remaining = process.env.DISABLE_RESEARCH_GUARDRAILS === "true"
+    ? usage.freeSearchLimit
+    : Math.max(0, usage.freeSearchLimit - usage.freeSearchesUsed);
   return {
     sessionId: usage.sessionId,
     walletAddress: usage.walletAddress,
@@ -772,6 +766,7 @@ function setCorsHeaders(request: IncomingMessage, response: ServerResponse) {
 }
 
 function enforceRateLimit(request: IncomingMessage, response: ServerResponse, scope: "api" | "research") {
+  if (process.env.DISABLE_RESEARCH_GUARDRAILS === "true") return;
   const forwarded = process.env.TRUST_PROXY === "true" ? request.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() : undefined;
   const identity = forwarded ?? request.socket.remoteAddress ?? "unknown";
   const windowMs = scope === "research" ? 60 * 60_000 : 60_000;

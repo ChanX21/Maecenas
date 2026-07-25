@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "netra-best-practices": {
+      "source": "KeyValueSoftwareSystems/netra-skills",
+      "sourceType": "github",
+      "skillPath": "skills/netra-best-practices/SKILL.md",
+      "computedHash": "44f87706334df1ed6b078a0f81317a0710b3faf30b5c015d13555499dc5f5859"
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
-import { handleMaecenasRequest } from "@/http";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { initNetra, shutdownNetra } from "@/observability/netra";
 import { initializeDatabase, seedDatabase } from "@/db/store";
 import { loadEnv } from "@/env";
 
@@ -20,9 +21,14 @@ function validateEnvironment() {
 }
 
 let startupStage = "validating environment";
+let handleRequest: ((request: IncomingMessage, response: ServerResponse) => Promise<void>) | undefined;
 const readiness = (async () => {
   try {
     validateEnvironment();
+    startupStage = "initializing Netra";
+    await initNetra();
+    startupStage = "loading routes";
+    handleRequest = (await import("@/http")).handleMaecenasRequest;
     startupStage = "initializing database";
     await initializeDatabase();
     startupStage = "seeding database";
@@ -68,7 +74,13 @@ createServer(async (request, response) => {
     response.end(JSON.stringify({ error: "BACKEND_STARTUP_FAILED", message }));
     return;
   }
-  await handleMaecenasRequest(request, response);
+  await handleRequest!(request, response);
 }).listen(port, host, () => {
   console.log(`Maecenas backend listening on http://${host}:${port}`);
 });
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    void shutdownNetra().finally(() => process.exit(0));
+  });
+}

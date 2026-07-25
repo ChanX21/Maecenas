@@ -3,6 +3,20 @@ import type { AddressInfo } from "node:net";
 import test from "node:test";
 import { createMaecenasServer } from "@/http";
 
+test("health check returns a tiny cron-friendly payload", async () => {
+  const server = createMaecenasServer();
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+  try {
+    const response = await fetch(`${base}/api/health`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: "ok" });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
 test("CORS allows configured origins and rejects others", async () => {
   const previous = process.env.CORS_ORIGIN;
   process.env.CORS_ORIGIN = "https://www.maecenas.in, https://maecenas.vercel.app/";

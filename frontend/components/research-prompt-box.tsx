@@ -91,6 +91,10 @@ export function ResearchPromptBox() {
         const nextUsage = await getUsage(sessionId);
         setUsage(nextUsage);
         setPaymentRequired(true);
+      } else if (cause instanceof ApiError && cause.status === 409 && cause.data.error === "FREE_QUOTA_BUSY") {
+        setFundingMode("wallet");
+        setPaymentRequired(true);
+        setError(`${cause.message}. Pay ${usage?.paidSearchPriceUSDC ?? "0.01"} USDC to start another run now.`);
       } else {
         setError(cause instanceof Error ? cause.message : "Research commission failed");
       }

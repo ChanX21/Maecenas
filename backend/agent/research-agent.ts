@@ -4,6 +4,7 @@ import { scoutSources } from "@/agent/source-scout";
 import { answerContentToText, synthesizeAnswer } from "@/agent/answer-synthesizer";
 import { traceEvent } from "@/agent/trace";
 import { listSources } from "@/db/store";
+import { setNetraResearchContext, SpanType, withNetraSpan } from "@/observability/netra";
 import { createEvidencePayment, getPaymentMode, requestProtectedEvidence } from "@/payments/payment-executor";
 import type { Answer, ResearchStrategy, ResearchTrace, Source, TraceEvent, UnlockedEvidence } from "@/types";
 import { makeId } from "@/utils/ids";
@@ -21,6 +22,39 @@ type RunResearchInput = {
 };
 
 export async function runResearchAgent(input: RunResearchInput): Promise<{ answer: Answer; receipts: Answer["decisionTraceJson"]["receipts"] }> {
+  return withNetraSpan(
+    "maecenas-scholar-agent",
+    {
+      asType: SpanType.AGENT,
+      moduleName: "research-agent",
+      attributes: {
+        strategy: input.strategy,
+        payment_type: input.paymentType,
+        has_wallet: Boolean(input.walletAddress),
+        has_search_payment: Boolean(input.searchPaymentId)
+      }
+    },
+    async (span) => {
+      setNetraResearchContext(input);
+      span?.setPrompt(input.question);
+      span?.addEvent("scholar.run.started", {
+        budget_usdc: input.budgetUSDC,
+        session_id: input.sessionId
+      });
+      const result = await runResearchAgentCore(input);
+      span?.setAttribute("answer_id", result.answer.id);
+      span?.setAttribute("spent_usdc", result.answer.spentUSDC);
+      span?.setAttribute("receipt_count", String(result.receipts.length));
+      span?.addEvent("scholar.run.completed", {
+        answer_id: result.answer.id,
+        spent_usdc: result.answer.spentUSDC
+      });
+      return result;
+    }
+  );
+}
+
+async function runResearchAgentCore(input: RunResearchInput): Promise<{ answer: Answer; receipts: Answer["decisionTraceJson"]["receipts"] }> {
   const answerId = makeId("ans");
   const allSources = await listSources();
   const events: TraceEvent[] = [];
