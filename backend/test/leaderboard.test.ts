@@ -67,7 +67,8 @@ function receipt(
   sourceId: string,
   recipientWallet: string,
   status: CitationPayment["status"],
-  amountUSDC: string
+  amountUSDC: string,
+  fundedBy: CitationPayment["fundedBy"] = "maecenas_sponsored"
 ): CitationPayment {
   return {
     id,
@@ -81,7 +82,7 @@ function receipt(
     payerWallet: "0x3333333333333333333333333333333333333333",
     recipientWallet,
     status,
-    fundedBy: "maecenas_sponsored",
+    fundedBy,
     receiptSignature: `signature_${id}`,
     createdAt: "2026-01-01T00:00:00.000Z"
   };
@@ -110,7 +111,7 @@ const database: MaecenasDatabase = {
   answers: [answer("answer_mock"), answer("answer_real")],
   receipts: [
     receipt("receipt_mock", "answer_mock", "source_a", ownerA, "mock", "0.0001"),
-    receipt("receipt_paid", "answer_real", "source_b", ownerB, "paid", "0.0002"),
+    receipt("receipt_paid", "answer_real", "source_b", ownerB, "paid", "0.0002", "user_paid_search"),
     receipt("receipt_failed", "answer_real", "source_a", ownerA, "failed", "0.5"),
     receipt("receipt_pending", "answer_real", "source_a", ownerA, "pending", "0.5")
   ],
@@ -147,6 +148,8 @@ test("real leaderboard excludes mock, failed, and pending records", () => {
   assert.equal(leaderboard.metrics.contributorsRewarded, 1);
   assert.equal(leaderboard.metrics.totalUSDCDistributed, "0.0002");
   assert.equal(leaderboard.metrics.paidSearchRevenueUSDC, "0.01");
+  assert.equal(leaderboard.metrics.userPaidSourcePayoutsUSDC, "0.0002");
+  assert.equal(leaderboard.metrics.grossRetainedUSDC, "0.0098");
   assert.deepEqual(
     leaderboard.recentPaymentStream.map((item) => item.id),
     ["receipt_paid"]

@@ -36,6 +36,8 @@ export type LeaderboardResponse = {
     freeSearchesUsed: number;
     paidSearchesCompleted: number;
     paidSearchRevenueUSDC: string;
+    userPaidSourcePayoutsUSDC: string;
+    grossRetainedUSDC: string;
     sourcePayoutsUSDC: string;
     paidCitations: number;
   };

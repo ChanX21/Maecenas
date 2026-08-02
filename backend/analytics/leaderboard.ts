@@ -3,7 +3,7 @@ import type {
   MaecenasDatabase,
   SearchPayment
 } from "@/types";
-import { sumUSDC } from "@/utils/money";
+import { microsToUSDC, parseUSDCMicros, sumUSDC } from "@/utils/money";
 
 export type PaymentMode = "mock" | "real";
 
@@ -73,6 +73,18 @@ export function buildLeaderboard(
   const sourcePayoutsUSDC = sumUSDC(
     receipts.map((receipt) => receipt.amountUSDC)
   );
+  const userPaidSourcePayoutsUSDC = sumUSDC(
+    receipts
+      .filter((receipt) => receipt.fundedBy === "user_paid_search")
+      .map((receipt) => receipt.amountUSDC)
+  );
+  const paidSearchRevenueUSDC = sumUSDC(
+    searchPayments.map((payment) => payment.amountUSDC)
+  );
+  const grossRetainedUSDC = microsToUSDC(Math.max(
+    0,
+    parseUSDCMicros(paidSearchRevenueUSDC) - parseUSDCMicros(userPaidSourcePayoutsUSDC)
+  ));
 
   return {
     paymentMode,
@@ -92,9 +104,9 @@ export function buildLeaderboard(
         0
       ),
       paidSearchesCompleted: searchPayments.length,
-      paidSearchRevenueUSDC: sumUSDC(
-        searchPayments.map((payment) => payment.amountUSDC)
-      ),
+      paidSearchRevenueUSDC,
+      userPaidSourcePayoutsUSDC,
+      grossRetainedUSDC,
       sourcePayoutsUSDC,
       paidCitations: receipts.length
     },

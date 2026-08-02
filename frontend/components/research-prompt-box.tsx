@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { AnimatedResearchLoader } from "@/components/animated-research-loader";
 import { ResearchPaymentGate } from "@/components/research-payment-gate";
 import type { ResearchStrategy, TraceEvent, Usage } from "@/types";
 import {
   ApiError,
   createSearchPaymentIntent,
+  getLeaderboard,
   getResearchRun,
   getUsage,
   runResearch,
@@ -25,8 +28,16 @@ type ResearchRequest = {
   budgetUSDC: string;
 };
 
+const exampleQuestions = [
+  "Why are transformer models effective for modern AI systems?",
+  "What evidence supports CRISPR-Cas9 as a programmable gene-editing tool?",
+  "How does spaceflight affect microbial survival and behavior?"
+];
+
 export function ResearchPromptBox() {
   const router = useRouter();
+  const { data: ledger } = useQuery({ queryKey: ["leaderboard"], queryFn: getLeaderboard, retry: false });
+  const featuredAnswerId = ledger?.recentPaymentStream[0]?.answerId;
   const {
     address,
     authenticate,
@@ -36,6 +47,7 @@ export function ResearchPromptBox() {
     openWallet
   } = useMaecenasWallet();
   const [question, setQuestion] = useState("");
+  const [questionPlaceholder, setQuestionPlaceholder] = useState("");
   const [strategy, setStrategy] = useState<ResearchStrategy>("balanced");
   const [budgetUSDC, setBudgetUSDC] = useState("0.0050");
   const [fundingMode, setFundingMode] = useState<"grant" | "wallet">("grant");
@@ -58,6 +70,32 @@ export function ResearchPromptBox() {
         if (nextUsage.requiresPayment) setFundingMode("wallet");
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Could not load research access"));
+  }, []);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setQuestionPlaceholder(exampleQuestions[0]);
+      return;
+    }
+
+    let questionIndex = 0;
+    let characterIndex = 0;
+    let timeout: number;
+    const type = () => {
+      const example = exampleQuestions[questionIndex];
+      setQuestionPlaceholder(example.slice(0, characterIndex));
+      if (characterIndex++ < example.length) {
+        timeout = window.setTimeout(type, 35);
+      } else {
+        timeout = window.setTimeout(() => {
+          questionIndex = (questionIndex + 1) % exampleQuestions.length;
+          characterIndex = 0;
+          type();
+        }, 1800);
+      }
+    };
+    type();
+    return () => window.clearTimeout(timeout);
   }, []);
 
   async function executeResearch(
@@ -209,9 +247,20 @@ export function ResearchPromptBox() {
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
         rows={3}
-        placeholder="What should the forum investigate?"
+        placeholder={questionPlaceholder || "What should the forum investigate?"}
         className="mt-4 w-full resize-y border-0 bg-transparent p-0 font-display text-2xl leading-9 text-cream outline-none placeholder:text-dim sm:text-3xl"
       />
+
+      {featuredAnswerId ? (
+        <div className="mt-3 flex justify-end font-mono text-[10px]">
+          <Link
+            href={`/answer/${featuredAnswerId}`}
+            className="inline-flex items-center gap-1 rounded-md border border-gold/25 bg-gold/10 px-2.5 py-1.5 text-gold hover:border-gold/50 hover:text-cream"
+          >
+            Watch a completed funded run <ArrowUpRight size={11} />
+          </Link>
+        </div>
+      ) : null}
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-marble/10 pt-5">
         <div className="flex flex-wrap items-center gap-2">
