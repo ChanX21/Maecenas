@@ -251,16 +251,16 @@ export function ResearchPromptBox() {
         className="mt-4 w-full resize-y border-0 bg-transparent p-0 font-display text-2xl leading-9 text-cream outline-none placeholder:text-dim sm:text-3xl"
       />
 
-      {featuredAnswerId ? (
-        <div className="mt-3 flex justify-end font-mono text-[10px]">
+      <div className="mt-3 flex min-h-7 justify-end font-mono text-[10px]">
+        {featuredAnswerId ? (
           <Link
             href={`/answer/${featuredAnswerId}`}
             className="inline-flex items-center gap-1 rounded-md border border-gold/25 bg-gold/10 px-2.5 py-1.5 text-gold hover:border-gold/50 hover:text-cream"
           >
             Watch a completed funded run <ArrowUpRight size={11} />
           </Link>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-marble/10 pt-5">
         <div className="flex flex-wrap items-center gap-2">
