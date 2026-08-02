@@ -21,8 +21,8 @@ export default function HomePage() {
           Fund the question.
           <span className="gleam mt-2 block font-serif italic">Reward the evidence.</span>
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted sm:text-lg">
-          Commission rigorous research from curated sources. Every evidence unlock is funded, cited, and recorded.
+        <p className="mx-auto mt-6 max-w-4xl text-base leading-7 text-muted sm:text-lg">
+          Agents research. Maecenas funds evidence. Contributors earn. Answers prove.
         </p>
       </section>
 

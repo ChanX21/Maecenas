@@ -246,7 +246,7 @@ export function ResearchPromptBox() {
         required
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
-        rows={3}
+        rows={1}
         placeholder={questionPlaceholder || "What should the forum investigate?"}
         className="mt-4 w-full resize-y border-0 bg-transparent p-0 font-display text-2xl leading-9 text-cream outline-none placeholder:text-dim sm:text-3xl"
       />
