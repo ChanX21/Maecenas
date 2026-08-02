@@ -40,6 +40,7 @@ const sans = Inter({
 const navItems = [
   { href: "/ask", label: "Research" },
   { href: "/sources", label: "Archive" },
+  { href: "/agents", label: "Agents" },
   { href: "/dashboard", label: "Treasury" },
   { href: "/leaderboard", label: "Ledger" }
 ];
