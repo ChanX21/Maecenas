@@ -26,7 +26,7 @@ export function SourceCard({ source }: { source: Source }) {
           </span>
         ))}
       </div>
-      <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-4 font-mono text-xs">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-4 font-mono text-xs">
         <Link href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-soft">
           Inspect record
         </Link>

@@ -30,7 +30,7 @@ export default async function AnswerPage({ params }: PageProps) {
   return (
     <main className="home-grid min-h-[calc(100vh-65px)] px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col items-start justify-between gap-3 min-[400px]:flex-row min-[400px]:items-center">
           <Link href="/" className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted hover:text-cream">
             <ArrowLeft size={14} /> Start another commission
           </Link>
@@ -43,7 +43,7 @@ export default async function AnswerPage({ params }: PageProps) {
             <span className="rounded-md border border-marble/15 px-2 py-1 text-muted">{paymentLabel}</span>
           </div>
           <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Research brief</p>
-          <h1 className="mt-3 font-display text-4xl leading-[1.08] text-cream sm:text-6xl">{answer.prompt}</h1>
+          <h1 className="mt-3 text-balance font-display text-4xl leading-[1.08] text-cream sm:text-6xl">{answer.prompt}</h1>
         </header>
 
         <div className="roman-panel mt-10 overflow-hidden p-4 sm:p-5">
@@ -71,7 +71,7 @@ export default async function AnswerPage({ params }: PageProps) {
           ) : null}
         </div>
 
-        <article className="roman-panel mx-auto mt-5 max-w-4xl p-6 sm:p-10">
+        <article className="roman-panel mx-auto mt-5 max-w-4xl p-5 sm:p-10">
           {content ? (
             <>
               <p className="font-display text-2xl leading-9 text-marble sm:text-3xl">{content.summary}</p>
@@ -113,7 +113,7 @@ export default async function AnswerPage({ params }: PageProps) {
           )}
         </article>
 
-        <section className="roman-panel mx-auto mt-5 max-w-4xl p-6 sm:p-8">
+        <section className="roman-panel mx-auto mt-5 max-w-4xl p-5 sm:p-8">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Source record</p>
           <h2 className="mt-2 font-display text-2xl text-cream">Funded evidence</h2>
           <div className="mt-5 divide-y divide-marble/10">
@@ -139,7 +139,7 @@ export default async function AnswerPage({ params }: PageProps) {
           </div>
         </section>
 
-        <details className="roman-panel mx-auto mt-5 max-w-4xl p-6 sm:p-8">
+        <details className="roman-panel mx-auto mt-5 max-w-4xl p-5 sm:p-8">
           <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.16em] text-muted hover:text-cream">
             Open the research ledger
           </summary>

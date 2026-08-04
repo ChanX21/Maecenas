@@ -78,11 +78,11 @@ export function AdminSourceReview() {
                 Inspect source
               </a>
             </div>
-            <div className="flex shrink-0 gap-2">
-              <button onClick={() => review(source.id, "approved")} disabled={busy} className="roman-button inline-flex items-center gap-2 bg-gold px-4 py-2 font-mono text-xs font-semibold uppercase text-ink">
+            <div className="grid w-full shrink-0 grid-cols-2 gap-2 sm:flex sm:w-auto">
+              <button onClick={() => review(source.id, "approved")} disabled={busy} className="roman-button inline-flex min-h-11 items-center justify-center gap-2 bg-gold px-4 py-2 font-mono text-xs font-semibold uppercase text-ink">
                 <Check size={14} /> Approve
               </button>
-              <button onClick={() => review(source.id, "rejected")} disabled={busy} className="roman-button inline-flex items-center gap-2 border border-danger/40 px-4 py-2 font-mono text-xs uppercase text-danger">
+              <button onClick={() => review(source.id, "rejected")} disabled={busy} className="roman-button inline-flex min-h-11 items-center justify-center gap-2 border border-danger/40 px-4 py-2 font-mono text-xs uppercase text-danger">
                 <X size={14} /> Reject
               </button>
             </div>

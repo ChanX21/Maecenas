@@ -19,11 +19,32 @@ html {
 body {
   min-height: 100%;
   margin: 0;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 50% 0%, rgba(141, 216, 168, 0.045), transparent 32rem),
     #090b0a;
   color: #f3f4ef;
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+button,
+a,
+input,
+select,
+summary,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 639px) {
+  main.home-grid {
+    padding-top: 2.5rem;
+    padding-bottom: 3rem;
+  }
+
+  .roman-panel {
+    border-radius: 0.625rem;
+  }
 }
 
 a {

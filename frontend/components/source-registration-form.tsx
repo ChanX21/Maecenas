@@ -173,7 +173,7 @@ export function SourceRegistrationForm() {
           whileTap={{ scale: 0.98 }}
           type="submit"
           disabled={busy}
-          className="roman-button inline-flex items-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink hover:bg-gold-soft transition-colors disabled:opacity-50"
+          className="roman-button inline-flex min-h-12 w-full items-center justify-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink transition-colors hover:bg-gold-soft disabled:opacity-50 sm:w-auto"
         >
           <Save size={15} />
           {busy ? "Sending to the forum..." : address ? "Submit to the forum" : "Connect with Dynamic"}
@@ -227,7 +227,7 @@ export function SourceRegistrationForm() {
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full border border-gold/30 bg-ink-2 px-6 py-3 shadow-[0_10px_40px_rgba(141,216,168,0.15)]"
+            className="fixed inset-x-4 bottom-4 z-50 flex items-center justify-center gap-3 rounded-full border border-gold/30 bg-ink-2 px-5 py-3 text-center shadow-[0_10px_40px_rgba(141,216,168,0.15)] sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 sm:px-6"
           >
             <CheckCircle2 size={18} className="text-gold" />
             <span className="font-mono text-xs uppercase tracking-wider text-cream">

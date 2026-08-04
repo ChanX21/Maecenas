@@ -44,7 +44,7 @@ export default function AgentsPage() {
 
       <section className="mx-auto mt-10 grid max-w-6xl gap-4 md:grid-cols-3">
         {steps.map(({ icon: Icon, title, endpoint, copy }) => (
-          <article key={title} className="roman-panel p-6">
+          <article key={title} className="roman-panel p-5 sm:p-6">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/10 text-gold">
               <Icon size={18} />
             </span>
@@ -70,7 +70,7 @@ export default function AgentsPage() {
             API health <ArrowUpRight size={12} />
           </a>
         </div>
-        <pre className="m-5 overflow-x-auto rounded-lg border border-marble/10 bg-marble/[0.06] p-5 font-mono text-xs leading-6 text-cream sm:m-6">
+        <pre className="m-3 overflow-x-auto rounded-lg border border-marble/10 bg-marble/[0.06] p-4 font-mono text-[11px] leading-5 text-cream sm:m-6 sm:p-5 sm:text-xs sm:leading-6">
           <code>{requestExample}</code>
         </pre>
         <div className="border-t border-marble/10 px-5 py-4 text-xs leading-5 text-muted sm:px-6">

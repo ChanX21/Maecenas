@@ -29,7 +29,7 @@ export function SessionStatus() {
 
   if (!usage) return null;
   return (
-    <div className="flex items-center gap-2 border border-marble/15 bg-panel px-3 py-2 font-mono text-[11px] uppercase text-muted">
+    <div className="hidden items-center gap-2 border border-marble/15 bg-panel px-3 py-2 font-mono text-[11px] uppercase text-muted sm:flex">
       <CircleDollarSign size={14} className="text-gold" />
       {usage.freeSearchesRemaining > 0 ? (
         <span>{usage.freeSearchesRemaining} patron grants left</span>

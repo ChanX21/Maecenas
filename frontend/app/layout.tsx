@@ -56,33 +56,33 @@ export default function RootLayout({
         <AppWalletProvider>
           <div className="min-h-screen">
             <header className="sticky top-0 z-40 border-b border-marble/10 bg-ink/88 backdrop-blur">
-              <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-                <Link href="/" className="flex items-center gap-3">
+              <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 sm:flex sm:flex-wrap sm:justify-between sm:px-6 sm:py-3 lg:px-8">
+                <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
                   <Image 
                     src="/icon.png" 
                     alt="Maecenas Logo" 
                     width={44} 
                     height={44} 
                     unoptimized
-                    className="h-11 w-11 shrink-0 rounded-full object-cover" 
+                    className="h-10 w-10 shrink-0 rounded-full object-cover sm:h-11 sm:w-11"
                   />
                   <span>
                     <span className="roman-inscription block text-xl leading-5 text-cream font-serif italic">Maecenas</span>
-                    <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-marble/70">
+                    <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-marble/70 sm:block">
                       research funding protocol
                     </span>
                   </span>
                 </Link>
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                   <SessionStatus />
                   <WalletButton />
                 </div>
-                <nav className="order-3 flex w-full items-center gap-1 overflow-x-auto border-t border-marble/10 pt-2 font-mono text-[11px] uppercase text-muted sm:order-none sm:w-auto sm:border-0 sm:pt-0">
+                <nav className="order-3 col-span-2 grid w-full grid-cols-5 items-center border-t border-marble/10 pt-1.5 font-mono text-[10px] uppercase text-muted sm:order-none sm:flex sm:w-auto sm:gap-1 sm:border-0 sm:pt-0 sm:text-[11px]">
                   {navItems.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="px-4 py-2 transition hover:bg-marble/10 hover:text-cream"
+                      className="flex min-h-11 items-center justify-center px-1 text-center transition hover:bg-marble/10 hover:text-cream sm:min-h-0 sm:px-4 sm:py-2"
                     >
                       {item.label}
                     </Link>
@@ -92,7 +92,7 @@ export default function RootLayout({
             </header>
             {children}
             <footer className="border-t border-marble/10 mt-16">
-              <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
+              <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-5 text-center sm:flex-row sm:px-6 sm:text-left lg:px-8">
                 <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-dim">
                   © {new Date().getFullYear()} Maecenas · Research Funding Protocol
                 </p>

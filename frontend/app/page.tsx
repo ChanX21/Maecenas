@@ -14,10 +14,10 @@ import { LiveLedgerMetrics, LiveLedgerStream } from "@/components/live-ledger";
 
 export default function HomePage() {
   return (
-    <main className="home-grid min-h-[calc(100vh-65px)] px-4 pb-16 pt-14 sm:px-6 lg:px-8">
+    <main className="home-grid min-h-[calc(100vh-65px)] px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:px-8">
       <section className="mx-auto max-w-4xl text-center">
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">The research funding protocol</p>
-        <h1 className="mt-5 font-display text-5xl leading-[0.98] text-cream sm:text-7xl">
+        <h1 className="mt-5 text-balance font-display text-[2.75rem] leading-[0.98] text-cream sm:text-7xl">
           Fund the question.
           <span className="gleam mt-2 block font-serif italic">Reward the evidence.</span>
         </h1>
@@ -30,7 +30,7 @@ export default function HomePage() {
         <ResearchPromptBox />
       </section>
 
-      <section className="mx-auto mt-5 grid max-w-7xl overflow-hidden rounded-xl border border-marble/10 bg-panel/65 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mx-auto mt-5 grid max-w-7xl grid-cols-2 overflow-hidden rounded-xl border border-marble/10 bg-panel/65 sm:grid-cols-2 lg:grid-cols-4">
         <LiveLedgerMetrics />
       </section>
 

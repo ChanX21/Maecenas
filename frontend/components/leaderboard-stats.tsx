@@ -32,12 +32,12 @@ export function LeaderboardStats({ metrics, paymentMode }: LeaderboardStatsProps
       }}
       className="overflow-hidden rounded-xl border border-marble/10 bg-panel/65"
     >
-      <div className="grid sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 lg:grid-cols-5">
         {Object.entries(labels).map(([key, label]) => (
           <motion.div
             variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1 } }}
             key={key}
-            className="border-b border-marble/10 p-5 text-center sm:border-r lg:border-b-0 lg:last:border-r-0"
+            className="border-b border-r border-marble/10 p-4 text-center even:border-r-0 last:col-span-2 lg:col-span-1 lg:border-b-0 lg:border-r lg:p-5 lg:last:col-span-1 lg:last:border-r-0"
           >
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-dim">{label}</p>
             <p className="mt-3 font-mono text-2xl text-gold">{metrics[key as keyof typeof metrics] ?? "—"}</p>

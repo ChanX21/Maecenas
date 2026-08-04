@@ -75,8 +75,8 @@ export function LiveLedgerStream() {
 
 function Metric({ value, label }: { value: string | number; label: string }) {
   return (
-    <div className="border-b border-marble/10 px-5 py-5 text-center last:border-b-0 sm:border-b-0 sm:border-r sm:[&:nth-child(2)]:border-r-0 lg:[&:nth-child(2)]:border-r lg:last:border-r-0">
-      <p className="font-mono text-xl text-gold sm:text-2xl">{value}</p>
+    <div className="border-b border-r border-marble/10 px-3 py-4 text-center even:border-r-0 [&:nth-child(n+3)]:border-b-0 sm:px-5 sm:py-5 lg:border-r lg:[&:nth-child(2)]:border-r lg:last:border-r-0">
+      <p className="font-mono text-lg text-gold sm:text-2xl">{value}</p>
       <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">{label}</p>
     </div>
   );

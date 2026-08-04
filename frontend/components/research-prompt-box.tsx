@@ -227,7 +227,7 @@ export function ResearchPromptBox() {
   }
 
   return (
-    <form onSubmit={submitResearch} className="roman-panel overflow-hidden p-5 sm:p-7">
+    <form onSubmit={submitResearch} className="roman-panel min-w-0 overflow-hidden p-4 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="font-mono text-xs uppercase text-muted" htmlFor="question">
           Research mandate
@@ -248,7 +248,7 @@ export function ResearchPromptBox() {
         onChange={(event) => setQuestion(event.target.value)}
         rows={1}
         placeholder={questionPlaceholder || "What should the forum investigate?"}
-        className="mt-4 w-full resize-y border-0 bg-transparent p-0 font-display text-2xl leading-9 text-cream outline-none placeholder:text-dim sm:text-3xl"
+        className="mt-4 min-h-20 w-full resize-y border-0 bg-transparent p-0 font-display text-xl leading-8 text-cream outline-none placeholder:text-dim sm:min-h-0 sm:text-3xl sm:leading-9"
       />
 
       <div className="mt-3 flex min-h-7 justify-end font-mono text-[10px]">
@@ -262,9 +262,9 @@ export function ResearchPromptBox() {
         ) : null}
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-marble/10 pt-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex overflow-hidden rounded-md border border-marble/10 bg-ink-2 font-mono text-[11px]">
+      <div className="mt-6 flex flex-col items-stretch gap-4 border-t border-marble/10 pt-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <div className="col-span-2 flex w-full overflow-hidden rounded-md border border-marble/10 bg-ink-2 font-mono text-[11px] sm:w-auto">
             <button
               type="button"
               disabled={!usage?.freeSearchesRemaining}
@@ -272,7 +272,7 @@ export function ResearchPromptBox() {
                 setFundingMode("grant");
                 setPaymentRequired(false);
               }}
-              className={`px-3 py-2 transition ${fundingMode === "grant" ? "bg-marble/10 text-cream" : "text-muted hover:text-cream"} disabled:cursor-not-allowed disabled:opacity-40`}
+              className={`min-h-11 flex-1 px-3 py-2 transition ${fundingMode === "grant" ? "bg-marble/10 text-cream" : "text-muted hover:text-cream"} disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-0`}
             >
               Patron grant
             </button>
@@ -282,12 +282,12 @@ export function ResearchPromptBox() {
                 setFundingMode("wallet");
                 setPaymentRequired(false);
               }}
-              className={`px-3 py-2 transition ${fundingMode === "wallet" ? "bg-gold/15 text-gold" : "text-muted hover:text-cream"}`}
+              className={`min-h-11 flex-1 px-3 py-2 transition ${fundingMode === "wallet" ? "bg-gold/15 text-gold" : "text-muted hover:text-cream"} sm:min-h-0`}
             >
               Pay {usage?.paidSearchPriceUSDC ?? "0.01"} USDC
             </button>
           </div>
-          <label className="flex items-center gap-2 rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted">
+          <label className="flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted sm:min-h-0">
             Posture
             <select
               value={strategy}
@@ -299,11 +299,11 @@ export function ResearchPromptBox() {
               <option value="aggressive">Expansive</option>
             </select>
           </label>
-          <details className="group relative">
-          <summary className="cursor-pointer list-none rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted hover:text-cream">
+          <details className="group relative min-w-0">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted hover:text-cream sm:min-h-0">
             Budget · <span className="text-gold">{budgetUSDC} USDC</span>
           </summary>
-            <div className="absolute bottom-full left-0 z-20 mb-2 w-64 rounded-lg border border-marble/15 bg-panel-2 p-3 shadow-2xl">
+            <div className="fixed inset-x-4 bottom-4 z-50 rounded-lg border border-marble/15 bg-panel-2 p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:bottom-full sm:left-0 sm:mb-2 sm:w-64 sm:p-3">
               <div className="flex justify-between font-mono text-xs uppercase tracking-wider text-muted">
                 <span>Treasury limit</span>
                 <span className="text-gold font-bold">{budgetUSDC} USDC</span>
@@ -323,7 +323,7 @@ export function ResearchPromptBox() {
               </div>
             </div>
           </details>
-          <span className="rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted">
+          <span className="hidden rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted sm:inline">
             Curated sources
           </span>
         </div>
@@ -332,7 +332,7 @@ export function ResearchPromptBox() {
           disabled={busy || !sessionId || !question.trim()}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="roman-button inline-flex min-w-32 items-center justify-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink transition hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-50"
+          className="roman-button inline-flex min-h-12 w-full items-center justify-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink transition hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 sm:w-auto sm:min-w-32"
         >
           Commission research <ArrowRight size={15} />
         </motion.button>

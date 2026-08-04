@@ -62,16 +62,16 @@ export function DynamicWalletDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 p-2 backdrop-blur-sm sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="dynamic-wallet-title"
     >
-      <div className="roman-panel relative w-full max-w-md p-6 sm:p-7">
+      <div className="roman-panel relative max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto p-5 sm:p-7">
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center border border-marble/10 text-muted transition hover:bg-marble/10 hover:text-cream"
+          className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center border border-marble/10 text-muted transition hover:bg-marble/10 hover:text-cream sm:right-4 sm:top-4 sm:h-9 sm:w-9"
           aria-label="Close wallet dialog"
         >
           <X size={17} />
