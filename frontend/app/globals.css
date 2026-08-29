@@ -105,6 +105,179 @@ a {
   animation: gleam-anim 4s linear infinite;
 }
 
+.maecenas-tour-popover.driver-popover {
+  max-width: min(22rem, calc(100vw - 2rem));
+  border: 1px solid rgba(227, 231, 226, 0.2);
+  border-radius: 0.75rem;
+  background: linear-gradient(145deg, rgba(24, 28, 25, 0.98), rgba(9, 11, 10, 0.99));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  color: #f3f4ef;
+  padding: 1.125rem;
+}
+
+.maecenas-tour-popover .driver-popover-title {
+  color: #f3f4ef;
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1.1;
+  padding-right: 1.75rem;
+}
+
+.maecenas-tour-popover .driver-popover-description {
+  color: #b7b9b3;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.maecenas-tour-popover .driver-popover-progress-text {
+  color: #8dd8a8;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.maecenas-tour-popover .driver-popover-footer-btn {
+  border: 1px solid rgba(227, 231, 226, 0.18);
+  border-radius: 0.375rem;
+  background: transparent;
+  color: #b7b9b3;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  padding: 0.45rem 0.7rem;
+  text-transform: uppercase;
+}
+
+.maecenas-tour-popover .driver-popover-next-btn {
+  border-color: #8dd8a8;
+  background: #8dd8a8;
+  color: #090b0a;
+}
+
+.maecenas-tour-popover .driver-popover-footer-btn:hover,
+.maecenas-tour-popover .driver-popover-footer-btn:focus-visible {
+  background: rgba(227, 231, 226, 0.12);
+  color: #f3f4ef;
+  outline: 2px solid #8dd8a8;
+  outline-offset: 2px;
+}
+
+.maecenas-tour-popover .driver-popover-next-btn:hover,
+.maecenas-tour-popover .driver-popover-next-btn:focus-visible {
+  background: #b3e8c4;
+  color: #090b0a;
+}
+
+.maecenas-tour-popover .driver-popover-close-btn {
+  color: #9b9e98;
+}
+
+.maecenas-tour-popover .driver-popover-close-btn:hover,
+.maecenas-tour-popover .driver-popover-close-btn:focus-visible {
+  color: #f3f4ef;
+  outline: 2px solid #8dd8a8;
+  outline-offset: 1px;
+}
+
+.maecenas-tour-popover .driver-popover-arrow {
+  border-color: rgba(18, 22, 19, 0.99);
+}
+
+.maecenas-tour-popover .driver-popover-arrow-side-top {
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.maecenas-tour-popover .driver-popover-arrow-side-bottom {
+  border-top-color: transparent;
+  border-right-color: transparent;
+  border-left-color: transparent;
+}
+
+.maecenas-tour-popover .driver-popover-arrow-side-left {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-right-color: transparent;
+}
+
+.maecenas-tour-popover .driver-popover-arrow-side-right {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.navigation-progress {
+  pointer-events: none;
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 60;
+  height: 2px;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.navigation-progress span {
+  display: block;
+  height: 100%;
+  width: 34%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #8dd8a8 45%, #f3f4ef 65%, transparent);
+  box-shadow: 0 0 16px rgba(141, 216, 168, 0.9);
+  transform: translateX(-130%);
+}
+
+.navigation-progress-active {
+  opacity: 1;
+}
+
+.navigation-progress-active span {
+  animation: navigation-progress 1s ease-in-out infinite;
+}
+
+.route-loader {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid rgba(227, 231, 226, 0.14);
+  border-radius: 999px;
+  background: rgba(24, 28, 25, 0.72);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  color: #b7b9b3;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  padding: 0.7rem 0.9rem;
+  text-transform: uppercase;
+}
+
+.route-loader-spinner {
+  height: 0.875rem;
+  width: 0.875rem;
+  border: 2px solid rgba(141, 216, 168, 0.22);
+  border-right-color: #8dd8a8;
+  border-radius: 999px;
+  animation: route-loader-spin 700ms linear infinite;
+}
+
+@keyframes navigation-progress {
+  0% { transform: translateX(-130%); }
+  55% { transform: translateX(165%); }
+  100% { transform: translateX(320%); }
+}
+
+@keyframes route-loader-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navigation-progress-active span,
+  .route-loader-spinner {
+    animation: none;
+  }
+}
+
 @keyframes gleam-anim {
   to {
     background-position: 200% center;

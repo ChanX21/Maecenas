@@ -5,8 +5,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { Instrument_Serif, IBM_Plex_Mono, Inter } from "next/font/google";
 import { SessionStatus } from "@/components/session-status";
+import { OnboardingTour } from "@/components/onboarding-tour";
+import { NavigationFeedback } from "@/components/navigation-feedback";
+import { TourMenu } from "@/components/tour-menu";
 import { AppWalletProvider } from "@/components/wallet/dynamic-provider";
 import { WalletButton } from "@/components/wallet/wallet-button";
+import "driver.js/dist/driver.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -55,6 +59,7 @@ export default function RootLayout({
       <body className="font-sans">
         <AppWalletProvider>
           <div className="min-h-screen">
+            <NavigationFeedback />
             <header className="sticky top-0 z-40 border-b border-marble/10 bg-ink/88 backdrop-blur">
               <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 sm:flex sm:flex-wrap sm:justify-between sm:px-6 sm:py-3 lg:px-8">
                 <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -75,6 +80,7 @@ export default function RootLayout({
                 </Link>
                 <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                   <SessionStatus />
+                  <TourMenu />
                   <WalletButton />
                 </div>
                 <nav className="order-3 col-span-2 grid w-full grid-cols-5 items-center border-t border-marble/10 pt-1.5 font-mono text-[10px] uppercase text-muted sm:order-none sm:flex sm:w-auto sm:gap-1 sm:border-0 sm:pt-0 sm:text-[11px]">
@@ -91,6 +97,7 @@ export default function RootLayout({
               </div>
             </header>
             {children}
+            <OnboardingTour />
             <footer className="border-t border-marble/10 mt-16">
               <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-5 text-center sm:flex-row sm:px-6 sm:text-left lg:px-8">
                 <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-dim">

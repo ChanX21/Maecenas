@@ -46,7 +46,7 @@ export default async function AnswerPage({ params }: PageProps) {
           <h1 className="mt-3 text-balance font-display text-4xl leading-[1.08] text-cream sm:text-6xl">{answer.prompt}</h1>
         </header>
 
-        <div className="roman-panel mt-10 overflow-hidden p-4 sm:p-5">
+        <div data-tour="answer-overview" className="roman-panel mt-10 overflow-hidden p-4 sm:p-5">
           <BudgetMeter
             budgetUSDC={answer.budgetUSDC}
             spentUSDC={answer.spentUSDC}
@@ -113,7 +113,7 @@ export default async function AnswerPage({ params }: PageProps) {
           )}
         </article>
 
-        <section className="roman-panel mx-auto mt-5 max-w-4xl p-5 sm:p-8">
+        <section data-tour="answer-evidence" className="roman-panel mx-auto mt-5 max-w-4xl p-5 sm:p-8">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Source record</p>
           <h2 className="mt-2 font-display text-2xl text-cream">Funded evidence</h2>
           <div className="mt-5 divide-y divide-marble/10">
@@ -139,7 +139,7 @@ export default async function AnswerPage({ params }: PageProps) {
           </div>
         </section>
 
-        <details className="roman-panel mx-auto mt-5 max-w-4xl p-5 sm:p-8">
+        <details data-tour="answer-ledger" className="roman-panel mx-auto mt-5 max-w-4xl p-5 sm:p-8">
           <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.16em] text-muted hover:text-cream">
             Open the research ledger
           </summary>
