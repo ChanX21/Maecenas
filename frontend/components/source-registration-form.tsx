@@ -99,6 +99,7 @@ export function SourceRegistrationForm() {
               <p className="mt-1 text-sm text-muted">Treasury records and future settlements belong to this address.</p>
             </div>
             <button
+              data-tour="source-wallet"
               type="button"
               onClick={ensureWallet}
               className="roman-button inline-flex items-center gap-2 border border-marble/15 px-4 py-2.5 font-mono text-xs uppercase text-cream"
@@ -109,14 +110,14 @@ export function SourceRegistrationForm() {
           </div>
         </motion.section>
 
-        <motion.section variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+        <motion.section data-tour="source-record" variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
           <h2 className="font-display text-2xl text-cream">Public source record</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <TextField label="Title" value={form.title} onChange={(value) => update("title", value)} required />
             <TextField label="Author or publisher" value={form.authorName} onChange={(value) => update("authorName", value)} required />
             <TextField label="Source URL" type="url" value={form.sourceUrl} onChange={(value) => update("sourceUrl", value)} required />
             <TextField label="DOI or canonical URL" value={form.doiOrCanonicalUrl} onChange={(value) => update("doiOrCanonicalUrl", value)} />
-            <div className="block">
+            <div data-tour="source-price" className="block">
               <span className="font-mono text-xs uppercase text-muted">Unlock price in USDC</span>
               <div className="mt-2 flex flex-col gap-2">
                 <input
@@ -159,6 +160,7 @@ export function SourceRegistrationForm() {
         </motion.section>
 
         <motion.section 
+          data-tour="source-evidence"
           variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
           className="border-t border-marble/10 pt-6"
         >
@@ -168,6 +170,7 @@ export function SourceRegistrationForm() {
         </motion.section>
 
         <motion.button
+          data-tour="source-submit"
           variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}

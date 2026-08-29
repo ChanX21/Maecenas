@@ -81,16 +81,22 @@ export function apiUrl(path: string) {
   return `${getApiBaseUrl()}${path}`;
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+type ApiFetchCache = {
+  revalidate?: number;
+};
+
+export async function apiFetch<T>(path: string, init?: RequestInit, cacheOptions?: ApiFetchCache): Promise<T> {
   const token = getAuthToken();
+  const shouldCacheOnServer = typeof window === "undefined" && cacheOptions?.revalidate !== undefined;
   const response = await fetch(apiUrl(path), {
     ...init,
     headers: {
       ...init?.headers,
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
-    cache: "no-store"
-  });
+    cache: shouldCacheOnServer ? "force-cache" : "no-store",
+    ...(shouldCacheOnServer ? { next: { revalidate: cacheOptions.revalidate } } : {})
+  } as RequestInit & { next?: { revalidate: number } });
   const text = await response.text();
   let data: Record<string, unknown>;
   try {
@@ -105,7 +111,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 }
 
 export async function getSources() {
-  return apiFetch<{ sources: Source[] }>("/api/sources");
+  return apiFetch<{ sources: Source[] }>("/api/sources", undefined, { revalidate: 60 });
 }
 
 export async function getOwnerSources(wallet: string) {
@@ -160,7 +166,7 @@ export async function verifyReceipt(id: string) {
 }
 
 export async function getLeaderboard() {
-  return apiFetch<LeaderboardResponse>("/api/leaderboard");
+  return apiFetch<LeaderboardResponse>("/api/leaderboard", undefined, { revalidate: 10 });
 }
 
 export async function getDashboard(wallet: string) {

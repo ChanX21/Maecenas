@@ -11,7 +11,16 @@ import {
 import { MaecenasWalletProvider } from "@/components/wallet/maecenas-wallet-provider";
 
 export function AppWalletProvider({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 15_000,
+        gcTime: 5 * 60_000,
+        refetchOnWindowFocus: false,
+        retry: 1
+      }
+    }
+  }));
 
   useEffect(() => {
     if (!isDynamicConfigured || dynamicClient.initStatus !== "uninitialized") return;

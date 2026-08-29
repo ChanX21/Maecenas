@@ -19,6 +19,7 @@ import {
   submitSearchPaymentProof
 } from "@/api";
 import { getSessionId, notifyUsageChanged } from "@/lib/browser-session";
+import { prepareAnswerOnboardingTour } from "@/lib/onboarding";
 import { useMaecenasWallet } from "@/components/wallet/maecenas-wallet-provider";
 
 type ResearchRequest = {
@@ -123,6 +124,7 @@ export function ResearchPromptBox() {
       }
       if (!answerId) throw new Error("Research timed out while waiting for the worker");
       notifyUsageChanged();
+      prepareAnswerOnboardingTour();
       router.push(`/answer/${answerId}`);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 402) {
@@ -243,6 +245,7 @@ export function ResearchPromptBox() {
 
       <textarea
         id="question"
+        data-tour="research-mandate"
         required
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
@@ -264,7 +267,7 @@ export function ResearchPromptBox() {
 
       <div className="mt-6 flex flex-col items-stretch gap-4 border-t border-marble/10 pt-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <div className="col-span-2 flex w-full overflow-hidden rounded-md border border-marble/10 bg-ink-2 font-mono text-[11px] sm:w-auto">
+          <div data-tour="research-funding" className="col-span-2 flex w-full overflow-hidden rounded-md border border-marble/10 bg-ink-2 font-mono text-[11px] sm:w-auto">
             <button
               type="button"
               disabled={!usage?.freeSearchesRemaining}
@@ -287,7 +290,7 @@ export function ResearchPromptBox() {
               Pay {usage?.paidSearchPriceUSDC ?? "0.01"} USDC
             </button>
           </div>
-          <label className="flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted sm:min-h-0">
+          <label data-tour="research-posture" className="flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted sm:min-h-0">
             Posture
             <select
               value={strategy}
@@ -299,7 +302,7 @@ export function ResearchPromptBox() {
               <option value="aggressive">Expansive</option>
             </select>
           </label>
-          <details className="group relative min-w-0">
+          <details data-tour="research-budget" className="group relative min-w-0">
           <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted hover:text-cream sm:min-h-0">
             Budget · <span className="text-gold">{budgetUSDC} USDC</span>
           </summary>
@@ -328,6 +331,7 @@ export function ResearchPromptBox() {
           </span>
         </div>
         <motion.button
+          data-tour="research-submit"
           type="submit"
           disabled={busy || !sessionId || !question.trim()}
           whileHover={{ scale: 1.02 }}

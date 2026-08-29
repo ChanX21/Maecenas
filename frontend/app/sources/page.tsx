@@ -3,7 +3,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getSources } from "@/api";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function SourcesPage() {
   const { sources } = await getSources();

@@ -4,7 +4,7 @@ import { RecentPaymentsFeed } from "@/components/recent-payments-feed";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getLeaderboard } from "@/api";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 10;
 
 export default async function LeaderboardPage() {
   const leaderboard = await getLeaderboard();
