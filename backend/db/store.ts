@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres, { type Sql } from "postgres";
@@ -28,7 +28,7 @@ import type {
 import { splitSettlementReference } from "@/payments/circle-gateway";
 import { signReceipt, walletAuthMessage } from "@/security";
 import { makeId } from "@/utils/ids";
-import { microsToUSDC, parseUSDCMicros } from "@/utils/money";
+import { basisPointShare, microsToUSDC, parseUSDCMicros } from "@/utils/money";
 
 type Db = PostgresJsDatabase<Record<string, never>>;
 
@@ -122,13 +122,25 @@ function paymentMode(): "mock" | "real" {
 }
 
 function paymentPriceMicros(): number {
-  return parseUSDCMicros(process.env.PAID_SEARCH_PRICE_USDC ?? "0.01");
+  return parseUSDCMicros(process.env.PAID_SEARCH_PRICE_USDC ?? "0.05");
 }
 
 function platformFeeBps(): number {
   const value = Number(process.env.PLATFORM_FEE_BPS ?? 1000);
   if (!Number.isInteger(value) || value < 0 || value > 10_000) throw new Error("PLATFORM_FEE_BPS must be between 0 and 10000");
   return value;
+}
+
+function authorPoolBps(): number {
+  const value = Number(process.env.AUTHOR_POOL_BPS ?? 7000);
+  if (!Number.isInteger(value) || value < 0 || value + platformFeeBps() > 10_000) {
+    throw new Error("AUTHOR_POOL_BPS and PLATFORM_FEE_BPS must total at most 10000");
+  }
+  return value;
+}
+
+export function configuredPaidEvidenceBudgetUSDC(): string {
+  return microsToUSDC(basisPointShare(paymentPriceMicros(), authorPoolBps()));
 }
 
 function mapSource(row: typeof sources.$inferSelect): Source {
@@ -269,6 +281,25 @@ export async function listSources(options: { walletAddress?: string; includeUnap
   return rows
     .filter((source) => !options.walletAddress || source.walletAddress.toLowerCase() === options.walletAddress)
     .map(mapSource);
+}
+
+export async function listApprovedSourcesPage(page: number, pageSize: number): Promise<{
+  items: Source[];
+  totalItems: number;
+}> {
+  const conn = await database();
+  const approved = eq(sources.status, "approved");
+  const [rows, totals] = await Promise.all([
+    conn
+      .select()
+      .from(sources)
+      .where(approved)
+      .orderBy(desc(sources.createdAt), desc(sources.id))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    conn.select({ value: count() }).from(sources).where(approved)
+  ]);
+  return { items: rows.map(mapSource), totalItems: totals[0]?.value ?? 0 };
 }
 
 export async function findSource(id: string): Promise<Source | undefined> {
@@ -544,7 +575,7 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
       }
       paymentType = "user_paid";
       searchPaymentId = payment.id;
-      const evidenceBudget = Math.floor((payment.amountMicros * (10_000 - platformFeeBps())) / 10_000);
+      const evidenceBudget = basisPointShare(payment.amountMicros, authorPoolBps());
       budgetMicros = input.requestedBudgetUSDC
         ? Math.min(parseUSDCMicros(input.requestedBudgetUSDC), evidenceBudget)
         : evidenceBudget;

@@ -4,6 +4,7 @@ import type {
   ResearchStrategy,
   GatewayBurnIntent,
   GatewayWithdrawalQuote,
+  PaginatedResponse,
   SearchPaymentIntentResponse,
   SearchPaymentResponse,
   Source,
@@ -110,8 +111,13 @@ export async function apiFetch<T>(path: string, init?: RequestInit, cacheOptions
   return data as T;
 }
 
-export async function getSources() {
-  return apiFetch<{ sources: Source[] }>("/api/sources", undefined, { revalidate: 60 });
+export async function getSources({ page = 1, pageSize = 24 }: { page?: number; pageSize?: number } = {}) {
+  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  return apiFetch<PaginatedResponse<Source>>(`/api/sources?${query}`, undefined, { revalidate: 60 });
+}
+
+export async function getSource(id: string) {
+  return apiFetch<{ source: Source }>(`/api/sources/${encodeURIComponent(id)}`);
 }
 
 export async function getOwnerSources(wallet: string) {

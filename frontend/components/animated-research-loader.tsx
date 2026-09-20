@@ -29,9 +29,9 @@ export function AnimatedResearchLoader({ stage, events = [] }: { stage: string; 
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 15, filter: "blur(8px)" }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      exit={{ opacity: 0, y: -15, filter: "blur(8px)" }}
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
       transition={{ type: "spring", bounce: 0, duration: 0.6 }}
       className={`mt-6 flex flex-col gap-4 rounded-xl border p-5 shadow-2xl backdrop-blur-md transition-all duration-700 ${
         isPayment 
@@ -80,9 +80,9 @@ export function AnimatedResearchLoader({ stage, events = [] }: { stage: string; 
         <AnimatePresence mode="wait">
           <motion.p
             key={isPayment ? stage : researchPhrases[phraseIndex]}
-            initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
             className={`text-[15px] font-medium tracking-tight ${isPayment ? "text-gold" : "text-cream"}`}
           >
@@ -105,7 +105,7 @@ export function AnimatedResearchLoader({ stage, events = [] }: { stage: string; 
               <motion.div
                 key={event.id}
                 initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: isOldest ? 0.4 : 1, x: 0, filter: isOldest ? "blur(1px)" : "blur(0px)" }}
+                animate={{ opacity: isOldest ? 0.45 : 1, x: 0 }}
                 transition={{ delay: 0.1 * (arr.length - idx) }}
                 className="flex items-start gap-2"
               >

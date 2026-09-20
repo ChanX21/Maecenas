@@ -1,0 +1,1 @@
+CREATE INDEX "sources_archive_idx" ON "sources" USING btree ("status","created_at" DESC NULLS LAST,"id" DESC NULLS LAST);

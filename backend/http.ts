@@ -9,6 +9,7 @@ import {
   beginResearch,
   completeResearch,
   confirmSearchPayment,
+  configuredPaidEvidenceBudgetUSDC,
   consumeWalletAuthNonce,
   createWalletAuthNonce,
   createSearchPaymentIntent,
@@ -21,6 +22,7 @@ import {
   getResearchRunStatus,
   getSearchPayment,
   getSearchPaymentIntent,
+  listApprovedSourcesPage,
   listSources,
   readDb,
   reviewSource,
@@ -146,8 +148,24 @@ async function routeRequest(context: RouteContext) {
 
   if (method === "GET" && path === "/api/sources") {
     const walletAddress = optionalWallet(url.searchParams.get("wallet"));
-    if (walletAddress) requireWalletAuth(request, walletAddress);
-    return sendJson(response, 200, { sources: (await listSources({ walletAddress })).map(publicSource) });
+    if (walletAddress) {
+      requireWalletAuth(request, walletAddress);
+      return sendJson(response, 200, { sources: (await listSources({ walletAddress })).map(publicSource) });
+    }
+    const { page, pageSize } = sourcePageParams(url.searchParams);
+    const result = await listApprovedSourcesPage(page, pageSize);
+    const totalPages = Math.ceil(result.totalItems / pageSize);
+    return sendJson(response, 200, {
+      items: result.items.map(publicSource),
+      pagination: {
+        page,
+        pageSize,
+        totalItems: result.totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      }
+    });
   }
 
   if (method === "POST" && path === "/api/auth/nonce") {
@@ -606,7 +624,7 @@ async function getUsageByAnswer(answer: Answer) {
 
 async function sendPaymentRequired(response: ServerResponse, sessionId: string) {
   const usage = await getOrCreateUsage(sessionId);
-  const price = process.env.PAID_SEARCH_PRICE_USDC ?? "0.01";
+  const price = process.env.PAID_SEARCH_PRICE_USDC ?? "0.05";
   return sendJson(response, 402, {
     error: "PAYMENT_REQUIRED",
     reason: "FREE_QUOTA_EXHAUSTED",
@@ -614,6 +632,7 @@ async function sendPaymentRequired(response: ServerResponse, sessionId: string) 
     freeSearchesUsed: usage.freeSearchesUsed,
     freeSearchLimit: usage.freeSearchLimit,
     paidSearchPriceUSDC: price,
+    paidEvidenceBudgetUSDC: configuredPaidEvidenceBudgetUSDC(),
     nextStep: "CREATE_SEARCH_PAYMENT_INTENT"
   });
 }
@@ -630,7 +649,9 @@ function usageResponse(usage: UserUsage) {
     freeSearchesRemaining: remaining,
     paidSearchesUsed: usage.paidSearchesUsed,
     requiresPayment: remaining === 0,
-    paidSearchPriceUSDC: process.env.PAID_SEARCH_PRICE_USDC ?? "0.01",
+    paidSearchPriceUSDC: process.env.PAID_SEARCH_PRICE_USDC ?? "0.05",
+    paidEvidenceBudgetUSDC: configuredPaidEvidenceBudgetUSDC(),
+    freeEvidenceBudgetUSDC: process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01",
     paymentMode: process.env.PAYMENT_MODE === "real" ? "real" : "mock"
   };
 }
@@ -713,6 +734,20 @@ function requireWalletAuth(request: IncomingMessage, expectedWallet?: string): s
 function publicSource(source: Source): PublicSource {
   const { evidenceText: _evidenceText, ownershipAttestation: _ownershipAttestation, walletAddress, ...metadata } = source;
   return { ...metadata, ownerWallet: walletAddress };
+}
+
+function positiveInteger(value: string | null, fallback: number, maximum = Number.MAX_SAFE_INTEGER): number {
+  if (!value || !/^\d+$/.test(value)) return fallback;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) return fallback;
+  return Math.min(maximum, Math.max(1, parsed));
+}
+
+export function sourcePageParams(searchParams: URLSearchParams): { page: number; pageSize: number } {
+  return {
+    page: positiveInteger(searchParams.get("page"), 1),
+    pageSize: positiveInteger(searchParams.get("pageSize"), 24, 100)
+  };
 }
 
 function adminSource(source: Source) {

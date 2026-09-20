@@ -19,6 +19,7 @@ export const sources = pgTable("sources", {
   rejectionReason: text("rejection_reason"),
   createdAt: text("created_at").notNull()
 }, (table) => [
+  index("sources_archive_idx").on(table.status, table.createdAt.desc(), table.id.desc()),
   uniqueIndex("sources_source_url_unique").on(table.sourceUrl),
   uniqueIndex("sources_canonical_url_unique").on(table.doiOrCanonicalUrl)
 ]).enableRLS();

@@ -11,6 +11,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
   process.env.FREE_SEARCH_LIMIT = "5";
   process.env.FREE_SEARCH_BUDGET_USDC = "0.01";
   process.env.PAID_SEARCH_PRICE_USDC = "0.01";
+  process.env.AUTHOR_POOL_BPS = "7000";
   process.env.MAECENAS_TREASURY_WALLET_ADDRESS = "0x2222222222222222222222222222222222222222";
   process.env.ADMIN_TOKEN = "test_admin_token";
 
@@ -105,8 +106,10 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     assert.equal(submitted.body.source.status, "pending");
     assert.equal(submitted.body.source.evidenceText, undefined);
     const publicSourcesBefore = (await (await fetch(`${base}/api/sources`)).json()) as Record<string, any>;
-    assert.ok(publicSourcesBefore.sources.every((source: Record<string, unknown>) => !("evidenceText" in source)));
-    assert.ok(!publicSourcesBefore.sources.some((source: Record<string, unknown>) => source.id === submitted.body.source.id));
+    assert.equal(publicSourcesBefore.pagination.page, 1);
+    assert.equal(publicSourcesBefore.pagination.pageSize, 24);
+    assert.ok(publicSourcesBefore.items.every((source: Record<string, unknown>) => !("evidenceText" in source)));
+    assert.ok(!publicSourcesBefore.items.some((source: Record<string, unknown>) => source.id === submitted.body.source.id));
     const ownerSources = (await (
       await fetch(`${base}/api/sources?wallet=${walletAddress}`, {
         headers: { Authorization: `Bearer ${walletAuth}` }
@@ -128,6 +131,23 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       { Authorization: "Bearer test_admin_token" }
     );
     assert.equal(approved.body.source.status, "approved");
+    const firstPage = (await (await fetch(`${base}/api/sources?page=1&pageSize=3`)).json()) as Record<string, any>;
+    const secondPage = (await (await fetch(`${base}/api/sources?page=2&pageSize=3`)).json()) as Record<string, any>;
+    assert.equal(firstPage.pagination.totalItems, 11);
+    assert.equal(firstPage.pagination.totalPages, 4);
+    assert.equal(firstPage.pagination.hasNextPage, true);
+    assert.equal(firstPage.pagination.hasPreviousPage, false);
+    assert.equal(firstPage.items[0].id, submitted.body.source.id);
+    assert.equal(firstPage.items.length, 3);
+    assert.equal(secondPage.pagination.hasPreviousPage, true);
+    assert.ok(firstPage.items.every((source: Record<string, unknown>) => !("evidenceText" in source) && !("ownershipAttestation" in source)));
+    assert.ok(firstPage.items.every((source: Record<string, unknown>) => !secondPage.items.some((other: Record<string, unknown>) => other.id === source.id)));
+    const cappedPage = (await (await fetch(`${base}/api/sources?pageSize=999`)).json()) as Record<string, any>;
+    assert.equal(cappedPage.pagination.pageSize, 100);
+    const emptyPage = (await (await fetch(`${base}/api/sources?page=999&pageSize=3`)).json()) as Record<string, any>;
+    assert.deepEqual(emptyPage.items, []);
+    assert.equal(emptyPage.pagination.hasNextPage, false);
+    assert.equal(emptyPage.pagination.hasPreviousPage, true);
     const publicSource = (await (await fetch(`${base}/api/sources/${submitted.body.source.id}`)).json()) as Record<string, any>;
     assert.equal(publicSource.source.evidenceText, undefined);
     const guessedProof = await fetch(`${base}/api/sources/${submitted.body.source.id}/evidence?proof=proof:${submitted.body.source.id}`);
@@ -211,7 +231,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     });
     assert.equal(paid.response.status, 200);
     assert.equal(paid.body.paymentType, "user_paid");
-    assert.equal(paid.body.budget.max, "0.009");
+    assert.equal(paid.body.budget.max, "0.007");
     assert.ok(paid.body.receipts.every((receipt: Record<string, unknown>) => receipt.fundedBy === "user_paid_search"));
     assert.ok(paid.body.receipts.every((receipt: Record<string, unknown>) => receipt.receiptSignature));
     const receiptVerification = await fetch(`${base}/api/receipts/${paid.body.receipts[0].id}/verify`);

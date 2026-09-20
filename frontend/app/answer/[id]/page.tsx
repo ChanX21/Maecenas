@@ -6,7 +6,7 @@ import { AgentTrace } from "@/components/agent-trace";
 import { BudgetMeter } from "@/components/budget-meter";
 import { ReceiptRecordLinks, SettlementProof } from "@/components/transaction-proof-link";
 import { citationPaymentStatusLabel } from "@/lib/arc-explorer";
-import { getAnswer, getSources } from "@/api";
+import { getAnswer, getSource } from "@/api";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +16,13 @@ type PageProps = {
 
 export default async function AnswerPage({ params }: PageProps) {
   const { id } = await params;
-  const [{ answer, commissionPayment }, { sources }] = await Promise.all([
-    getAnswer(id).catch(() => ({ answer: null, commissionPayment: undefined })),
-    getSources()
-  ]);
+  const { answer, commissionPayment } = await getAnswer(id).catch(() => ({ answer: null, commissionPayment: undefined }));
   if (!answer) notFound();
+  const sources = (
+    await Promise.all(
+      [...new Set(answer.citedSourceIds)].map((sourceId) => getSource(sourceId).then(({ source }) => source).catch(() => undefined))
+    )
+  ).filter((source) => source !== undefined);
   const trace = answer.decisionTraceJson;
   const sourceById = new Map(sources.map((source) => [source.id, source]));
   const content = answer.contentJson;

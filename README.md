@@ -220,7 +220,7 @@ Production base URL: `https://maecenas.onrender.com`
 | `GET` | `/api/answers/:id` | Read a completed answer |
 | `POST` | `/api/auth/nonce` | Create a wallet challenge |
 | `POST` | `/api/auth/verify` | Exchange a wallet signature for a session |
-| `GET` | `/api/sources` | List approved sources |
+| `GET` | `/api/sources?page=1&pageSize=24` | List approved sources with pagination |
 | `POST` | `/api/sources` | Submit a wallet-owned source |
 | `POST` | `/api/payments/search-intent` | Create a commission payment intent |
 | `POST` | `/api/payments/search-proof` | Verify and settle a payment proof |
@@ -238,11 +238,17 @@ Authenticated endpoints accept:
 Authorization: Bearer <signed-session-token>
 ```
 
+The public source archive returns `items` plus `pagination` metadata. Page size
+defaults to 24 and is capped at 100. Authenticated `?wallet=` requests retain
+the contributor-owned `{ sources }` response.
+
 ## Funding Economics
 
-- `PAID_SEARCH_PRICE_USDC` sets the patron price for one commission.
-- `PLATFORM_FEE_BPS` reserves the platform share; the remainder is the maximum
-  evidence budget.
+- `PAID_SEARCH_PRICE_USDC` sets the patron price for one commission and defaults
+  to the initial production hypothesis of `0.05` USDC.
+- `AUTHOR_POOL_BPS` caps paid evidence spending at 70% (`0.035` USDC at the
+  default price), while `PLATFORM_FEE_BPS` reserves the 10% platform share.
+- The remaining 20% is retained for AI and infrastructure costs.
 - `SPONSORED_TREASURY_LIMIT_USDC` caps aggregate sponsored evidence spending.
 - Selected evidence prices are paid to registered source-owner wallets.
 - Unspent commission value remains in the treasury.

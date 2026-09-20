@@ -130,11 +130,12 @@ export function ResearchPromptBox() {
       if (cause instanceof ApiError && cause.status === 402) {
         const nextUsage = await getUsage(sessionId);
         setUsage(nextUsage);
+        setFundingMode("wallet");
         setPaymentRequired(true);
       } else if (cause instanceof ApiError && cause.status === 409 && cause.data.error === "FREE_QUOTA_BUSY") {
         setFundingMode("wallet");
         setPaymentRequired(true);
-        setError(`${cause.message}. Pay ${usage?.paidSearchPriceUSDC ?? "0.01"} USDC to start another run now.`);
+        setError(`${cause.message}. Pay ${usage?.paidSearchPriceUSDC ?? "0.05"} USDC to start another run now.`);
       } else {
         setError(cause instanceof Error ? cause.message : "Research commission failed");
       }
@@ -213,6 +214,9 @@ export function ResearchPromptBox() {
 
   const busy = Boolean(stage);
   const canFundGateway = error.startsWith("Circle Gateway balance is too low.") && gatewayFundAmount;
+  const maximumBudgetUSDC = fundingMode === "wallet"
+    ? usage?.paidEvidenceBudgetUSDC ?? "0.035"
+    : usage?.freeEvidenceBudgetUSDC ?? "0.01";
 
   async function fundGatewayBalance() {
     if (!gatewayFundAmount) return;
@@ -273,6 +277,7 @@ export function ResearchPromptBox() {
               disabled={!usage?.freeSearchesRemaining}
               onClick={() => {
                 setFundingMode("grant");
+                setBudgetUSDC((current) => Math.min(Number(current), Number(usage?.freeEvidenceBudgetUSDC ?? "0.01")).toFixed(4));
                 setPaymentRequired(false);
               }}
               className={`min-h-11 flex-1 px-3 py-2 transition ${fundingMode === "grant" ? "bg-marble/10 text-cream" : "text-muted hover:text-cream"} disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-0`}
@@ -287,7 +292,7 @@ export function ResearchPromptBox() {
               }}
               className={`min-h-11 flex-1 px-3 py-2 transition ${fundingMode === "wallet" ? "bg-gold/15 text-gold" : "text-muted hover:text-cream"} sm:min-h-0`}
             >
-              Pay {usage?.paidSearchPriceUSDC ?? "0.01"} USDC
+              Pay {usage?.paidSearchPriceUSDC ?? "0.05"} USDC
             </button>
           </div>
           <label data-tour="research-posture" className="flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted sm:min-h-0">
@@ -314,7 +319,7 @@ export function ResearchPromptBox() {
               <input
                 type="range"
                 min="0.0001"
-                max="0.0100"
+                max={maximumBudgetUSDC}
                 step="0.0001"
                 value={budgetUSDC}
                 onChange={(e) => setBudgetUSDC(Number(e.target.value).toFixed(4))}
@@ -322,7 +327,7 @@ export function ResearchPromptBox() {
               />
               <div className="mt-1 flex justify-between font-mono text-[9px] text-dim">
                 <span>0.0001 min</span>
-                <span>0.0100 max</span>
+                <span>{maximumBudgetUSDC} max</span>
               </div>
             </div>
           </details>
@@ -352,7 +357,7 @@ export function ResearchPromptBox() {
             isWalletConnected={Boolean(address)}
             mode={usage?.paymentMode ?? "mock"}
             onConfirm={confirmPayment}
-            priceUSDC={usage?.paidSearchPriceUSDC ?? "0.01"}
+            priceUSDC={usage?.paidSearchPriceUSDC ?? "0.05"}
           />
         ) : null}
       </AnimatePresence>

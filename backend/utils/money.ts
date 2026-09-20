@@ -15,6 +15,10 @@ export function microsToUSDC(value: number): string {
   return formatUSDC(value / 1_000_000);
 }
 
+export function basisPointShare(value: number, basisPoints: number): number {
+  return Math.floor((value * basisPoints) / 10_000);
+}
+
 export function formatUSDC(value: number): string {
   if (value === 0) return "0";
   return value.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");

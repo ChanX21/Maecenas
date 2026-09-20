@@ -19,6 +19,20 @@ export type Source = {
   createdAt: string;
 };
 
+export type PaginationMeta = {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+};
+
+export type PaginatedResponse<T> = {
+  items: T[];
+  pagination: PaginationMeta;
+};
+
 export type CitationPaymentStatus = "pending" | "paid" | "failed" | "mock";
 
 export type CitationPayment = {
@@ -148,6 +162,8 @@ export type Usage = {
   paidSearchesUsed: number;
   requiresPayment: boolean;
   paidSearchPriceUSDC: string;
+  paidEvidenceBudgetUSDC: string;
+  freeEvidenceBudgetUSDC: string;
   paymentMode: "mock" | "real";
 };
 
