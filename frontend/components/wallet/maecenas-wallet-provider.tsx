@@ -31,12 +31,12 @@ import {
   syncWalletAddress
 } from "@/lib/browser-session";
 import {
-  arcRpcUrl,
   createCirclePaymentPayload,
   ensureCircleGatewayFunds,
   fundCircleGateway,
   type X402TypedData
 } from "@/lib/circle-payment";
+import { arcChainId, arcName, arcRpcUrl } from "@/lib/arc-environment";
 import { signCircleGatewayWithdrawal } from "@/lib/circle-withdrawal";
 import {
   dynamicClient,
@@ -77,7 +77,7 @@ function createArcWalletClient(walletAccount: EvmWalletAccount) {
   );
 }
 
-function isArcTestnetNetwork(network: {
+function isArcNetwork(network: {
   chain: string;
   displayName?: string;
   name?: string;
@@ -85,12 +85,11 @@ function isArcTestnetNetwork(network: {
   testnet?: boolean;
 }) {
   if (network.chain !== "EVM") return false;
-  const haystack = [
-    network.networkId,
-    network.name ?? "",
-    network.displayName ?? ""
-  ].join(" ").toLowerCase();
-  return haystack.includes("5042002") || haystack.includes("arc testnet") || haystack.includes("arc-testnet");
+  const networkId = String(network.networkId);
+  return network.chain === "EVM" && (
+    networkId === String(arcChainId) ||
+    networkId === `eip155:${arcChainId}`
+  );
 }
 
 export function MaecenasWalletProvider({ children }: { children: React.ReactNode }) {
@@ -193,7 +192,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
   const ensureGatewayFunds = useCallback(async (amountUSDC: string) => {
     const account = requireWallet();
     const networks = getNetworksData(dynamicClient);
-    const arcNetwork = networks.find(isArcTestnetNetwork);
+    const arcNetwork = networks.find(isArcNetwork);
     if (!arcNetwork) {
       const availableEvmNetworks = networks
         .filter((network) => network.chain === "EVM")
@@ -201,8 +200,8 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
         .join(", ");
       throw new Error(
         availableEvmNetworks
-          ? `Arc Testnet is missing from this Dynamic environment. EVM networks returned: ${availableEvmNetworks}`
-          : "Dynamic returned no EVM networks. Enable EVM and Arc Testnet in this environment."
+          ? `${arcName} is missing from this Dynamic environment. EVM networks returned: ${availableEvmNetworks}`
+          : `Dynamic returned no EVM networks. Enable EVM and ${arcName} in this environment.`
       );
     }
     await switchActiveNetwork(

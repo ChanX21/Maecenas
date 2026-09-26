@@ -7,6 +7,7 @@ import { AgentError } from "@/agent/ai";
 import { buildLeaderboard, completedReceipts, type PaymentMode } from "@/analytics/leaderboard";
 import {
   beginResearch,
+  completeReservedSearchPayment,
   completeResearch,
   confirmSearchPayment,
   configuredPaidEvidenceBudgetUSDC,
@@ -15,6 +16,7 @@ import {
   createSearchPaymentIntent,
   createSource,
   failResearch,
+  failReservedSearchPayment,
   findAnswer,
   findReceipt,
   findSource,
@@ -26,10 +28,12 @@ import {
   listSources,
   readDb,
   reviewSource,
+  reserveSearchPayment,
   StoreError
 } from "@/db/store";
 import { buildPaymentRequired, hasValidPaymentProof } from "@/payments/payment-executor";
-import { circlePaymentRequired, settleCirclePayment } from "@/payments/circle-gateway";
+import { CirclePaymentError, circlePaymentRequired, settleCirclePayment } from "@/payments/circle-gateway";
+import { getArcNetwork } from "@/payments/arc-environment";
 import {
   createGatewayWithdrawalQuote,
   executeGatewayWithdrawal,
@@ -341,7 +345,7 @@ async function routeRequest(context: RouteContext) {
       paymentIntentId: intent.id,
       amountUSDC: intent.amountUSDC,
       recipientWallet,
-      network: paymentRequired?.accepts[0]?.network ?? process.env.X402_NETWORK ?? "arc-testnet",
+      network: paymentRequired?.accepts[0]?.network ?? getArcNetwork(),
       status: intent.status,
       paymentMode: intent.paymentMode,
       expiresAt: intent.expiresAt,
@@ -358,25 +362,48 @@ async function routeRequest(context: RouteContext) {
     requireWalletAuth(request, walletAddress);
     const intent = await getSearchPaymentIntent(paymentIntentId);
     if (!intent) throw new HttpError(404, "INVALID_PAYMENT_INTENT", "Payment intent was not found");
-    let settlement;
+    let payment;
     if (intent.paymentMode === "real") {
       const recipient = requireWallet(process.env.MAECENAS_TREASURY_WALLET_ADDRESS);
       const required = circlePaymentRequired(intent.amountUSDC, recipient, `${process.env.PUBLIC_BACKEND_URL ?? ""}/api/payments/search-proof`);
       const paymentPayload = body.paymentPayload;
       if (!paymentPayload) throw new HttpError(400, "PAYMENT_NOT_CONFIRMED", "paymentPayload is required");
-      settlement = await settleCirclePayment(paymentPayload, required);
+      const reservation = await reserveSearchPayment({
+        paymentIntentId,
+        sessionId,
+        walletAddress,
+        paymentProof: JSON.stringify(paymentPayload)
+      });
+      if (reservation.status === "paid") {
+        payment = reservation;
+      } else {
+        try {
+          const settlement = await settleCirclePayment(paymentPayload, required);
+          payment = await completeReservedSearchPayment({
+            searchPaymentId: reservation.id,
+            walletAddress,
+            settlement: {
+              payer: settlement.payer ?? "",
+              transaction: settlement.transaction,
+              network: settlement.network
+            }
+          });
+        } catch (error) {
+          if (error instanceof CirclePaymentError && !error.mayHaveMoved) {
+            await failReservedSearchPayment(reservation.id);
+          }
+          throw error;
+        }
+      }
+    } else {
+      payment = await confirmSearchPayment({
+        paymentIntentId,
+        sessionId,
+        walletAddress,
+        paymentProof: String(body.paymentProof ?? ""),
+        txHash: body.txHash ? String(body.txHash) : undefined
+      });
     }
-    const payment = await confirmSearchPayment({
-      paymentIntentId,
-      sessionId,
-      walletAddress,
-      paymentProof: settlement ? JSON.stringify(body.paymentPayload) : String(body.paymentProof ?? ""),
-      txHash: body.txHash ? String(body.txHash) : undefined
-      ,
-      settlement: settlement
-        ? { payer: settlement.payer ?? "", transaction: settlement.transaction, network: settlement.network }
-        : undefined
-    });
     return sendJson(response, 200, {
       searchPaymentId: payment.id,
       paymentIntentId: payment.paymentIntentId,
@@ -436,6 +463,7 @@ async function routeRequest(context: RouteContext) {
     if (process.env.RESEARCH_ASYNC === "true") {
       enqueueResearch({
         runId: reservation.runId,
+        clientRequestId,
         question,
         budgetUSDC: reservation.budgetUSDC,
         strategy,
@@ -454,6 +482,7 @@ async function routeRequest(context: RouteContext) {
     try {
       const result = await runResearchAgent({
         question,
+        clientRequestId,
         budgetUSDC: reservation.budgetUSDC,
         strategy,
         sessionId,
@@ -501,7 +530,7 @@ async function routeRequest(context: RouteContext) {
             status: payment.status,
             paymentMode: payment.paymentMode,
             protocol: "x402",
-            network: `eip155:${process.env.ARC_CHAIN_ID || "5042002"}`,
+            network: getArcNetwork(),
             recipientWallet: process.env.MAECENAS_TREASURY_WALLET_ADDRESS,
             paymentId: payment.paymentId,
             txHash: payment.txHash,

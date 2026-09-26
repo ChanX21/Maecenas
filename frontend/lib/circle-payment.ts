@@ -10,6 +10,7 @@ import {
   type WalletClient
 } from "viem";
 import type { SearchPaymentIntentResponse } from "@/types";
+import { arcEnvironment, arcName, arcRpcUrl, circleGatewayUrl } from "@/lib/arc-environment";
 
 type PaymentRequired = NonNullable<SearchPaymentIntentResponse["paymentRequired"]>;
 
@@ -27,15 +28,10 @@ export type X402TypedData = {
 
 export type X402TypedDataSigner = (typedData: X402TypedData) => Promise<Hex>;
 
-const arc = CHAIN_CONFIGS.arcTestnet;
-export const arcRpcUrl =
-  process.env.NEXT_PUBLIC_ARC_RPC_URL ??
-  arc.rpcUrl ??
-  arc.chain.rpcUrls.default.http[0] ??
-  "https://rpc.testnet.arc.network";
+const arc = arcEnvironment === "mainnet" ? CHAIN_CONFIGS.arc : CHAIN_CONFIGS.arcTestnet;
 
 async function gatewayBalance(address: Address): Promise<bigint> {
-  const response = await fetch("https://gateway-api-testnet.circle.com/v1/balances", {
+  const response = await fetch(`${circleGatewayUrl}/v1/balances`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -83,7 +79,7 @@ export async function fundCircleGateway(
     args: [address]
   });
   if (walletBalance < depositAmount) {
-    throw new Error(`Wallet needs ${formatUnits(depositAmount, 6)} USDC on Arc Testnet`);
+    throw new Error(`Wallet needs ${formatUnits(depositAmount, 6)} USDC on ${arcName}`);
   }
 
   const allowance = await publicClient.readContract({

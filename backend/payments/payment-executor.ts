@@ -1,7 +1,14 @@
 import type { CitationPayment, Source } from "@/types";
 import { makeId } from "@/utils/ids";
 import { createEvidenceGrant, signReceipt, verifyToken } from "@/security";
-import { payCircleResource } from "@/payments/circle-gateway";
+import { CirclePaymentError, payCircleResource } from "@/payments/circle-gateway";
+import { getArcNetwork } from "@/payments/arc-environment";
+import {
+  completeEvidencePaymentAttempt,
+  failEvidencePaymentAttempt,
+  recordEvidencePaymentAuthorization,
+  reserveEvidencePaymentAttempt
+} from "@/db/store";
 
 const agentName = "Maecenas Scholar v1";
 const mockWallet = "0x00000000000000000000000000000000000a11ce";
@@ -15,7 +22,7 @@ export function buildPaymentRequired(source: Source) {
     status: 402,
     error: "Payment Required",
     x402: {
-      network: process.env.X402_NETWORK ?? "arc-testnet",
+      network: getArcNetwork(),
       asset: "USDC",
       amountUSDC: source.citationPriceUSDC,
       recipientWallet: source.walletAddress,
@@ -54,7 +61,8 @@ export async function createEvidencePayment(
   answerId: string,
   userPrompt: string,
   fundedBy: CitationPayment["fundedBy"],
-  searchPaymentId?: string
+  searchPaymentId?: string,
+  paymentScope?: string
 ): Promise<{
   receipt: CitationPayment;
   paymentProof?: string;
@@ -63,22 +71,58 @@ export async function createEvidencePayment(
   const mode = getPaymentMode();
   let paymentId: string | undefined = `mock_${makeId("x402").replace("x402_", "")}`;
   let txHash: string | undefined;
-  let network = process.env.X402_NETWORK ?? "arc-testnet";
+  let network = getArcNetwork();
   let payerWallet = process.env.MAECENAS_AGENT_WALLET_ADDRESS ?? mockWallet;
   let evidence;
   if (mode === "real") {
-    const baseUrl = process.env.PUBLIC_BACKEND_URL ?? `http://127.0.0.1:${process.env.BACKEND_PORT ?? 4000}`;
-    const payment = await payCircleResource<{
-      id: string;
-      title: string;
-      authorName: string;
-      evidenceText: string;
-    }>(`${baseUrl}/api/sources/${source.id}/evidence`);
-    paymentId = payment.paymentId;
-    txHash = payment.txHash;
-    network = payment.network;
-    payerWallet = payment.payer;
-    evidence = { ...payment.data, sourceId: source.id, citationPriceUSDC: source.citationPriceUSDC };
+    if (!paymentScope) throw new Error("paymentScope is required for real evidence payouts");
+    const attempt = await reserveEvidencePaymentAttempt({
+      paymentScope,
+      sourceId: source.id,
+      amountUSDC: source.citationPriceUSDC,
+      recipientWallet: source.walletAddress
+    });
+    if (attempt.status === "paid") {
+      if (!attempt.evidence || !attempt.payerWallet || !attempt.network) {
+        throw new Error("Completed evidence payment is missing its durable result");
+      }
+      paymentId = attempt.paymentId;
+      txHash = attempt.txHash;
+      network = attempt.network;
+      payerWallet = attempt.payerWallet;
+      evidence = { ...attempt.evidence, sourceId: source.id, citationPriceUSDC: source.citationPriceUSDC };
+    } else {
+      const baseUrl = process.env.PUBLIC_BACKEND_URL ?? `http://127.0.0.1:${process.env.BACKEND_PORT ?? 4000}`;
+      try {
+        const payment = await payCircleResource<{
+          id: string;
+          title: string;
+          authorName: string;
+          evidenceText: string;
+        }>(
+          `${baseUrl}/api/sources/${source.id}/evidence`,
+          (proof) => recordEvidencePaymentAuthorization(attempt.id, proof)
+        );
+        const completed = await completeEvidencePaymentAttempt({
+          id: attempt.id,
+          paymentId: payment.paymentId,
+          txHash: payment.txHash,
+          payerWallet: payment.payer,
+          network: payment.network,
+          evidence: payment.data
+        });
+        paymentId = completed.paymentId;
+        txHash = completed.txHash;
+        network = completed.network!;
+        payerWallet = completed.payerWallet!;
+        evidence = { ...payment.data, sourceId: source.id, citationPriceUSDC: source.citationPriceUSDC };
+      } catch (error) {
+        if (error instanceof CirclePaymentError && !error.mayHaveMoved) {
+          await failEvidencePaymentAttempt(attempt.id);
+        }
+        throw error;
+      }
+    }
   }
   const unsigned: Omit<CitationPayment, "receiptSignature"> = {
     id: makeId("rcpt"),

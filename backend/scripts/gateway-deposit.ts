@@ -1,5 +1,7 @@
-import { GatewayClient, type SupportedChainName } from "@circle-fin/x402-batching/client";
+import { GatewayClient } from "@circle-fin/x402-batching/client";
 import { loadEnv } from "@/env";
+import { getArcChainName } from "@/payments/arc-environment";
+import { validateCirclePaymentEnvironment } from "@/payments/circle-gateway";
 
 function usage(): never {
   console.error("Usage: npm run gateway:deposit -- [amountUSDC] [--check]");
@@ -17,10 +19,6 @@ function normalizePrivateKey(value: string): `0x${string}` {
   return `0x${hex}` as `0x${string}`;
 }
 
-function chainName(): SupportedChainName {
-  return (process.env.CIRCLE_GATEWAY_CHAIN ?? "arcTestnet") as SupportedChainName;
-}
-
 const args = process.argv.slice(2);
 const checkOnly = args.includes("--check");
 const amountArg = args.find((arg) => arg !== "--check");
@@ -36,13 +34,14 @@ if (!privateKeyRaw) {
 }
 
 const privateKey = normalizePrivateKey(privateKeyRaw);
+validateCirclePaymentEnvironment();
 const client = new GatewayClient({
-  chain: chainName(),
+  chain: getArcChainName(),
   privateKey,
   rpcUrl: process.env.ARC_RPC_URL || undefined
 });
 
-console.log(`Chain: ${chainName()}`);
+console.log(`Chain: ${getArcChainName()}`);
 console.log(`Wallet: ${client.address}`);
 
 const before = await client.getBalances();

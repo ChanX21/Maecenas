@@ -131,6 +131,32 @@ export const citationPayments = pgTable(
   ]
 ).enableRLS();
 
+export const evidencePaymentAttempts = pgTable(
+  "evidence_payment_attempts",
+  {
+    id: text("id").primaryKey(),
+    paymentScope: text("payment_scope").notNull(),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => sources.id),
+    amountMicros: integer("amount_micros").notNull(),
+    recipientWallet: text("recipient_wallet").notNull(),
+    status: text("status", { enum: ["pending", "paid", "failed"] }).notNull(),
+    paymentProof: text("payment_proof"),
+    paymentId: text("payment_id"),
+    txHash: text("tx_hash"),
+    payerWallet: text("payer_wallet"),
+    network: text("network"),
+    evidenceJson: text("evidence_json"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull()
+  },
+  (table) => [
+    uniqueIndex("evidence_payment_attempts_scope_source_unique").on(table.paymentScope, table.sourceId),
+    index("evidence_payment_attempts_scope_idx").on(table.paymentScope)
+  ]
+).enableRLS();
+
 export const walletAuthNonces = pgTable(
   "wallet_auth_nonces",
   {

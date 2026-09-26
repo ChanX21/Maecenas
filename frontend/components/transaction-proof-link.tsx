@@ -229,7 +229,9 @@ function formatGatewayAmount(amount: string): string {
 }
 
 function networkLabel(network: string): string {
-  return network === "eip155:5042002" ? "Arc Testnet (5042002)" : network;
+  if (network === "eip155:5042002") return "Arc Testnet (5042002)";
+  if (network === "eip155:5042") return "Arc Mainnet (5042)";
+  return network;
 }
 
 type ReceiptRecordLinksProps = {

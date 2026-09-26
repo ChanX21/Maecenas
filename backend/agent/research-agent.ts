@@ -3,15 +3,16 @@ import { analyzeResearch } from "@/agent/query-planner";
 import { scoutSources } from "@/agent/source-scout";
 import { answerContentToText, synthesizeAnswer } from "@/agent/answer-synthesizer";
 import { traceEvent } from "@/agent/trace";
-import { listSources } from "@/db/store";
+import { listEvidencePaymentAttempts, listSources } from "@/db/store";
 import { setNetraResearchContext, SpanType, withNetraSpan } from "@/observability/netra";
 import { createEvidencePayment, getPaymentMode, requestProtectedEvidence } from "@/payments/payment-executor";
 import type { Answer, ResearchStrategy, ResearchTrace, Source, TraceEvent, UnlockedEvidence } from "@/types";
 import { makeId } from "@/utils/ids";
-import { sumUSDC } from "@/utils/money";
+import { microsToUSDC, parseUSDCMicros, sumUSDC } from "@/utils/money";
 
 type RunResearchInput = {
   question: string;
+  clientRequestId: string;
   budgetUSDC: string;
   strategy: ResearchStrategy;
   sessionId: string;
@@ -70,7 +71,43 @@ async function runResearchAgentCore(input: RunResearchInput): Promise<{ answer: 
   pushEvent(traceEvent("plan", "Mandate mapped", `${plan.subquestions.length} subquestions and ${plan.evidenceNeeds.length} evidence needs defined.`));
   pushEvent(traceEvent("score", "Evidence ranked", `Leading score: ${scoredSources[0]?.finalScore ?? 0}.`));
 
-  const budgetDecision = allocateBudget(scoredSources, input.budgetUSDC, input.strategy);
+  const sourceById = new Map<string, Source>(allSources.map((source) => [source.id, source]));
+  const paymentScope = input.searchPaymentId ?? `${input.sessionId}:${input.clientRequestId}`;
+  const previousAttempts = getPaymentMode() === "real"
+    ? await listEvidencePaymentAttempts(paymentScope)
+    : [];
+  if (previousAttempts.some((attempt) => attempt.status === "pending")) {
+    throw new Error("An evidence payment has unknown settlement status and must be reconciled before retrying");
+  }
+  const previousPaid = previousAttempts.filter((attempt) => attempt.status === "paid" && attempt.evidence);
+  const previousSourceIds = new Set(previousPaid.map((attempt) => attempt.sourceId));
+  const previousSpendMicros = previousPaid.reduce((total, attempt) => total + parseUSDCMicros(attempt.amountUSDC), 0);
+  const remainingBudgetUSDC = microsToUSDC(Math.max(0, parseUSDCMicros(input.budgetUSDC) - previousSpendMicros));
+  const newBudgetDecision = allocateBudget(
+    scoredSources.filter((source) => !previousSourceIds.has(source.sourceId)),
+    remainingBudgetUSDC,
+    input.strategy
+  );
+  const budgetDecision = {
+    ...newBudgetDecision,
+    maxBudgetUSDC: input.budgetUSDC,
+    selectedSources: [
+      ...previousPaid.map((attempt) => {
+        const source = sourceById.get(attempt.sourceId)!;
+        return {
+          sourceId: source.id,
+          title: source.title,
+          priceUSDC: attempt.amountUSDC,
+          reason: "Previously funded by this commission; reused without another payment."
+        };
+      }),
+      ...newBudgetDecision.selectedSources
+    ],
+    estimatedSpendUSDC: sumUSDC([
+      ...previousPaid.map((attempt) => attempt.amountUSDC),
+      newBudgetDecision.estimatedSpendUSDC
+    ])
+  };
   pushEvent(
     traceEvent(
       "budget",
@@ -79,7 +116,27 @@ async function runResearchAgentCore(input: RunResearchInput): Promise<{ answer: 
     )
   );
 
-  const sourceById = new Map<string, Source>(allSources.map((source) => [source.id, source]));
+  const plannedEvidence = budgetDecision.selectedSources.flatMap((selected) => {
+    const previous = previousPaid.find((attempt) => attempt.sourceId === selected.sourceId);
+    if (previous?.evidence) {
+      return [{
+        sourceId: previous.sourceId,
+        title: previous.evidence.title,
+        authorName: previous.evidence.authorName,
+        evidenceText: previous.evidence.evidenceText,
+        citationPriceUSDC: previous.amountUSDC
+      }];
+    }
+    const source = sourceById.get(selected.sourceId);
+    return source ? [{
+      sourceId: source.id,
+      title: source.title,
+      authorName: source.authorName,
+      evidenceText: source.evidenceText,
+      citationPriceUSDC: source.citationPriceUSDC
+    }] : [];
+  });
+  const contentJson = await synthesizeAnswer(plan, plannedEvidence, budgetDecision);
   const unlockedEvidence: UnlockedEvidence[] = [];
 
   for (const selected of budgetDecision.selectedSources) {
@@ -99,7 +156,8 @@ async function runResearchAgentCore(input: RunResearchInput): Promise<{ answer: 
       answerId,
       input.question,
       input.paymentType === "user_paid" ? "user_paid_search" : "maecenas_sponsored",
-      input.searchPaymentId
+      input.searchPaymentId,
+      paymentScope
     );
     pushEvent(
       traceEvent(
@@ -123,7 +181,6 @@ async function runResearchAgentCore(input: RunResearchInput): Promise<{ answer: 
 
   const receipts = unlockedEvidence.map((evidence) => evidence.receipt);
 
-  const contentJson = await synthesizeAnswer(plan, unlockedEvidence, budgetDecision);
   const response = answerContentToText(contentJson);
   pushEvent(traceEvent("synthesis", "Research brief delivered", `The brief draws on ${unlockedEvidence.length} funded evidence sources.`));
 

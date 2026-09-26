@@ -4,6 +4,7 @@ import type { ResearchStrategy, TraceEvent } from "@/types";
 
 type ResearchJob = {
   runId: string;
+  clientRequestId: string;
   question: string;
   budgetUSDC: string;
   strategy: ResearchStrategy;

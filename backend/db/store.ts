@@ -9,6 +9,7 @@ import { seedSources } from "@/db/seed-data";
 import {
   answers,
   citationPayments,
+  evidencePaymentAttempts,
   researchRuns,
   searchPaymentIntents,
   searchPayments,
@@ -57,7 +58,7 @@ export async function initializeDatabase(): Promise<void> {
     client = postgres(url, {
       max: Number(process.env.DATABASE_POOL_SIZE ?? 10),
       prepare: false,
-      ssl: "require"
+      ssl: process.env.DATABASE_SSL === "false" ? false : "require"
     });
     db = drizzle(client);
     const migrationsFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../drizzle");
@@ -92,6 +93,7 @@ export async function resetDatabaseForTests(): Promise<void> {
   const conn = await database();
   await conn.transaction(async (tx) => {
     await tx.delete(citationPayments);
+    await tx.delete(evidencePaymentAttempts);
     await tx.delete(researchRuns);
     await tx.delete(answers);
     await tx.delete(searchPayments);
@@ -241,6 +243,44 @@ function mapSearchPayment(row: typeof searchPayments.$inferSelect): SearchPaymen
     createdAt: row.createdAt,
     paidAt: row.paidAt ?? undefined,
     usedForAnswerId: row.usedForAnswerId ?? undefined
+  };
+}
+
+export type EvidencePaymentAttempt = {
+  id: string;
+  paymentScope: string;
+  sourceId: string;
+  amountUSDC: string;
+  recipientWallet: string;
+  status: "pending" | "paid" | "failed";
+  paymentProof?: string;
+  paymentId?: string;
+  txHash?: string;
+  payerWallet?: string;
+  network?: string;
+  evidence?: { id: string; title: string; authorName: string; evidenceText: string };
+  createdAt: string;
+  updatedAt: string;
+};
+
+function mapEvidencePaymentAttempt(
+  row: typeof evidencePaymentAttempts.$inferSelect
+): EvidencePaymentAttempt {
+  return {
+    id: row.id,
+    paymentScope: row.paymentScope,
+    sourceId: row.sourceId,
+    amountUSDC: microsToUSDC(row.amountMicros),
+    recipientWallet: row.recipientWallet,
+    status: row.status,
+    paymentProof: row.paymentProof ?? undefined,
+    paymentId: row.paymentId ?? undefined,
+    txHash: row.txHash ?? undefined,
+    payerWallet: row.payerWallet ?? undefined,
+    network: row.network ?? undefined,
+    evidence: row.evidenceJson ? JSON.parse(row.evidenceJson) : undefined,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
   };
 }
 
@@ -573,6 +613,19 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
       if (payment.usedForAnswerId || activeUse) {
         throw new StoreError("SEARCH_PAYMENT_ALREADY_USED", "Search payment has already funded an answer", 409);
       }
+      const previousUse = (await tx
+        .select({ requestHash: researchRuns.requestHash })
+        .from(researchRuns)
+        .where(eq(researchRuns.searchPaymentId, payment.id))
+        .orderBy(desc(researchRuns.createdAt))
+        .limit(1))[0];
+      if (previousUse && previousUse.requestHash !== requestHash) {
+        throw new StoreError(
+          "SEARCH_PAYMENT_RETRY_MISMATCH",
+          "A failed paid commission may only be retried with the same research mandate",
+          409
+        );
+      }
       paymentType = "user_paid";
       searchPaymentId = payment.id;
       const evidenceBudget = basisPointShare(payment.amountMicros, authorPoolBps());
@@ -676,7 +729,7 @@ export async function completeResearch(runId: string, answer: Answer, receipts: 
 export async function failResearch(runId: string): Promise<void> {
   await (await database())
     .update(researchRuns)
-    .set({ status: "failed", searchPaymentId: null, updatedAt: new Date().toISOString() })
+    .set({ status: "failed", updatedAt: new Date().toISOString() })
     .where(eq(researchRuns.id, runId));
 }
 
@@ -692,6 +745,121 @@ export async function getResearchRunStatus(runId: string, sessionId: string): Pr
   if (!run) return undefined;
   const answer = run.answerId ? await findAnswer(run.answerId) : undefined;
   return { status: run.status, answer };
+}
+
+export async function listEvidencePaymentAttempts(paymentScope: string): Promise<EvidencePaymentAttempt[]> {
+  const rows = await (await database())
+    .select()
+    .from(evidencePaymentAttempts)
+    .where(eq(evidencePaymentAttempts.paymentScope, paymentScope));
+  return rows.map(mapEvidencePaymentAttempt);
+}
+
+export async function reserveEvidencePaymentAttempt(input: {
+  paymentScope: string;
+  sourceId: string;
+  amountUSDC: string;
+  recipientWallet: string;
+}): Promise<EvidencePaymentAttempt> {
+  return (await database()).transaction(async (rawTx) => {
+    const tx = rawTx as Db;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`evidence-payment:${input.paymentScope}:${input.sourceId}`}))`);
+    const existing = (await tx
+      .select()
+      .from(evidencePaymentAttempts)
+      .where(and(
+        eq(evidencePaymentAttempts.paymentScope, input.paymentScope),
+        eq(evidencePaymentAttempts.sourceId, input.sourceId)
+      ))
+      .limit(1))[0];
+    if (existing?.status === "paid" && existing.evidenceJson) return mapEvidencePaymentAttempt(existing);
+    if (existing?.status === "pending") {
+      throw new StoreError(
+        "EVIDENCE_PAYMENT_STATUS_UNKNOWN",
+        "A previous evidence payment may have moved funds and must be reconciled before retrying",
+        409
+      );
+    }
+
+    const now = new Date().toISOString();
+    if (existing) {
+      await tx.update(evidencePaymentAttempts)
+        .set({
+          amountMicros: parseUSDCMicros(input.amountUSDC),
+          recipientWallet: input.recipientWallet,
+          status: "pending",
+          paymentProof: null,
+          paymentId: null,
+          txHash: null,
+          payerWallet: null,
+          network: null,
+          evidenceJson: null,
+          updatedAt: now
+        })
+        .where(eq(evidencePaymentAttempts.id, existing.id));
+      return mapEvidencePaymentAttempt((await tx
+        .select()
+        .from(evidencePaymentAttempts)
+        .where(eq(evidencePaymentAttempts.id, existing.id))
+        .limit(1))[0]!);
+    }
+
+    const attempt = {
+      id: makeId("epa"),
+      paymentScope: input.paymentScope,
+      sourceId: input.sourceId,
+      amountMicros: parseUSDCMicros(input.amountUSDC),
+      recipientWallet: input.recipientWallet,
+      status: "pending" as const,
+      createdAt: now,
+      updatedAt: now
+    };
+    await tx.insert(evidencePaymentAttempts).values(attempt);
+    return mapEvidencePaymentAttempt((await tx
+      .select()
+      .from(evidencePaymentAttempts)
+      .where(eq(evidencePaymentAttempts.id, attempt.id))
+      .limit(1))[0]!);
+  });
+}
+
+export async function recordEvidencePaymentAuthorization(id: string, paymentProof: string): Promise<void> {
+  await (await database())
+    .update(evidencePaymentAttempts)
+    .set({ paymentProof, updatedAt: new Date().toISOString() })
+    .where(and(eq(evidencePaymentAttempts.id, id), eq(evidencePaymentAttempts.status, "pending")));
+}
+
+export async function completeEvidencePaymentAttempt(input: {
+  id: string;
+  paymentId?: string;
+  txHash?: string;
+  payerWallet: string;
+  network: string;
+  evidence: { id: string; title: string; authorName: string; evidenceText: string };
+}): Promise<EvidencePaymentAttempt> {
+  const conn = await database();
+  const updated = (await conn.update(evidencePaymentAttempts)
+    .set({
+      status: "paid",
+      paymentId: input.paymentId,
+      txHash: input.txHash,
+      payerWallet: input.payerWallet,
+      network: input.network,
+      evidenceJson: JSON.stringify(input.evidence),
+      updatedAt: new Date().toISOString()
+    })
+    .where(and(eq(evidencePaymentAttempts.id, input.id), eq(evidencePaymentAttempts.status, "pending")))
+    .returning())[0];
+  if (!updated) throw new StoreError("EVIDENCE_PAYMENT_INVALID", "Evidence payment is not pending", 409);
+  return mapEvidencePaymentAttempt(updated);
+}
+
+export async function failEvidencePaymentAttempt(id: string): Promise<void> {
+  await (await database())
+    .update(evidencePaymentAttempts)
+    .set({ status: "failed", updatedAt: new Date().toISOString() })
+    .where(and(eq(evidencePaymentAttempts.id, id), eq(evidencePaymentAttempts.status, "pending")));
 }
 
 export async function createSearchPaymentIntent(
@@ -746,6 +914,93 @@ export type ConfirmSearchPaymentInput = {
     network: string;
   };
 };
+
+export async function reserveSearchPayment(input: Omit<ConfirmSearchPaymentInput, "txHash" | "settlement">): Promise<SearchPayment> {
+  return (await database()).transaction(async (rawTx) => {
+    const tx = rawTx as Db;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`search-payment:${input.paymentIntentId}`}))`);
+    const intent = (await tx.select().from(searchPaymentIntents).where(eq(searchPaymentIntents.id, input.paymentIntentId)).for("update").limit(1))[0];
+    if (!intent) throw new StoreError("INVALID_PAYMENT_INTENT", "Payment intent was not found", 404);
+    if (intent.sessionId !== input.sessionId) {
+      throw new StoreError("SEARCH_PAYMENT_SESSION_MISMATCH", "Payment intent belongs to another session", 409);
+    }
+    if (intent.walletAddress !== input.walletAddress) {
+      throw new StoreError("SEARCH_PAYMENT_WALLET_MISMATCH", "Payment intent belongs to another wallet", 409);
+    }
+    const existing = (await tx.select().from(searchPayments).where(eq(searchPayments.intentId, intent.id)).limit(1))[0];
+    if (existing?.status === "paid" || existing?.status === "mock") return mapSearchPayment(existing);
+    if (existing?.status === "pending") {
+      throw new StoreError(
+        "PAYMENT_SETTLEMENT_STATUS_UNKNOWN",
+        "A previous settlement may have moved funds and must be reconciled before retrying",
+        409
+      );
+    }
+    if (Date.parse(intent.expiresAt) <= Date.now()) {
+      throw new StoreError("PAYMENT_INTENT_EXPIRED", "Payment intent has expired", 410);
+    }
+    if (intent.status !== "requires_payment") {
+      throw new StoreError("INVALID_PAYMENT_INTENT", "Payment intent cannot be paid", 409);
+    }
+    if (!input.paymentProof.trim()) {
+      throw new StoreError("PAYMENT_NOT_CONFIRMED", "Payment proof is required", 400);
+    }
+
+    const now = new Date().toISOString();
+    if (existing) {
+      const updated = (await tx.update(searchPayments)
+        .set({ status: "pending", paymentProof: input.paymentProof, txHash: null, paymentId: null, paidAt: null })
+        .where(eq(searchPayments.id, existing.id))
+        .returning())[0]!;
+      return mapSearchPayment(updated);
+    }
+    const payment = {
+      id: makeId("sp"),
+      intentId: intent.id,
+      sessionId: input.sessionId,
+      walletAddress: input.walletAddress,
+      amountMicros: intent.amountMicros,
+      status: "pending" as const,
+      paymentMode: intent.paymentMode,
+      paymentProof: input.paymentProof,
+      createdAt: now
+    };
+    await tx.insert(searchPayments).values(payment);
+    return mapSearchPayment((await tx.select().from(searchPayments).where(eq(searchPayments.id, payment.id)).limit(1))[0]!);
+  });
+}
+
+export async function completeReservedSearchPayment(input: {
+  searchPaymentId: string;
+  walletAddress: string;
+  settlement: { payer: string; transaction: string; network: string };
+}): Promise<SearchPayment> {
+  return (await database()).transaction(async (rawTx) => {
+    const tx = rawTx as Db;
+    const payment = (await tx.select().from(searchPayments).where(eq(searchPayments.id, input.searchPaymentId)).for("update").limit(1))[0];
+    if (!payment) throw new StoreError("PAYMENT_NOT_CONFIRMED", "Payment reservation was not found", 404);
+    if (payment.status === "paid") return mapSearchPayment(payment);
+    if (payment.status !== "pending") throw new StoreError("PAYMENT_NOT_CONFIRMED", "Payment is not pending settlement", 409);
+    if (input.settlement.payer.toLowerCase() !== input.walletAddress) {
+      throw new StoreError("PAYMENT_NOT_CONFIRMED", "Circle Gateway payer does not match the authenticated wallet", 402);
+    }
+    const reference = splitSettlementReference(input.settlement.transaction);
+    const now = new Date().toISOString();
+    const updated = (await tx.update(searchPayments)
+      .set({ status: "paid", paymentId: reference.paymentId, txHash: reference.txHash, paidAt: now })
+      .where(eq(searchPayments.id, payment.id))
+      .returning())[0]!;
+    await tx.update(searchPaymentIntents).set({ status: "paid" }).where(eq(searchPaymentIntents.id, payment.intentId));
+    return mapSearchPayment(updated);
+  });
+}
+
+export async function failReservedSearchPayment(searchPaymentId: string): Promise<void> {
+  await (await database())
+    .update(searchPayments)
+    .set({ status: "failed" })
+    .where(and(eq(searchPayments.id, searchPaymentId), eq(searchPayments.status, "pending")));
+}
 
 export async function confirmSearchPayment(input: ConfirmSearchPaymentInput): Promise<SearchPayment> {
   return (await database()).transaction(async (rawTx) => {

@@ -1,5 +1,4 @@
 import { randomBytes } from "node:crypto";
-import { CHAIN_CONFIGS } from "@circle-fin/x402-batching/client";
 import {
   createPublicClient,
   createWalletClient,
@@ -13,9 +12,9 @@ import {
   type Hex
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { getArcConfig, getCircleGatewayUrl } from "@/payments/arc-environment";
 
-const config = CHAIN_CONFIGS.arcTestnet;
-const gatewayApi = "https://gateway-api-testnet.circle.com/v1";
+const activeWithdrawalSalts = new Set<string>();
 const gatewayMinterAbi = [{
   type: "function",
   name: "gatewayMint",
@@ -102,6 +101,7 @@ function bytes32(address: string): Hex {
 }
 
 function transferSpec(wallet: string, caller: string, value: bigint): GatewayTransferSpec {
+  const config = getArcConfig();
   return {
     version: 1,
     sourceDomain: config.domain,
@@ -121,7 +121,7 @@ function transferSpec(wallet: string, caller: string, value: bigint): GatewayTra
 }
 
 async function gatewayRequest(path: string, body: unknown) {
-  const response = await fetch(`${gatewayApi}${path}`, {
+  const response = await fetch(`${getCircleGatewayUrl()}/v1${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
@@ -135,6 +135,7 @@ async function gatewayRequest(path: string, body: unknown) {
 }
 
 async function availableMicros(wallet: string): Promise<bigint> {
+  const config = getArcConfig();
   const data = await gatewayRequest("/balances", {
     token: "USDC",
     sources: [{ depositor: wallet, domain: config.domain }]
@@ -167,17 +168,27 @@ export async function createGatewayWithdrawalQuote(wallet: string) {
 
   let amount = balance;
   let quote = await estimate(transferSpec(wallet, caller, amount));
-  if (balance <= quote.maxFee) {
+  const minimumAmount = parseUnits(process.env.MIN_GATEWAY_WITHDRAWAL_USDC ?? "0.05", 6);
+  if (balance <= quote.maxFee + minimumAmount) {
     return {
       canWithdraw: false,
       balanceUSDC: formatUnits(balance, 6),
       feeUSDC: formatUnits(quote.maxFee, 6),
       amountUSDC: "0",
-      minimumBalanceUSDC: formatUnits(quote.maxFee + 1n, 6)
+      minimumBalanceUSDC: formatUnits(quote.maxFee + minimumAmount, 6)
     };
   }
 
   amount = balance - quote.maxFee;
+  if (amount < minimumAmount) {
+    return {
+      canWithdraw: false,
+      balanceUSDC: formatUnits(balance, 6),
+      feeUSDC: formatUnits(quote.maxFee, 6),
+      amountUSDC: "0",
+      minimumBalanceUSDC: formatUnits(quote.maxFee + minimumAmount, 6)
+    };
+  }
   const spec = transferSpec(wallet, caller, amount);
   quote = await estimate(spec);
   amount = balance - quote.maxFee;
@@ -239,61 +250,76 @@ export function validateGatewayWithdrawalIntent(
   if (value <= 0n || maxFee < 0n || maxBlockHeight <= 0n || value + maxFee > available) {
     throw new GatewayWithdrawalError(409, "INSUFFICIENT_GATEWAY_BALANCE", "Gateway balance no longer covers the withdrawal and fee");
   }
+  const maximumFee = parseUnits(process.env.MAX_GATEWAY_WITHDRAWAL_FEE_USDC ?? "0.05", 6);
+  const minimumAmount = parseUnits(process.env.MIN_GATEWAY_WITHDRAWAL_USDC ?? "0.05", 6);
+  if (maxFee > maximumFee || value < minimumAmount) {
+    throw new GatewayWithdrawalError(409, "UNSAFE_WITHDRAWAL_TERMS", "Withdrawal amount or fee is outside the configured safety limits");
+  }
 }
 
 export async function executeGatewayWithdrawal(wallet: string, burnIntent: GatewayBurnIntent, signature: string) {
-  const account = agentAccount();
-  const balance = await availableMicros(wallet);
-  validateGatewayWithdrawalIntent(burnIntent, wallet, account.address, balance);
-  const signatureValid = await verifyTypedData({
-    address: wallet as Address,
-    domain: { name: "GatewayWallet", version: "1" },
-    types: transferTypes,
-    primaryType: "BurnIntent",
-    message: {
-      ...burnIntent,
-      maxBlockHeight: BigInt(burnIntent.maxBlockHeight),
-      maxFee: BigInt(burnIntent.maxFee),
-      spec: {
-        ...burnIntent.spec,
-        value: BigInt(burnIntent.spec.value)
-      }
-    },
-    signature: signature as Hex
-  });
-  if (!signatureValid) {
-    throw new GatewayWithdrawalError(400, "INVALID_WITHDRAWAL_SIGNATURE", "Creator wallet signature is invalid");
+  const salt = burnIntent?.spec?.salt?.toLowerCase();
+  if (!salt || activeWithdrawalSalts.has(salt)) {
+    throw new GatewayWithdrawalError(409, "WITHDRAWAL_ALREADY_PROCESSING", "This withdrawal is already processing");
   }
+  activeWithdrawalSalts.add(salt);
+  try {
+    const account = agentAccount();
+    const balance = await availableMicros(wallet);
+    validateGatewayWithdrawalIntent(burnIntent, wallet, account.address, balance);
+    const signatureValid = await verifyTypedData({
+      address: wallet as Address,
+      domain: { name: "GatewayWallet", version: "1" },
+      types: transferTypes,
+      primaryType: "BurnIntent",
+      message: {
+        ...burnIntent,
+        maxBlockHeight: BigInt(burnIntent.maxBlockHeight),
+        maxFee: BigInt(burnIntent.maxFee),
+        spec: {
+          ...burnIntent.spec,
+          value: BigInt(burnIntent.spec.value)
+        }
+      },
+      signature: signature as Hex
+    });
+    if (!signatureValid) {
+      throw new GatewayWithdrawalError(400, "INVALID_WITHDRAWAL_SIGNATURE", "Creator wallet signature is invalid");
+    }
 
-  const transfer = await gatewayRequest("/transfer", [{ burnIntent, signature }]) as {
-    transferId?: string;
-    attestation?: Hex;
-    signature?: Hex;
-    error?: string;
-    message?: string;
-  };
-  if (!transfer.attestation || !transfer.signature) {
-    throw new GatewayWithdrawalError(502, "INVALID_GATEWAY_ATTESTATION", transfer.message ?? transfer.error ?? "Circle Gateway returned no attestation");
+    const transfer = await gatewayRequest("/transfer", [{ burnIntent, signature }]) as {
+      transferId?: string;
+      attestation?: Hex;
+      signature?: Hex;
+      error?: string;
+      message?: string;
+    };
+    if (!transfer.attestation || !transfer.signature) {
+      throw new GatewayWithdrawalError(502, "INVALID_GATEWAY_ATTESTATION", transfer.message ?? transfer.error ?? "Circle Gateway returned no attestation");
+    }
+
+    const config = getArcConfig();
+    const transport = http(process.env.ARC_RPC_URL || config.rpcUrl);
+    const walletClient = createWalletClient({ account, chain: config.chain, transport });
+    const publicClient = createPublicClient({ chain: config.chain, transport });
+    const txHash = await walletClient.writeContract({
+      address: config.gatewayMinter,
+      abi: gatewayMinterAbi,
+      functionName: "gatewayMint",
+      args: [transfer.attestation, transfer.signature]
+    });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    if (receipt.status !== "success") {
+      throw new GatewayWithdrawalError(502, "WITHDRAWAL_TRANSACTION_FAILED", `Arc withdrawal transaction failed: ${txHash}`);
+    }
+
+    return {
+      txHash,
+      transferId: transfer.transferId,
+      amountUSDC: formatUnits(BigInt(burnIntent.spec.value), 6),
+      feeUSDC: formatUnits(BigInt(burnIntent.maxFee), 6)
+    };
+  } finally {
+    activeWithdrawalSalts.delete(salt);
   }
-
-  const transport = http(process.env.ARC_RPC_URL || config.rpcUrl);
-  const walletClient = createWalletClient({ account, chain: config.chain, transport });
-  const publicClient = createPublicClient({ chain: config.chain, transport });
-  const txHash = await walletClient.writeContract({
-    address: config.gatewayMinter,
-    abi: gatewayMinterAbi,
-    functionName: "gatewayMint",
-    args: [transfer.attestation, transfer.signature]
-  });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-  if (receipt.status !== "success") {
-    throw new GatewayWithdrawalError(502, "WITHDRAWAL_TRANSACTION_FAILED", `Arc withdrawal transaction failed: ${txHash}`);
-  }
-
-  return {
-    txHash,
-    transferId: transfer.transferId,
-    amountUSDC: formatUnits(BigInt(burnIntent.spec.value), 6),
-    feeUSDC: formatUnits(BigInt(burnIntent.maxFee), 6)
-  };
 }

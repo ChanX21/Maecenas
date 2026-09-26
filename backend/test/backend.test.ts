@@ -58,6 +58,64 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     assert.equal(authentication.response.status, 200);
     walletAuth = authentication.body.token;
 
+    const nativeFetch = globalThis.fetch;
+    let gatewaySettlementCalls = 0;
+    let loseGatewayResponse = false;
+    globalThis.fetch = async (input, init) => {
+      if (String(input) === "https://gateway-api-testnet.circle.com/v1/x402/settle") {
+        gatewaySettlementCalls += 1;
+        if (loseGatewayResponse) throw new Error("simulated connection loss after submission");
+        return new Response(JSON.stringify({
+          success: true,
+          transaction: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          network: "eip155:5042002",
+          payer: walletAddress
+        }));
+      }
+      return nativeFetch(input, init);
+    };
+    try {
+      process.env.PAYMENT_MODE = "real";
+      const realIntent = await post("/api/payments/search-intent", { sessionId, walletAddress, usePaidSearch: true });
+      const realProof = await post("/api/payments/search-proof", {
+        paymentIntentId: realIntent.body.paymentIntentId,
+        sessionId,
+        walletAddress,
+        paymentPayload: { x402Version: 2, payload: { nonce: "first" } }
+      });
+      const realRetry = await post("/api/payments/search-proof", {
+        paymentIntentId: realIntent.body.paymentIntentId,
+        sessionId,
+        walletAddress,
+        paymentPayload: { x402Version: 2, payload: { nonce: "different" } }
+      });
+      assert.equal(realRetry.body.searchPaymentId, realProof.body.searchPaymentId);
+      assert.equal(gatewaySettlementCalls, 1);
+
+      const uncertainSessionId = "sess_uncertain_payment";
+      const uncertainIntent = await post("/api/payments/search-intent", { sessionId: uncertainSessionId, walletAddress, usePaidSearch: true });
+      loseGatewayResponse = true;
+      const uncertain = await post("/api/payments/search-proof", {
+        paymentIntentId: uncertainIntent.body.paymentIntentId,
+        sessionId: uncertainSessionId,
+        walletAddress,
+        paymentPayload: { x402Version: 2, payload: { nonce: "unknown" } }
+      });
+      assert.equal(uncertain.response.status, 500);
+      const blockedRetry = await post("/api/payments/search-proof", {
+        paymentIntentId: uncertainIntent.body.paymentIntentId,
+        sessionId: uncertainSessionId,
+        walletAddress,
+        paymentPayload: { x402Version: 2, payload: { nonce: "must-not-settle" } }
+      });
+      assert.equal(blockedRetry.response.status, 409);
+      assert.equal(blockedRetry.body.error, "PAYMENT_SETTLEMENT_STATUS_UNKNOWN");
+      assert.equal(gatewaySettlementCalls, 2);
+    } finally {
+      globalThis.fetch = nativeFetch;
+      process.env.PAYMENT_MODE = "mock";
+    }
+
     const earlyPaidIntent = await store.createSearchPaymentIntent(sessionId, walletAddress, true);
     const earlyPaidPayment = await store.confirmSearchPayment({
       paymentIntentId: earlyPaidIntent.id,
@@ -131,6 +189,48 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       { Authorization: "Bearer test_admin_token" }
     );
     assert.equal(approved.body.source.status, "approved");
+    const attempt = await store.reserveEvidencePaymentAttempt({
+      paymentScope: "test-payment-scope",
+      sourceId: submitted.body.source.id,
+      amountUSDC: "0.0001",
+      recipientWallet: walletAddress
+    });
+    assert.equal(attempt.status, "pending");
+    await assert.rejects(
+      () => store.reserveEvidencePaymentAttempt({
+        paymentScope: "test-payment-scope",
+        sourceId: submitted.body.source.id,
+        amountUSDC: "0.0001",
+        recipientWallet: walletAddress
+      }),
+      (error: unknown) => error instanceof store.StoreError && error.code === "EVIDENCE_PAYMENT_STATUS_UNKNOWN"
+    );
+    await store.failEvidencePaymentAttempt(attempt.id);
+    const retryAttempt = await store.reserveEvidencePaymentAttempt({
+      paymentScope: "test-payment-scope",
+      sourceId: submitted.body.source.id,
+      amountUSDC: "0.0001",
+      recipientWallet: walletAddress
+    });
+    const completedAttempt = await store.completeEvidencePaymentAttempt({
+      id: retryAttempt.id,
+      paymentId: "gateway-payment-id",
+      payerWallet: "0x2222222222222222222222222222222222222222",
+      network: "eip155:5042002",
+      evidence: {
+        id: submitted.body.source.id,
+        title: "Independent Nanopayment Evidence",
+        authorName: "Test Source Owner",
+        evidenceText: "Durably recorded protected evidence."
+      }
+    });
+    assert.equal(completedAttempt.status, "paid");
+    assert.equal((await store.reserveEvidencePaymentAttempt({
+      paymentScope: "test-payment-scope",
+      sourceId: submitted.body.source.id,
+      amountUSDC: "0.0001",
+      recipientWallet: walletAddress
+    })).paymentId, "gateway-payment-id");
     const firstPage = (await (await fetch(`${base}/api/sources?page=1&pageSize=3`)).json()) as Record<string, any>;
     const secondPage = (await (await fetch(`${base}/api/sources?page=2&pageSize=3`)).json()) as Record<string, any>;
     assert.equal(firstPage.pagination.totalItems, 11);
@@ -271,7 +371,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       walletAddress,
       searchPaymentId: secondPayment.id,
       clientRequestId: "request_paid_retry",
-      question: "The released payment can fund a retry",
+      question: "This paid run fails after reservation",
       strategy: "balanced"
     });
     assert.equal(paidRetry.kind, "started");

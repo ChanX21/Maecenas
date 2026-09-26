@@ -1,6 +1,8 @@
 import { AgentError, generateStructured } from "@/agent/ai";
 import type { AnswerContent, BudgetDecision, ResearchPlan, UnlockedEvidence } from "@/types";
 
+type GroundedEvidence = Omit<UnlockedEvidence, "receipt">;
+
 const answerSchema = {
   type: "object",
   additionalProperties: false,
@@ -28,7 +30,7 @@ const answerSchema = {
 
 export async function synthesizeAnswer(
   plan: ResearchPlan,
-  unlockedEvidence: UnlockedEvidence[],
+  unlockedEvidence: GroundedEvidence[],
   budgetDecision: BudgetDecision
 ): Promise<AnswerContent> {
   if (unlockedEvidence.length === 0) {
@@ -88,7 +90,7 @@ export function answerContentToText(content: AnswerContent): string {
   ].join("\n\n");
 }
 
-function testAnswer(plan: ResearchPlan, evidence: UnlockedEvidence[]): AnswerContent {
+function testAnswer(plan: ResearchPlan, evidence: GroundedEvidence[]): AnswerContent {
   return {
     summary: `Evidence-grounded answer to: ${plan.userQuestion}`,
     sections: [

@@ -11,6 +11,7 @@ import type {
   TraceEvent,
   Usage
 } from "@/types";
+import { arcChainId } from "@/lib/arc-environment";
 import { getAuthToken } from "@/lib/browser-session";
 
 export class ApiError extends Error {
@@ -222,11 +223,15 @@ export async function getUsage(sessionId: string, walletAddress?: string) {
 }
 
 export async function createSearchPaymentIntent(sessionId: string, walletAddress: string, usePaidSearch = false) {
-  return apiFetch<SearchPaymentIntentResponse>("/api/payments/search-intent", {
+  const intent = await apiFetch<SearchPaymentIntentResponse>("/api/payments/search-intent", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sessionId, walletAddress, usePaidSearch })
   });
+  if (intent.paymentMode === "real" && intent.network !== `eip155:${arcChainId}`) {
+    throw new Error("Frontend and backend Arc environments do not match");
+  }
+  return intent;
 }
 
 export async function submitSearchPaymentProof(input: {

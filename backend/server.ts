@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { initNetra, shutdownNetra } from "@/observability/netra";
 import { initializeDatabase, seedDatabase } from "@/db/store";
 import { loadEnv } from "@/env";
+import { validateCirclePaymentEnvironment } from "@/payments/circle-gateway";
 
 loadEnv();
 
@@ -11,12 +12,13 @@ function validateEnvironment() {
     throw new Error("TOKEN_SIGNING_SECRET is required in production");
   }
   if (process.env.PAYMENT_MODE === "real") {
-    for (const key of ["TOKEN_SIGNING_SECRET", "IP_HASH_SECRET", "CORS_ORIGIN", "GATEWAY_API_URL", "MAECENAS_TREASURY_WALLET_ADDRESS", "MAECENAS_AGENT_PRIVATE_KEY", "PUBLIC_BACKEND_URL"]) {
+    for (const key of ["TOKEN_SIGNING_SECRET", "IP_HASH_SECRET", "CORS_ORIGIN", "ARC_ENVIRONMENT", "ARC_RPC_URL", "MAECENAS_TREASURY_WALLET_ADDRESS", "MAECENAS_AGENT_PRIVATE_KEY", "MAECENAS_AGENT_WALLET_ADDRESS", "PUBLIC_BACKEND_URL"]) {
       if (!process.env[key]) throw new Error(`${key} is required when PAYMENT_MODE=real`);
     }
     if (!process.env.ADMIN_TOKEN && !process.env.ADMIN_WALLETS) {
       throw new Error("ADMIN_TOKEN or ADMIN_WALLETS is required when PAYMENT_MODE=real");
     }
+    validateCirclePaymentEnvironment();
   }
 }
 
