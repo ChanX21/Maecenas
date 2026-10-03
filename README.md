@@ -309,4 +309,4 @@ npm run build
 3. Run the verification commands above.
 4. Open a pull request describing the behavior change and deployment impact.
 
-Security-sensitive findings should not be disclosed in a public issue.
+Security-sensitive findings should not be disclosed in a public issue
