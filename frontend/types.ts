@@ -35,6 +35,26 @@ export type PaginatedResponse<T> = {
 
 export type CitationPaymentStatus = "pending" | "paid" | "failed" | "mock";
 
+export type GatewayVerification = {
+  verification: "matched" | "mismatch" | "incomplete" | "unavailable" | "mock";
+  message: string;
+  checkedAt: string;
+  circleUrl?: string;
+  batchExplorerUrl?: string;
+  transfer?: {
+    id: string;
+    status: "received" | "batched" | "confirmed" | "completed" | "failed";
+    token: string;
+    sendingNetwork: string;
+    recipientNetwork: string;
+    fromAddress: string;
+    toAddress: string;
+    amount: string;
+    txHash: string | null;
+    updatedAt: string;
+  };
+};
+
 export type CitationPayment = {
   id: string;
   answerId: string;

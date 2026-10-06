@@ -253,6 +253,12 @@ export function ResearchPromptBox() {
         required
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+            event.preventDefault();
+            event.currentTarget.form?.requestSubmit();
+          }
+        }}
         rows={1}
         placeholder={questionPlaceholder || "What should the forum investigate?"}
         className="mt-4 min-h-20 w-full resize-y border-0 bg-transparent p-0 font-display text-xl leading-8 text-cream outline-none placeholder:text-dim sm:min-h-0 sm:text-3xl sm:leading-9"

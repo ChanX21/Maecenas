@@ -95,6 +95,8 @@ export type SearchPayment = {
   paymentProof?: string;
   txHash?: string;
   paymentId?: string;
+  network?: string;
+  recipientWallet?: string;
   createdAt: string;
   paidAt?: string;
   usedForAnswerId?: string;

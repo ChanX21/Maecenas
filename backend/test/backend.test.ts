@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
+import postgres from "postgres";
 import { privateKeyToAccount } from "viem/accounts";
 
 test("free quota, mock payment, idempotency, and funding links", { skip: !process.env.TEST_DATABASE_URL }, async () => {
@@ -61,7 +62,19 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     const nativeFetch = globalThis.fetch;
     let gatewaySettlementCalls = 0;
     let loseGatewayResponse = false;
+    let providerStatus = "received";
+    let providerAmount = "10000";
+    const batchHash = `0x${"ab".repeat(32)}`;
     globalThis.fetch = async (input, init) => {
+      if (String(input) === "https://gateway-api-testnet.circle.com/v1/x402/transfers/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa") {
+        return new Response(JSON.stringify({
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", status: providerStatus,
+          token: "USDC", sendingNetwork: "eip155:5042002", recipientNetwork: "eip155:5042002",
+          fromAddress: walletAddress, toAddress: "0x2222222222222222222222222222222222222222",
+          amount: providerAmount, txHash: providerStatus === "received" ? null : batchHash,
+          updatedAt: new Date().toISOString(), privateField: "must-not-leak"
+        }));
+      }
       if (String(input) === "https://gateway-api-testnet.circle.com/v1/x402/settle") {
         gatewaySettlementCalls += 1;
         if (loseGatewayResponse) throw new Error("simulated connection loss after submission");
@@ -91,6 +104,41 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       });
       assert.equal(realRetry.body.searchPaymentId, realProof.body.searchPaymentId);
       assert.equal(gatewaySettlementCalls, 1);
+      const savedPayment = await store.getSearchPayment(realProof.body.searchPaymentId);
+      assert.equal(savedPayment?.network, "eip155:5042002");
+      assert.equal(savedPayment?.recipientWallet, "0x2222222222222222222222222222222222222222");
+      // Public verification uses payment-time values, even after treasury configuration changes.
+      process.env.MAECENAS_TREASURY_WALLET_ADDRESS = "0x3333333333333333333333333333333333333333";
+      for (const status of ["received", "batched", "confirmed", "completed", "failed"]) {
+        providerStatus = status;
+        const publicProof = await fetch(`${base}/api/payments/${savedPayment!.id}/verify`);
+        assert.equal(publicProof.status, 200);
+        const body = await publicProof.json() as Record<string, any>;
+        assert.equal(body.settlement.verification, "matched");
+        assert.equal(body.settlement.transfer.status, status);
+        assert.equal(body.settlement.batchExplorerUrl, status === "received" ? undefined : `https://testnet.arcscan.app/tx/${batchHash}`);
+        assert.equal(body.settlement.transfer.privateField, undefined);
+        assert.equal(body.paymentProof, undefined);
+        assert.equal(body.sessionId, undefined);
+      }
+      providerAmount = "10001";
+      const mismatch = await (await fetch(`${base}/api/payments/${savedPayment!.id}/verify?amount=10001`)).json() as Record<string, any>;
+      assert.equal(mismatch.settlement.verification, "mismatch", "Client expectations cannot override saved amounts");
+      assert.equal(mismatch.settlement.batchExplorerUrl, undefined);
+      process.env.MAECENAS_TREASURY_WALLET_ADDRESS = "0x2222222222222222222222222222222222222222";
+      assert.equal((await store.getSearchPayment(savedPayment!.id))?.status, "paid", "Verification must not mutate payment accounting");
+      assert.equal((await fetch(`${base}/api/payments/nonexistent/verify`)).status, 404);
+
+      const networkIntent = await store.createSearchPaymentIntent("sess_network_mismatch", walletAddress, true);
+      const networkReservation = await store.reserveSearchPayment({
+        paymentIntentId: networkIntent.id, sessionId: "sess_network_mismatch", walletAddress,
+        paymentProof: "{}", network: "eip155:5042002", recipientWallet: savedPayment!.recipientWallet!
+      });
+      await assert.rejects(() => store.completeReservedSearchPayment({
+        searchPaymentId: networkReservation.id, walletAddress,
+        settlement: { payer: walletAddress, transaction: savedPayment!.paymentId!, network: "eip155:5042" }
+      }), (error: unknown) => error instanceof store.StoreError && error.code === "PAYMENT_NETWORK_MISMATCH");
+      assert.equal((await store.getSearchPayment(networkReservation.id))?.status, "pending");
 
       const uncertainSessionId = "sess_uncertain_payment";
       const uncertainIntent = await post("/api/payments/search-intent", { sessionId: uncertainSessionId, walletAddress, usePaidSearch: true });
@@ -168,6 +216,8 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     assert.equal(publicSourcesBefore.pagination.pageSize, 24);
     assert.ok(publicSourcesBefore.items.every((source: Record<string, unknown>) => !("evidenceText" in source)));
     assert.ok(!publicSourcesBefore.items.some((source: Record<string, unknown>) => source.id === submitted.body.source.id));
+    const pendingSearch = await (await fetch(`${base}/api/sources?q=Independent%20Nanopayment%20Evidence`)).json() as Record<string, any>;
+    assert.equal(pendingSearch.pagination.totalItems, 0, "Search cannot expose unapproved sources");
     const ownerSources = (await (
       await fetch(`${base}/api/sources?wallet=${walletAddress}`, {
         headers: { Authorization: `Bearer ${walletAuth}` }
@@ -239,6 +289,19 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     assert.equal(firstPage.pagination.hasPreviousPage, false);
     assert.equal(firstPage.items[0].id, submitted.body.source.id);
     assert.equal(firstPage.items.length, 3);
+    for (const query of ["INDEPENDENT NANOPAYMENT EVIDENCE", "Test Source Owner", "accountable source compensation", "authorization"]) {
+      const result = await (await fetch(`${base}/api/sources?q=${encodeURIComponent(query)}&pageSize=100`)).json() as Record<string, any>;
+      assert.ok(result.items.some((source: Record<string, any>) => source.id === submitted.body.source.id), query);
+      assert.equal(result.items.length, result.pagination.totalItems);
+      assert.ok(result.items.every((source: Record<string, unknown>) => !("evidenceText" in source)));
+    }
+    const searchPageTwo = await (await fetch(`${base}/api/sources?q=Independent%20Nanopayment%20Evidence&page=2&pageSize=1`)).json() as Record<string, any>;
+    assert.equal(searchPageTwo.pagination.totalItems, 1);
+    assert.deepEqual(searchPageTwo.items, []);
+    for (const query of ["%", "_", "\\", "no-source-matches-this-string"]) {
+      const result = await (await fetch(`${base}/api/sources?q=${encodeURIComponent(query)}`)).json() as Record<string, any>;
+      assert.equal(result.pagination.totalItems, 0, "LIKE metacharacters must be literal");
+    }
     assert.equal(secondPage.pagination.hasPreviousPage, true);
     assert.ok(firstPage.items.every((source: Record<string, unknown>) => !("evidenceText" in source) && !("ownershipAttestation" in source)));
     assert.ok(firstPage.items.every((source: Record<string, unknown>) => !secondPage.items.some((other: Record<string, unknown>) => other.id === source.id)));
@@ -335,7 +398,17 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     assert.ok(paid.body.receipts.every((receipt: Record<string, unknown>) => receipt.fundedBy === "user_paid_search"));
     assert.ok(paid.body.receipts.every((receipt: Record<string, unknown>) => receipt.receiptSignature));
     const receiptVerification = await fetch(`${base}/api/receipts/${paid.body.receipts[0].id}/verify`);
-    assert.equal((await receiptVerification.json() as Record<string, unknown>).valid, true);
+    const verifiedReceipt = await receiptVerification.json() as Record<string, any>;
+    assert.equal(verifiedReceipt.valid, true);
+    assert.equal(verifiedReceipt.settlement.verification, "mock");
+    assert.equal(verifiedReceipt.settlement.batchExplorerUrl, undefined);
+    assert.equal((await fetch(`${base}/api/receipts/nonexistent/verify`)).status, 404);
+    const publicMockPayment = await (await fetch(`${base}/api/payments/${proof.body.searchPaymentId}/verify`)).json() as Record<string, any>;
+    assert.equal(publicMockPayment.settlement.verification, "mock");
+    const paidAnswer = await (await fetch(`${base}/api/answers/${paid.body.answerId}`)).json() as Record<string, any>;
+    assert.equal(paidAnswer.commissionPayment.id, proof.body.searchPaymentId);
+    assert.equal(paidAnswer.commissionPayment.network, undefined, "Do not invent historical network from current config");
+    assert.equal(paidAnswer.commissionPayment.recipientWallet, undefined);
 
     const reused = await post("/api/research", {
       sessionId,
@@ -447,6 +520,65 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     assert.equal(unconfigured.body.error, "AI_NOT_CONFIGURED");
     assert.equal((await store.getUsageBySession("sess_no_ai_key_001"))?.freeSearchesUsed, 0);
     process.env.AI_MODE = "test";
+
+    // Exercise paid receipt verification and nullable legacy columns using only the isolated test DB.
+    const db = postgres(process.env.TEST_DATABASE_URL!, { ssl: false, max: 1 });
+    const { signReceipt } = await import("@/security");
+    const { parseUSDCMicros } = await import("@/utils/money");
+    const originalReceipt = (await store.findReceipt(paid.body.receipts[0].id))!;
+    const paidReceipt = {
+      ...originalReceipt, status: "paid" as const, payerWallet: walletAddress,
+      network: "eip155:5042002", paymentId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", txHash: undefined
+    };
+    const receiptSignature = signReceipt(paidReceipt);
+    const lookup = `${base}/api/receipts/${paidReceipt.id}/verify`;
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async (input, init) => {
+      if (String(input).startsWith("https://gateway-api-testnet.circle.com/v1/x402/transfers/")) {
+        return new Response(JSON.stringify({
+          id: paidReceipt.paymentId, status: "completed", token: "USDC",
+          sendingNetwork: paidReceipt.network, recipientNetwork: paidReceipt.network,
+          fromAddress: walletAddress, toAddress: paidReceipt.recipientWallet,
+          amount: String(parseUSDCMicros(paidReceipt.amountUSDC)), txHash: batchHash,
+          updatedAt: new Date().toISOString()
+        }));
+      }
+      return previousFetch(input, init);
+    };
+    try {
+      await db`UPDATE citation_payments SET status = 'paid', payer_wallet = ${walletAddress},
+        network = ${paidReceipt.network}, payment_id = ${paidReceipt.paymentId}, tx_hash = NULL,
+        receipt_signature = ${receiptSignature} WHERE id = ${paidReceipt.id}`;
+      const verified = await (await fetch(lookup)).json() as Record<string, any>;
+      assert.equal(verified.valid, true);
+      assert.equal(verified.settlement.verification, "matched");
+      assert.equal(verified.settlement.transfer.status, "completed");
+      await db`UPDATE citation_payments SET receipt_signature = 'tampered' WHERE id = ${paidReceipt.id}`;
+      const tampered = await (await fetch(lookup)).json() as Record<string, any>;
+      assert.equal(tampered.valid, false, "Receipt integrity must remain independent of Circle matching");
+      assert.equal(tampered.settlement.verification, "matched");
+      await db`UPDATE citation_payments SET receipt_signature = ${receiptSignature} WHERE id = ${paidReceipt.id}`;
+
+      await db`UPDATE search_payments SET network = NULL, recipient_wallet = NULL WHERE id = ${proof.body.searchPaymentId}`;
+      const legacyMock = await store.getSearchPayment(proof.body.searchPaymentId);
+      assert.equal(legacyMock?.network, undefined);
+      assert.equal(legacyMock?.recipientWallet, undefined);
+      const [legacy] = await db`SELECT id FROM search_payments WHERE status = 'paid' LIMIT 1`;
+      await db`UPDATE search_payments SET network = NULL, recipient_wallet = NULL WHERE id = ${legacy!.id}`;
+      const incomplete = await (await fetch(`${base}/api/payments/${legacy!.id}/verify`)).json() as Record<string, any>;
+      assert.equal(incomplete.settlement.verification, "incomplete");
+      const historicalPayload = JSON.stringify({
+        accepted: { scheme: "exact", network: "eip155:5042002", payTo: paidReceipt.recipientWallet, amount: "10000" },
+        payload: { authorization: { from: walletAddress, to: paidReceipt.recipientWallet, value: "10000" } }
+      });
+      await db`UPDATE search_payments SET payment_proof = ${historicalPayload} WHERE id = ${legacy!.id}`;
+      const recovered = await store.getSearchPayment(legacy!.id);
+      assert.equal(recovered?.network, "eip155:5042002");
+      assert.equal(recovered?.recipientWallet, paidReceipt.recipientWallet);
+    } finally {
+      globalThis.fetch = previousFetch;
+      await db.end();
+    }
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     await store.closeDatabase();

@@ -1,5 +1,6 @@
 import type {
   Answer,
+  GatewayVerification,
   CitationPayment,
   ResearchStrategy,
   GatewayBurnIntent,
@@ -149,11 +150,12 @@ export async function getAnswer(id: string) {
   return apiFetch<{
     answer: Answer;
     commissionPayment?: {
+      id: string;
       amountUSDC: string;
       status: "pending" | "paid" | "failed" | "mock";
       paymentMode: "mock" | "real";
       protocol: "x402";
-      network: string;
+      network?: string;
       recipientWallet?: string;
       paymentId?: string;
       txHash?: string;
@@ -167,9 +169,13 @@ export async function getReceipt(id: string) {
 }
 
 export async function verifyReceipt(id: string) {
-  return apiFetch<{ receiptId: string; valid: boolean; status: string; network?: string; transaction?: string }>(
+  return apiFetch<{ receiptId: string; valid: boolean; status: string; network?: string; transaction?: string; settlement: GatewayVerification }>(
     `/api/receipts/${id}/verify`
   );
+}
+
+export async function getPaymentVerification(id: string, kind: "receipts" | "payments") {
+  return apiFetch<{ valid?: boolean; settlement: GatewayVerification }>(`/api/${kind}/${encodeURIComponent(id)}/verify`);
 }
 
 export async function getLeaderboard() {

@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
-import { and, count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres, { type Sql } from "postgres";
@@ -27,6 +27,7 @@ import type {
   UserUsage
 } from "@/types";
 import { splitSettlementReference } from "@/payments/circle-gateway";
+import { recoverCommissionContext } from "@/payments/gateway-proof";
 import { signReceipt, walletAuthMessage } from "@/security";
 import { makeId } from "@/utils/ids";
 import { basisPointShare, microsToUSDC, parseUSDCMicros } from "@/utils/money";
@@ -229,17 +230,21 @@ function mapIntent(row: typeof searchPaymentIntents.$inferSelect): SearchPayment
 }
 
 function mapSearchPayment(row: typeof searchPayments.$inferSelect): SearchPayment {
+  const amountUSDC = microsToUSDC(row.amountMicros);
+  const oldContext = recoverCommissionContext(row.paymentProof, row.walletAddress, amountUSDC);
   return {
     id: row.id,
     paymentIntentId: row.intentId,
     sessionId: row.sessionId,
     walletAddress: row.walletAddress,
-    amountUSDC: microsToUSDC(row.amountMicros),
+    amountUSDC,
     status: row.status,
     paymentMode: row.paymentMode,
     paymentProof: row.paymentProof ?? undefined,
     txHash: row.txHash ?? undefined,
     paymentId: row.paymentId ?? undefined,
+    network: row.network ?? oldContext.network,
+    recipientWallet: row.recipientWallet ?? oldContext.recipientWallet,
     createdAt: row.createdAt,
     paidAt: row.paidAt ?? undefined,
     usedForAnswerId: row.usedForAnswerId ?? undefined
@@ -323,21 +328,30 @@ export async function listSources(options: { walletAddress?: string; includeUnap
     .map(mapSource);
 }
 
-export async function listApprovedSourcesPage(page: number, pageSize: number): Promise<{
+export async function listApprovedSourcesPage(page: number, pageSize: number, query = ""): Promise<{
   items: Source[];
   totalItems: number;
 }> {
   const conn = await database();
   const approved = eq(sources.status, "approved");
+  const escapedQuery = query.replace(/[\\%_]/g, "\\$&");
+  const filter = escapedQuery
+    ? and(approved, or(
+        ilike(sources.title, `%${escapedQuery}%`),
+        ilike(sources.authorName, `%${escapedQuery}%`),
+        ilike(sources.abstract, `%${escapedQuery}%`),
+        ilike(sources.tagsJson, `%${escapedQuery}%`)
+      ))
+    : approved;
   const [rows, totals] = await Promise.all([
     conn
       .select()
       .from(sources)
-      .where(approved)
+      .where(filter)
       .orderBy(desc(sources.createdAt), desc(sources.id))
       .limit(pageSize)
       .offset((page - 1) * pageSize),
-    conn.select({ value: count() }).from(sources).where(approved)
+    conn.select({ value: count() }).from(sources).where(filter)
   ]);
   return { items: rows.map(mapSource), totalItems: totals[0]?.value ?? 0 };
 }
@@ -915,7 +929,10 @@ export type ConfirmSearchPaymentInput = {
   };
 };
 
-export async function reserveSearchPayment(input: Omit<ConfirmSearchPaymentInput, "txHash" | "settlement">): Promise<SearchPayment> {
+export async function reserveSearchPayment(input: Omit<ConfirmSearchPaymentInput, "txHash" | "settlement"> & {
+  network: string;
+  recipientWallet: string;
+}): Promise<SearchPayment> {
   return (await database()).transaction(async (rawTx) => {
     const tx = rawTx as Db;
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`search-payment:${input.paymentIntentId}`}))`);
@@ -949,7 +966,7 @@ export async function reserveSearchPayment(input: Omit<ConfirmSearchPaymentInput
     const now = new Date().toISOString();
     if (existing) {
       const updated = (await tx.update(searchPayments)
-        .set({ status: "pending", paymentProof: input.paymentProof, txHash: null, paymentId: null, paidAt: null })
+        .set({ status: "pending", paymentProof: input.paymentProof, network: input.network, recipientWallet: input.recipientWallet, txHash: null, paymentId: null, paidAt: null })
         .where(eq(searchPayments.id, existing.id))
         .returning())[0]!;
       return mapSearchPayment(updated);
@@ -963,6 +980,8 @@ export async function reserveSearchPayment(input: Omit<ConfirmSearchPaymentInput
       status: "pending" as const,
       paymentMode: intent.paymentMode,
       paymentProof: input.paymentProof,
+      network: input.network,
+      recipientWallet: input.recipientWallet,
       createdAt: now
     };
     await tx.insert(searchPayments).values(payment);
@@ -983,6 +1002,9 @@ export async function completeReservedSearchPayment(input: {
     if (payment.status !== "pending") throw new StoreError("PAYMENT_NOT_CONFIRMED", "Payment is not pending settlement", 409);
     if (input.settlement.payer.toLowerCase() !== input.walletAddress) {
       throw new StoreError("PAYMENT_NOT_CONFIRMED", "Circle Gateway payer does not match the authenticated wallet", 402);
+    }
+    if (payment.network !== input.settlement.network) {
+      throw new StoreError("PAYMENT_NETWORK_MISMATCH", "Gateway returned an unexpected network; payment requires reconciliation", 409);
     }
     const reference = splitSettlementReference(input.settlement.transaction);
     const now = new Date().toISOString();
@@ -1042,6 +1064,8 @@ export async function confirmSearchPayment(input: ConfirmSearchPaymentInput): Pr
       paymentProof: input.paymentProof,
       txHash: settlementReference.txHash ?? input.txHash ?? null,
       paymentId: settlementReference.paymentId ?? `mock_${makeId("pay").slice(4)}`,
+      network: input.settlement?.network ?? null,
+      recipientWallet: null,
       createdAt: now,
       paidAt: now,
       usedForAnswerId: null

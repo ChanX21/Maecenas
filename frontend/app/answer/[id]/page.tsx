@@ -68,7 +68,7 @@ export default async function AnswerPage({ params }: PageProps) {
                   </span>
                 ) : null}
               </div>
-              <SettlementProof receipt={commissionPayment} />
+              <SettlementProof receipt={commissionPayment} kind="payments" />
             </div>
           ) : null}
         </div>
@@ -162,7 +162,7 @@ export default async function AnswerPage({ params }: PageProps) {
               </div>
             </section>
             <section>
-              <h2 className="font-display text-2xl text-cream">Treasury records</h2>
+              <h2 className="font-display text-2xl text-cream">Payment records</h2>
               <div className="mt-4 divide-y divide-marble/10">
                 {trace.receipts.map((receipt) => (
                   <div key={receipt.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">

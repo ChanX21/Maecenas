@@ -8,6 +8,7 @@ backend/data/*.db-shm
 backend/data/*.db-wal
 backend/data/backups/
 frontend/.next
+frontend/.next-dev
 backend/.env
 backend/.agents
 frontend/.env.local

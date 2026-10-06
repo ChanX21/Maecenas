@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { SettlementProof } from "@/components/transaction-proof-link";
-import { citationPaymentStatusLabel } from "@/lib/arc-explorer";
+import { citationPaymentStatusLabel, citationRecordLabel } from "@/lib/arc-explorer";
 import type { CitationPayment } from "@/types";
 
 export function RecentPaymentsFeed({ receipts }: { receipts: CitationPayment[] }) {
@@ -36,7 +36,7 @@ export function RecentPaymentsFeed({ receipts }: { receipts: CitationPayment[] }
                 <span>{citationPaymentStatusLabel(receipt)}</span>
                 <SettlementProof receipt={receipt} className="normal-case text-muted" />
                 <Link href={`/receipts/${receipt.id}`} className="normal-case text-muted hover:text-cream">
-                  Treasury record
+                  {citationRecordLabel(receipt)}
                 </Link>
               </div>
             </motion.div>

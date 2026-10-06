@@ -21,14 +21,23 @@ export function getCitationSettlementHash(
 export function citationPaymentStatusLabel(
   receipt: Pick<CitationPayment, "txHash" | "paymentId" | "status">
 ): string {
-  if (receipt.status === "mock") return "Test record / not settled";
+  if (receipt.status === "mock") return "Simulation · not settled";
   if (receipt.status === "failed") return "Payment failed";
   if (receipt.status === "pending") return "Payment pending";
-  return getCitationSettlementHash(receipt) ? "On-chain settled" : "Gateway credited";
+  return "Payment recorded · check settlement";
 }
 
-export function arcExplorerTxUrl(txHash: string): string {
-  return `${arcExplorerUrl}/tx/${txHash}`;
+export function citationRecordLabel(receipt: Pick<CitationPayment, "status" | "network">): string {
+  if (receipt.status === "mock") return "Simulation record";
+  if (receipt.network === "eip155:5042002") return "Arc Testnet record";
+  if (receipt.network === "eip155:5042") return "Arc Mainnet record";
+  return "Payment record";
+}
+
+export function arcExplorerTxUrl(txHash: string, network?: string): string {
+  const base = network === "eip155:5042002" ? "https://testnet.arcscan.app"
+    : network === "eip155:5042" ? "https://arcscan.app" : arcExplorerUrl;
+  return `${base}/tx/${txHash}`;
 }
 
 export function circleGatewayPaymentUrl(paymentId: string): string | undefined {

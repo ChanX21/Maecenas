@@ -34,6 +34,7 @@ import {
 import { buildPaymentRequired, hasValidPaymentProof } from "@/payments/payment-executor";
 import { CirclePaymentError, circlePaymentRequired, settleCirclePayment } from "@/payments/circle-gateway";
 import { getArcNetwork } from "@/payments/arc-environment";
+import { verifyGatewayPayment } from "@/payments/gateway-proof";
 import {
   createGatewayWithdrawalQuote,
   executeGatewayWithdrawal,
@@ -144,8 +145,7 @@ async function routeRequest(context: RouteContext) {
     return sendJson(response, 200, {
       ...metrics,
       uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
-      activeRateLimitKeys: rateLimits.size
-      ,
+      activeRateLimitKeys: rateLimits.size,
       researchQueue: researchQueueStatus()
     });
   }
@@ -157,7 +157,7 @@ async function routeRequest(context: RouteContext) {
       return sendJson(response, 200, { sources: (await listSources({ walletAddress })).map(publicSource) });
     }
     const { page, pageSize } = sourcePageParams(url.searchParams);
-    const result = await listApprovedSourcesPage(page, pageSize);
+    const result = await listApprovedSourcesPage(page, pageSize, sourceSearchQuery(url.searchParams));
     const totalPages = Math.ceil(result.totalItems / pageSize);
     return sendJson(response, 200, {
       items: result.items.map(publicSource),
@@ -372,7 +372,9 @@ async function routeRequest(context: RouteContext) {
         paymentIntentId,
         sessionId,
         walletAddress,
-        paymentProof: JSON.stringify(paymentPayload)
+        paymentProof: JSON.stringify(paymentPayload),
+        network: required.accepts[0].network,
+        recipientWallet: recipient
       });
       if (reservation.status === "paid") {
         payment = reservation;
@@ -526,12 +528,13 @@ async function routeRequest(context: RouteContext) {
       answer,
       commissionPayment: payment
         ? {
+            id: payment.id,
             amountUSDC: payment.amountUSDC,
             status: payment.status,
             paymentMode: payment.paymentMode,
             protocol: "x402",
-            network: getArcNetwork(),
-            recipientWallet: process.env.MAECENAS_TREASURY_WALLET_ADDRESS,
+            network: payment.network,
+            recipientWallet: payment.recipientWallet,
             paymentId: payment.paymentId,
             txHash: payment.txHash,
             paidAt: payment.paidAt
@@ -556,7 +559,18 @@ async function routeRequest(context: RouteContext) {
       valid: verifyReceiptSignature(receipt),
       status: receipt.status,
       network: receipt.network,
-      transaction: receipt.txHash
+      transaction: receipt.txHash,
+      settlement: await verifyGatewayPayment(receipt)
+    });
+  }
+
+  const paymentVerifyMatch = path.match(/^\/api\/payments\/([^/]+)\/verify$/);
+  if (method === "GET" && paymentVerifyMatch) {
+    const payment = await getSearchPayment(paymentVerifyMatch[1]);
+    if (!payment) return sendJson(response, 404, { error: "Payment not found" });
+    return sendJson(response, 200, {
+      paymentId: payment.id,
+      settlement: await verifyGatewayPayment({ ...payment, payerWallet: payment.walletAddress })
     });
   }
 
@@ -777,6 +791,10 @@ export function sourcePageParams(searchParams: URLSearchParams): { page: number;
     page: positiveInteger(searchParams.get("page"), 1),
     pageSize: positiveInteger(searchParams.get("pageSize"), 24, 100)
   };
+}
+
+export function sourceSearchQuery(searchParams: URLSearchParams): string {
+  return (searchParams.get("q") ?? "").trim().slice(0, 100);
 }
 
 function adminSource(source: Source) {

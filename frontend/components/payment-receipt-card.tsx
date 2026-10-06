@@ -7,7 +7,7 @@ import { ShieldCheck, ShieldX } from "lucide-react";
 import QRCode from "qrcode";
 import { verifyReceipt } from "@/api";
 import { SettlementProof } from "@/components/transaction-proof-link";
-import { citationPaymentStatusLabel } from "@/lib/arc-explorer";
+import { citationPaymentStatusLabel, citationRecordLabel } from "@/lib/arc-explorer";
 import type { CitationPayment } from "@/types";
 
 export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
@@ -39,7 +39,9 @@ export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
       
       <div className="flex flex-col sm:flex-row items-start justify-between gap-6 relative z-10">
         <div className="flex-1 w-full">
-          <p className="font-mono text-[10px] tracking-widest uppercase text-gold">Treasury record</p>
+          <p className="font-mono text-[10px] tracking-widest uppercase text-gold">
+            {citationRecordLabel(receipt)}
+          </p>
           <h2 className="mt-2 font-display text-2xl sm:text-3xl text-cream leading-tight">{receipt.sourceTitle}</h2>
           
           <dl className="mt-8 space-y-4 font-mono text-xs">
@@ -53,7 +55,7 @@ export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
             <Row label="Status" value={citationPaymentStatusLabel(receipt)} />
             <Row label="Network" value={receipt.network ?? "not recorded"} />
             <Row
-              label="On-chain proof"
+              label="Payment proof"
               value={<SettlementProof receipt={receipt} className="text-muted" />}
             />
             <Row label="Timestamp" value={new Date(receipt.createdAt).toLocaleString()} />
@@ -72,14 +74,14 @@ export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
             {qrCode ? (
               <img
                 src={qrCode}
-                alt="Treasury record QR"
+                alt={`${citationRecordLabel(receipt)} QR`}
                 className="h-[120px] w-[120px] object-contain opacity-90 transition-opacity group-hover:opacity-100 sm:h-[140px] sm:w-[140px]"
               />
             ) : <div className="h-[120px] w-[120px] animate-pulse bg-marble/5 sm:h-[140px] sm:w-[140px]" />}
           </div>
           <p className={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest ${verified ? "text-gold" : "text-muted"}`}>
             {verified ? <ShieldCheck size={11} /> : <ShieldX size={11} />}
-            {verified === undefined ? "Verifying record" : verified ? "Signature verified" : "Unverified record"}
+            {verified === undefined ? "Verifying receipt" : verified ? "Receipt signature valid" : "Invalid receipt signature"}
           </p>
         </div>
       </div>

@@ -70,6 +70,8 @@ export const searchPayments = pgTable(
     paymentProof: text("payment_proof"),
     txHash: text("tx_hash"),
     paymentId: text("payment_id"),
+    network: text("network"),
+    recipientWallet: text("recipient_wallet"),
     createdAt: text("created_at").notNull(),
     paidAt: text("paid_at"),
     usedForAnswerId: text("used_for_answer_id")
