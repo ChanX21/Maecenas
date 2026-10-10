@@ -174,7 +174,7 @@ export function OnboardingTour() {
   const autoStartKey = useRef("");
 
   const startTour = useCallback((tour: OnboardingTourName, explicit = false) => {
-    if (!tourMatchesPath(tour, pathname) || activeDriver.current?.isActive()) return;
+    if (!tourMatchesPath(tour, window.location.pathname) || activeDriver.current?.isActive()) return;
     if (!explicit && hasSeenOnboardingTour(tour)) return;
     if (!getFirstTarget(tour)) return;
 
@@ -223,7 +223,7 @@ export function OnboardingTour() {
 
     activeDriver.current = instance;
     instance.drive();
-  }, [pathname]);
+  }, []);
 
   useEffect(() => {
     const handleTourRequest = (event: Event) => {

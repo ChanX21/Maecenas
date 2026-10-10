@@ -491,6 +491,67 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       if (reservation.kind === "started") await store.failResearch(reservation.runId);
     }
 
+    // A shared treasury must reserve across different sessions and retain uncertain payouts.
+    const { parseUSDCMicros: toMicros, microsToUSDC: fromMicros } = await import("@/utils/money");
+    const sponsoredSpent = (await store.readDb()).receipts
+      .filter((receipt) => receipt.fundedBy === "maecenas_sponsored")
+      .reduce((total, receipt) => total + toMicros(receipt.amountUSDC), 0);
+    const previousLimit = process.env.SPONSORED_TREASURY_LIMIT_USDC;
+    process.env.SPONSORED_TREASURY_LIMIT_USDC = fromMicros(sponsoredSpent + 100);
+    process.env.FREE_SEARCH_BUDGET_USDC = "0.0001";
+    try {
+      const requests = [0, 1, 2].map((index) => ({
+        sessionId: `sess_treasury_${index}`, clientRequestId: "shared_treasury_request",
+        question: "Reserve the last sponsored funds", strategy: "balanced", ipHash: `ip-${index}`
+      }));
+      const results = await Promise.allSettled(requests.map((request) => store.beginResearch(request)));
+      assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+      for (const result of results) {
+        if (result.status === "rejected") assert.equal(result.reason.code, "MISSING_WALLET_ADDRESS");
+      }
+      const winnerIndex = results.findIndex((result) => result.status === "fulfilled");
+      const winner = results[winnerIndex];
+      assert.ok(winner.status === "fulfilled" && winner.value.kind === "started");
+      const request = requests[winnerIndex];
+      const attempt = await store.reserveEvidencePaymentAttempt({
+        paymentScope: `${request.sessionId}:${request.clientRequestId}`,
+        sourceId: submitted.body.source.id, amountUSDC: "0.0001", recipientWallet: walletAddress
+      });
+      await store.failResearch(winner.value.runId);
+      const nextRequest = { ...request, sessionId: "sess_treasury_next", ipHash: "ip-next" };
+      await assert.rejects(() => store.beginResearch(nextRequest), /Wallet address is required/);
+      await store.completeEvidencePaymentAttempt({
+        id: attempt.id, paymentId: "sponsored-paid-before-failure", payerWallet: walletAddress,
+        network: "eip155:5042002",
+        evidence: { id: submitted.body.source.id, title: "Evidence", authorName: "Author", evidenceText: "Evidence" }
+      });
+      await assert.rejects(() => store.beginResearch(nextRequest), /Wallet address is required/);
+    } finally {
+      if (previousLimit === undefined) delete process.env.SPONSORED_TREASURY_LIMIT_USDC;
+      else process.env.SPONSORED_TREASURY_LIMIT_USDC = previousLimit;
+      process.env.FREE_SEARCH_BUDGET_USDC = "0.01";
+    }
+
+    const previousArcEnvironment = process.env.ARC_ENVIRONMENT;
+    process.env.PAYMENT_MODE = "real";
+    try {
+      await assert.rejects(() => store.beginResearch({
+        sessionId, walletAddress, searchPaymentId: secondPayment.id,
+        clientRequestId: "mock_payment_on_mainnet", question: "This paid run fails after reservation", strategy: "balanced"
+      }), (error: unknown) => error instanceof store.StoreError && error.code === "SEARCH_PAYMENT_ENVIRONMENT_MISMATCH");
+      const testnetPayment = (await store.readDb()).searchPayments.find((payment) => payment.paymentMode === "real" && payment.status === "paid")!;
+      assert.ok(testnetPayment);
+      process.env.ARC_ENVIRONMENT = "mainnet";
+      await assert.rejects(() => store.beginResearch({
+        sessionId: testnetPayment.sessionId, walletAddress, searchPaymentId: testnetPayment.id,
+        clientRequestId: "testnet_payment_on_mainnet", question: "Testnet funds cannot buy mainnet evidence", strategy: "balanced"
+      }), (error: unknown) => error instanceof store.StoreError && error.code === "SEARCH_PAYMENT_ENVIRONMENT_MISMATCH");
+    } finally {
+      process.env.PAYMENT_MODE = "mock";
+      if (previousArcEnvironment === undefined) delete process.env.ARC_ENVIRONMENT;
+      else process.env.ARC_ENVIRONMENT = previousArcEnvironment;
+    }
+
     process.env.RESEARCH_ASYNC = "true";
     const queued = await post("/api/research", {
       sessionId: "sess_queued_001",

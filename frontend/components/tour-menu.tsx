@@ -67,7 +67,7 @@ export function TourMenu() {
         aria-haspopup="menu"
         aria-label="Open guided tours"
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex min-h-11 items-center gap-2 border border-marble/15 bg-panel px-3 py-2 font-mono text-[10px] uppercase text-muted transition hover:bg-marble/10 hover:text-cream sm:min-h-0 sm:text-[11px]"
+        className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-muted transition hover:bg-marble/5 hover:text-cream"
       >
         <CircleHelp size={14} />
         <span className="hidden lg:inline">Guide</span>
@@ -76,7 +76,7 @@ export function TourMenu() {
         <div
           role="menu"
           aria-label="Guided tours"
-          className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-md border border-marble/15 bg-panel-2 p-1 shadow-2xl"
+          className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-md border border-marble/15 bg-panel-2 p-1"
         >
           <p role="none" className="px-3 py-2 font-mono text-[9px] uppercase tracking-[0.14em] text-dim">Guided tours</p>
           {options.map((tour) => (

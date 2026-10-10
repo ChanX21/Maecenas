@@ -37,7 +37,7 @@ export function ResearchPaymentGate({
             </p>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
               {isRealPayment
-                ? `${priceUSDC} USDC unlocks this research run. The ${evidenceBudgetUSDC} USDC evidence budget is separate and limits what the agent may pay selected sources.`
+                ? `${priceUSDC} USDC pays for this research run, including up to ${evidenceBudgetUSDC} USDC for selected evidence. Unspent funds remain with Maecenas.`
                 : `Test mode: no real USDC will move. Confirm to simulate the ${priceUSDC} USDC access payment, create a demo receipt, and start this research run.`}
             </p>
             {isRealPayment ? (

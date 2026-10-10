@@ -27,6 +27,7 @@ import type {
   UserUsage
 } from "@/types";
 import { splitSettlementReference } from "@/payments/circle-gateway";
+import { getArcEnvironment, getArcNetwork } from "@/payments/arc-environment";
 import { recoverCommissionContext } from "@/payments/gateway-proof";
 import { signReceipt, walletAuthMessage } from "@/security";
 import { makeId } from "@/utils/ids";
@@ -125,7 +126,9 @@ function paymentMode(): "mock" | "real" {
 }
 
 function paymentPriceMicros(): number {
-  return parseUSDCMicros(process.env.PAID_SEARCH_PRICE_USDC ?? "0.05");
+  const value = parseUSDCMicros(process.env.PAID_SEARCH_PRICE_USDC ?? "0.05");
+  if (value === 0 || value > 2_147_483_647) throw new Error("PAID_SEARCH_PRICE_USDC must be positive and fit the database amount column");
+  return value;
 }
 
 function platformFeeBps(): number {
@@ -144,6 +147,13 @@ function authorPoolBps(): number {
 
 export function configuredPaidEvidenceBudgetUSDC(): string {
   return microsToUSDC(basisPointShare(paymentPriceMicros(), authorPoolBps()));
+}
+
+export function validateResearchEconomics(): void {
+  freeSearchLimit();
+  configuredPaidEvidenceBudgetUSDC();
+  parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01");
+  parseUSDCMicros(process.env.SPONSORED_TREASURY_LIMIT_USDC ?? "1");
 }
 
 function mapSource(row: typeof sources.$inferSelect): Source {
@@ -290,6 +300,7 @@ function mapEvidencePaymentAttempt(
 }
 
 export async function seedDatabase(): Promise<number> {
+  if (getArcEnvironment() === "mainnet") return 0;
   const conn = await database();
   for (const source of seedSources) {
     const values = {
@@ -537,6 +548,8 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
 
   return conn.transaction(async (rawTx) => {
     const tx = rawTx as Db;
+    // Serialize treasury reservations across users and backend instances.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('sponsored-treasury'))`);
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`research:${input.ipHash ?? input.sessionId}`}))`);
     const existing = (await tx
       .select()
@@ -581,8 +594,24 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
       .from(citationPayments)
       .where(eq(citationPayments.fundedBy, "maecenas_sponsored")))
       .reduce((total, receipt) => total + receipt.amountMicros, 0);
+    const [{ total: globalProcessingFreeRuns }] = await tx
+      .select({ total: count() })
+      .from(researchRuns)
+      .where(and(eq(researchRuns.status, "processing"), eq(researchRuns.paymentType, "free_sponsored")));
+    // Failed research can still have paid or uncertain payouts without answer receipts.
+    const failedRunSpend = await tx
+      .select({ amountMicros: evidencePaymentAttempts.amountMicros })
+      .from(evidencePaymentAttempts)
+      .innerJoin(researchRuns, eq(evidencePaymentAttempts.paymentScope, sql<string>`${researchRuns.sessionId} || ':' || ${researchRuns.clientRequestId}`))
+      .where(and(
+        eq(researchRuns.paymentType, "free_sponsored"),
+        eq(researchRuns.status, "failed"),
+        inArray(evidencePaymentAttempts.status, ["pending", "paid"])
+      ));
+    // shortcut: reserve the configured maximum per run; drain workers before changing it.
     const sponsoredReservationMicros =
-      processingFreeRuns * parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01");
+      globalProcessingFreeRuns * parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01") +
+      failedRunSpend.reduce((total, attempt) => total + attempt.amountMicros, 0);
     const sponsoredRemainingMicros = disableLimits
       ? parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01")
       : Math.max(0, sponsoredLimitMicros - sponsoredSpentMicros - sponsoredReservationMicros);
@@ -607,6 +636,10 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
       const payment = (await tx.select().from(searchPayments).where(eq(searchPayments.id, input.searchPaymentId)).for("update").limit(1))[0];
       if (!payment || !["paid", "mock"].includes(payment.status)) {
         throw new StoreError("PAYMENT_NOT_CONFIRMED", "Search payment is not confirmed", 402);
+      }
+      if (payment.paymentMode !== paymentMode() ||
+          (paymentMode() === "real" && (payment.status !== "paid" || payment.network !== getArcNetwork()))) {
+        throw new StoreError("SEARCH_PAYMENT_ENVIRONMENT_MISMATCH", "Search payment belongs to a different payment mode or network", 409);
       }
       if (payment.sessionId !== input.sessionId) {
         throw new StoreError("SEARCH_PAYMENT_SESSION_MISMATCH", "Search payment belongs to another session", 409);
@@ -669,6 +702,7 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
 export async function completeResearch(runId: string, answer: Answer, receipts: CitationPayment[]): Promise<Answer> {
   return (await database()).transaction(async (rawTx) => {
     const tx = rawTx as Db;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('sponsored-treasury'))`);
     const run = (await tx.select().from(researchRuns).where(eq(researchRuns.id, runId)).for("update").limit(1))[0];
     if (!run || run.status !== "processing") throw new StoreError("RESEARCH_RUN_INVALID", "Research run is not active", 409);
 
@@ -741,10 +775,12 @@ export async function completeResearch(runId: string, answer: Answer, receipts: 
 }
 
 export async function failResearch(runId: string): Promise<void> {
-  await (await database())
-    .update(researchRuns)
-    .set({ status: "failed", updatedAt: new Date().toISOString() })
-    .where(eq(researchRuns.id, runId));
+  await (await database()).transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('sponsored-treasury'))`);
+    await tx.update(researchRuns)
+      .set({ status: "failed", updatedAt: new Date().toISOString() })
+      .where(and(eq(researchRuns.id, runId), eq(researchRuns.status, "processing")));
+  });
 }
 
 export async function getResearchRunStatus(runId: string, sessionId: string): Promise<{

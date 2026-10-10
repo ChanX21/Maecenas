@@ -1,7 +1,7 @@
 import { GatewayClient } from "@circle-fin/x402-batching/client";
 import { loadEnv } from "@/env";
 import { getArcChainName } from "@/payments/arc-environment";
-import { validateCirclePaymentEnvironment } from "@/payments/circle-gateway";
+import { validateArcRpc, validateCirclePaymentEnvironment } from "@/payments/circle-gateway";
 
 function usage(): never {
   console.error("Usage: npm run gateway:deposit -- [amountUSDC] [--check]");
@@ -35,6 +35,7 @@ if (!privateKeyRaw) {
 
 const privateKey = normalizePrivateKey(privateKeyRaw);
 validateCirclePaymentEnvironment();
+await validateArcRpc();
 const client = new GatewayClient({
   chain: getArcChainName(),
   privateKey,

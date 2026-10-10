@@ -1,5 +1,5 @@
 import type { BudgetDecision, ResearchStrategy, ScoredSource } from "@/types";
-import { formatUSDC, parseUSDC } from "@/utils/money";
+import { microsToUSDC, parseUSDCMicros } from "@/utils/money";
 
 const thresholds: Record<ResearchStrategy, number> = {
   conservative: 82,
@@ -18,7 +18,7 @@ export function allocateBudget(
   maxBudgetUSDC: string,
   strategy: ResearchStrategy
 ): BudgetDecision {
-  const budget = parseUSDC(maxBudgetUSDC);
+  const budget = parseUSDCMicros(maxBudgetUSDC);
   const threshold = thresholds[strategy];
   const selected: BudgetDecision["selectedSources"] = [];
   const skipped: BudgetDecision["skippedSources"] = [];
@@ -26,7 +26,7 @@ export function allocateBudget(
   let spend = 0;
 
   for (const source of scoredSources) {
-    const price = parseUSDC(source.priceUSDC);
+    const price = parseUSDCMicros(source.priceUSDC);
     const addsDiversity = source.tags.some((tag) => !selectedTags.has(tag));
     const canAfford = spend + price <= budget;
     const underCap = selected.length < maxPurchases[strategy];
@@ -61,6 +61,6 @@ export function allocateBudget(
     maxBudgetUSDC,
     selectedSources: selected,
     skippedSources: skipped,
-    estimatedSpendUSDC: formatUSDC(spend)
+    estimatedSpendUSDC: microsToUSDC(spend)
   };
 }

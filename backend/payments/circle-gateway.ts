@@ -3,6 +3,7 @@ import {
 } from "@circle-fin/x402-batching/client";
 import { BatchFacilitatorClient } from "@circle-fin/x402-batching/server";
 import { privateKeyToAccount } from "viem/accounts";
+import { createPublicClient, http } from "viem";
 import {
   getArcChainName,
   getArcConfig,
@@ -68,6 +69,17 @@ export function validateCirclePaymentEnvironment(): void {
   }
   if (treasuryAddress === derivedAddress) {
     throw new Error("MAECENAS_TREASURY_WALLET_ADDRESS must be different from the agent wallet");
+  }
+}
+
+export async function validateArcRpc(): Promise<void> {
+  const config = getArcConfig();
+  const client = createPublicClient({
+    chain: config.chain,
+    transport: http(process.env.ARC_RPC_URL || config.rpcUrl, { timeout: 10_000, retryCount: 0 })
+  });
+  if (await client.getChainId() !== config.chain.id) {
+    throw new Error("ARC_RPC_URL chain ID does not match ARC_ENVIRONMENT");
   }
 }
 

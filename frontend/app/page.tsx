@@ -1,91 +1,34 @@
 import Link from "next/link";
-import {
-  BookOpenCheck,
-  CircleDollarSign,
-  FileCheck2,
-  Landmark,
-  Scale,
-  SearchCheck,
-  UsersRound,
-  ArrowUpRight
-} from "lucide-react";
+import { ArrowUpRight, BookOpen, ScanLine, Sparkles } from "lucide-react";
 import { ResearchPromptBox } from "@/components/research-prompt-box";
 import { LiveLedgerMetrics, LiveLedgerStream } from "@/components/live-ledger";
 
 export default function HomePage() {
   return (
-    <main className="home-grid min-h-[calc(100vh-65px)] px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:px-8">
-      <section className="mx-auto max-w-4xl text-center">
-        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-gold">The research funding protocol</p>
-        <h1 className="mt-5 text-balance font-display text-[2.75rem] leading-[0.98] text-cream sm:text-7xl">
-          Fund the question.
-          <span className="gleam mt-2 block font-serif italic">Reward the evidence.</span>
-        </h1>
-        <p className="mx-auto mt-6 max-w-4xl text-base leading-7 text-muted sm:text-lg">
-          Agents research. Maecenas funds evidence. Contributors earn. Answers prove.
-        </p>
+    <main className="research-home">
+      <section className="research-start" aria-labelledby="research-heading">
+        <div className="research-emblem" aria-hidden="true">
+          <span><BookOpen size={21} strokeWidth={1.4} /></span>
+          <span><Sparkles size={25} strokeWidth={1.3} /></span>
+          <span><ScanLine size={21} strokeWidth={1.4} /></span>
+        </div>
+        <h1 id="research-heading" className="font-serif text-[2.3rem] leading-[1.15] tracking-[-0.02em] text-cream sm:text-[2.75rem]">Where will your curiosity take you?</h1>
+        <p className="mx-auto mt-4 max-w-md text-[15px] leading-7 text-muted">Ask a question. Fund the best evidence.<br className="hidden sm:block" /> Get an answer you can follow back to its source.</p>
+        <div className="mt-9 text-left sm:mt-10"><ResearchPromptBox /></div>
       </section>
 
-      <section className="mx-auto mt-10 max-w-5xl">
-        <ResearchPromptBox />
-      </section>
-
-      <section className="mx-auto mt-5 grid max-w-7xl grid-cols-2 overflow-hidden rounded-xl border border-marble/10 bg-panel/65 sm:grid-cols-2 lg:grid-cols-4">
-        <LiveLedgerMetrics />
-      </section>
-
-      <section className="mx-auto mt-5 grid max-w-7xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <article className="roman-panel p-5 sm:p-7">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">How it works</p>
-          <div className="mt-6 space-y-6">
-            <Step icon={<SearchCheck size={17} />} number="I" title="Set the mandate" copy="Ask a focused question and define the treasury limit." />
-            <Step icon={<Scale size={17} />} number="II" title="Evidence competes" copy="Maecenas ranks approved sources for relevance, fit, and value." />
-            <Step icon={<FileCheck2 size={17} />} number="III" title="Receive the brief" copy="Get a cited answer with an auditable selection and funding trail." />
-          </div>
-        </article>
-
-        <article className="roman-panel p-5 sm:p-7">
-          <div className="flex items-center justify-between gap-4">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Live research ledger</p>
-            <Link href="/leaderboard" className="inline-flex items-center gap-1 font-mono text-[10px] uppercase text-muted hover:text-cream">
-              View ledger <ArrowUpRight size={12} />
-            </Link>
-          </div>
-          <LiveLedgerStream />
-        </article>
-      </section>
-
-      <section className="mx-auto mt-5 grid max-w-7xl overflow-hidden rounded-xl border border-marble/10 bg-panel/65 sm:grid-cols-2 lg:grid-cols-4">
-        <Pillar icon={<BookOpenCheck size={17} />} title="Curated archive" copy="Only approved sources enter synthesis." />
-        <Pillar icon={<Landmark size={17} />} title="Transparent treasury" copy="Every funded unlock creates a record." />
-        <Pillar icon={<UsersRound size={17} />} title="Patron-funded" copy="Capital activates research worth doing." />
-        <Pillar icon={<CircleDollarSign size={17} />} title="Evidence-first" copy="Useful sources earn value and attribution." />
+      <section className="research-activity" aria-label="Research activity">
+        <div className="flex items-center justify-between gap-4">
+          <div><p className="text-sm text-cream">Research with a paper trail</p><p className="mt-1 text-xs text-muted">See where the evidence leads, and who it rewards.</p></div>
+          <Link href="/leaderboard" className="flex shrink-0 items-center gap-1 text-xs text-muted hover:text-gold">Public ledger <ArrowUpRight size={14} /></Link>
+        </div>
+        <details className="mt-5 rounded-2xl border border-marble/[0.08] bg-panel/40">
+          <summary className="cursor-pointer px-5 py-4 text-xs text-muted">Explore network activity</summary>
+          <div className="grid grid-cols-2 border-t border-marble/[0.08] lg:grid-cols-4"><LiveLedgerMetrics /></div>
+          <div className="px-5 pb-2"><LiveLedgerStream /></div>
+        </details>
+        <p className="mt-6 text-center text-[11px] leading-6 text-dim">Built for questions worth asking. Designed to credit the people behind the answers.</p>
       </section>
     </main>
-  );
-}
-
-function Step({ icon, number, title, copy }: { icon: React.ReactNode; number: string; title: string; copy: string }) {
-  return (
-    <div className="grid grid-cols-[36px_24px_1fr] items-start gap-3">
-      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-marble/10 bg-marble/5 text-gold">{icon}</span>
-      <span className="pt-1 font-serif text-xl italic text-gold">{number}</span>
-      <div>
-        <h2 className="text-sm text-cream">{title}</h2>
-        <p className="mt-1 text-xs leading-5 text-muted">{copy}</p>
-      </div>
-    </div>
-  );
-}
-
-function Pillar({ icon, title, copy }: { icon: React.ReactNode; title: string; copy: string }) {
-  return (
-    <div className="flex gap-3 border-b border-marble/10 p-5 last:border-b-0 sm:border-b-0 sm:border-r sm:[&:nth-child(2)]:border-r-0 lg:[&:nth-child(2)]:border-r lg:last:border-r-0">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/10 text-gold">{icon}</span>
-      <div>
-        <h2 className="text-sm text-cream">{title}</h2>
-        <p className="mt-1 text-xs leading-5 text-muted">{copy}</p>
-      </div>
-    </div>
   );
 }

@@ -6,10 +6,10 @@ type SectionHeadingProps = {
 
 export function SectionHeading({ eyebrow, title, copy }: SectionHeadingProps) {
   return (
-    <div className="mx-auto max-w-3xl text-center">
-      {eyebrow ? <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-gold">{eyebrow}</p> : null}
-      <h1 className="mt-4 text-balance font-display text-4xl leading-[1.05] text-cream sm:text-6xl">{title}</h1>
-      {copy ? <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-muted">{copy}</p> : null}
+    <div className="mx-auto max-w-6xl">
+      {eyebrow ? <p className="text-xs text-gold">{eyebrow}</p> : null}
+      <h1 className="mt-3 text-balance font-serif text-3xl leading-tight tracking-[-0.02em] text-cream sm:text-[2.5rem]">{title}</h1>
+      {copy ? <p className="mt-4 max-w-2xl text-sm leading-7 text-muted">{copy}</p> : null}
     </div>
   );
 }

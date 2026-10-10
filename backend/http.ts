@@ -671,7 +671,7 @@ async function sendPaymentRequired(response: ServerResponse, sessionId: string) 
   return sendJson(response, 402, {
     error: "PAYMENT_REQUIRED",
     reason: "FREE_QUOTA_EXHAUSTED",
-    message: `You have used your ${usage.freeSearchLimit} free Maecenas searches. Connect wallet and pay ${price} test USDC to continue.`,
+    message: `Sponsored research is unavailable. Connect wallet and pay ${price} USDC to continue.`,
     freeSearchesUsed: usage.freeSearchesUsed,
     freeSearchLimit: usage.freeSearchLimit,
     paidSearchPriceUSDC: price,

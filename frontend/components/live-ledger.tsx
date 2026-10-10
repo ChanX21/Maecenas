@@ -6,13 +6,16 @@ import { ArrowUpRight } from "lucide-react";
 import { getLeaderboard } from "@/api";
 import { SettlementProof } from "@/components/transaction-proof-link";
 import { citationPaymentStatusLabel } from "@/lib/arc-explorer";
+import { useHydrated } from "@/lib/use-hydrated";
 
 export function LiveLedgerMetrics() {
-  const { data: ledger } = useQuery({
+  const hydrated = useHydrated();
+  const { data } = useQuery({
     queryKey: ["leaderboard"],
     queryFn: getLeaderboard,
     retry: false
   });
+  const ledger = hydrated ? data : undefined;
 
   const metrics = ledger?.metrics;
   const capitalLabel = ledger?.paymentMode === "real" ? "Gateway USDC credited" : "Test capital recorded";
@@ -28,15 +31,17 @@ export function LiveLedgerMetrics() {
 }
 
 export function LiveLedgerStream() {
-  const { data: ledger, isLoading } = useQuery({
+  const hydrated = useHydrated();
+  const { data, isLoading } = useQuery({
     queryKey: ["leaderboard"],
     queryFn: getLeaderboard,
     retry: false
   });
+  const ledger = hydrated ? data : undefined;
 
   return (
     <div className="mt-5 divide-y divide-marble/10 border-y border-marble/10">
-      {isLoading ? (
+      {!hydrated || isLoading ? (
         <div className="py-10 text-center">
           <p className="text-sm text-muted">Connecting to ledger...</p>
         </div>

@@ -31,11 +31,9 @@ export function BudgetMeter({ budgetUSDC, spentUSDC, considered, purchased, skip
   const spent = parseUSDC(spentUSDC);
   const remaining = Math.max(0, budget - spent);
   
-  const progressPercent = budget > 0 ? (spent / budget) * 100 : 0;
-
   return (
     <div className="space-y-4">
-      <dl className="grid grid-cols-2 overflow-hidden rounded-lg border border-marble/10 bg-ink-2/60 sm:grid-cols-5">
+      <dl className="grid grid-cols-2 overflow-hidden sm:grid-cols-5">
         <Metric label="Treasury limit" value={<><AnimatedNumber value={budget} isUSDC /> USDC</>} />
         <Metric label="Funded" value={<AnimatedNumber value={purchased} />} />
         <Metric label="Reviewed" value={<AnimatedNumber value={considered} />} />
@@ -50,9 +48,9 @@ export function BudgetMeter({ budgetUSDC, spentUSDC, considered, purchased, skip
 function Metric({ label, value, detail }: { label: string; value: React.ReactNode; detail?: string }) {
   return (
     <div className="border-b border-r border-marble/10 px-2 py-3 text-center even:border-r-0 last:col-span-2 last:border-b-0 sm:col-span-1 sm:border-b-0 sm:border-r sm:px-4 sm:py-4 sm:last:col-span-1 sm:last:border-r-0">
-      <dt className="font-mono text-[10px] uppercase text-dim">{label}</dt>
-      <dd className="mt-1 text-sm text-cream font-mono tracking-tight">{value}</dd>
-      {detail ? <dd className="mt-1 text-xs text-muted font-mono">{detail}</dd> : null}
+      <dt className="text-[11px] text-muted">{label}</dt>
+      <dd className="mt-2 text-sm tabular-nums text-cream">{value}</dd>
+      {detail ? <dd className="mt-1 text-[11px] text-muted">{detail}</dd> : null}
     </div>
   );
 }

@@ -31,7 +31,7 @@ export default async function AnswerPage({ params }: PageProps) {
 
   return (
     <main className="home-grid min-h-[calc(100vh-65px)] px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-4xl">
         <div className="flex flex-col items-start justify-between gap-3 min-[400px]:flex-row min-[400px]:items-center">
           <Link href="/" className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted hover:text-cream">
             <ArrowLeft size={14} /> Start another commission
@@ -39,16 +39,15 @@ export default async function AnswerPage({ params }: PageProps) {
           <ShareAnswerButton answerId={id} prompt={answer.prompt} />
         </div>
 
-        <header className="mx-auto mt-10 max-w-4xl text-center">
-          <div className="flex flex-wrap justify-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em]">
+        <header className="mx-auto mt-9 max-w-4xl">
+          <div className="flex flex-wrap gap-2 text-xs">
             <span className="rounded-md border border-gold/30 bg-gold/10 px-2 py-1 text-gold">{fundingLabel}</span>
             <span className="rounded-md border border-marble/15 px-2 py-1 text-muted">{paymentLabel}</span>
           </div>
-          <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">Research brief</p>
-          <h1 className="mt-3 text-balance font-display text-4xl leading-[1.08] text-cream sm:text-6xl">{answer.prompt}</h1>
+          <h1 className="mt-5 text-balance text-2xl font-medium leading-snug tracking-tight text-cream sm:text-3xl">{answer.prompt}</h1>
         </header>
 
-        <div data-tour="answer-overview" className="roman-panel mt-10 overflow-hidden p-4 sm:p-5">
+        <div data-tour="answer-overview" className="mt-7 overflow-hidden rounded-xl border border-marble/10 bg-ink-2 p-2 sm:p-3">
           <BudgetMeter
             budgetUSDC={answer.budgetUSDC}
             spentUSDC={answer.spentUSDC}
@@ -73,15 +72,15 @@ export default async function AnswerPage({ params }: PageProps) {
           ) : null}
         </div>
 
-        <article className="roman-panel mx-auto mt-5 max-w-4xl p-5 sm:p-10">
+        <article className="mx-auto my-9 max-w-4xl px-1 sm:my-10">
           {content ? (
             <>
-              <p className="font-display text-2xl leading-9 text-marble sm:text-3xl">{content.summary}</p>
-              <div className="mt-10 space-y-8">
+              <p className="text-base leading-8 text-marble sm:text-lg">{content.summary}</p>
+              <div className="mt-8 space-y-8">
                 {content.sections.map((section, index) => (
                   <section key={`${section.heading}-${index}`} className="border-t border-marble/10 pt-7">
-                    <h2 className="font-display text-2xl text-cream">{section.heading}</h2>
-                    <p className="mt-4 whitespace-pre-wrap text-base leading-8 text-muted">{section.body}</p>
+                    <h2 className="text-lg font-medium text-cream">{section.heading}</h2>
+                    <p className="mt-3 whitespace-pre-wrap text-[15px] leading-8 text-muted">{section.body}</p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {section.citations.map((sourceId) => {
                         const source = sourceById.get(sourceId);

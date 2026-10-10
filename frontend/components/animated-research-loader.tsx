@@ -33,10 +33,10 @@ export function AnimatedResearchLoader({ stage, events = [] }: { stage: string; 
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
       transition={{ type: "spring", bounce: 0, duration: 0.6 }}
-      className={`mt-6 flex flex-col gap-4 rounded-xl border p-5 shadow-2xl backdrop-blur-md transition-all duration-700 ${
+      className={`mt-6 flex flex-col gap-4 rounded-xl border p-5 transition-all duration-700 ${
         isPayment 
-          ? "border-gold/30 bg-gold/10 shadow-[0_10px_40px_rgba(212,175,55,0.1)]" 
-          : "border-marble/15 bg-ink-2 shadow-[0_10px_40px_rgba(227,231,226,0.05)]"
+          ? "border-gold/30 bg-gold/10"
+          : "border-marble/15 bg-ink-2"
       }`}
     >
       <div className="flex w-full items-center gap-4">
@@ -49,7 +49,7 @@ export function AnimatedResearchLoader({ stage, events = [] }: { stage: string; 
               animate={{ scale: 1, rotate: 0, opacity: 1 }}
               exit={{ scale: 0, rotate: 90, opacity: 0 }}
               transition={{ type: "spring", bounce: 0.4 }}
-              className="flex h-full w-full items-center justify-center rounded-full bg-gold/20 text-gold ring-1 ring-gold/40 shadow-[0_0_15px_rgba(212,175,55,0.3)]"
+              className="flex h-full w-full items-center justify-center rounded-full bg-gold/20 text-gold ring-1 ring-gold/40"
             >
               <Coins size={20} className="animate-pulse" />
             </motion.div>

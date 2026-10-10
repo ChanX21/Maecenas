@@ -65,9 +65,9 @@ evidence.
   workers, rate limits, structured logs, and admin review.
 
 > [!IMPORTANT]
-> Maecenas is testnet software. Do not use production funds or mainnet keys.
-> Real payment mode fails closed when required Circle, Arc, wallet, or signing
-> configuration is missing.
+> Development defaults to testnet. Mainnet requires a separate deployment,
+> database and wallets. Follow the [mainnet migration and economics guide](MAINNET.md)
+> before using production funds. Real payments require explicit configuration.
 
 ## Architecture
 
@@ -248,12 +248,19 @@ the contributor-owned `{ sources }` response.
   to the initial production hypothesis of `0.05` USDC.
 - `AUTHOR_POOL_BPS` caps paid evidence spending at 70% (`0.035` USDC at the
   default price), while `PLATFORM_FEE_BPS` reserves the 10% platform share.
-- The remaining 20% is retained for AI and infrastructure costs.
+- The remaining 20% is the operating allowance; profitability depends on measured
+  AI, infrastructure, gas and retry costs. The platform share is an accounting
+  target, not an automatic transfer.
 - `SPONSORED_TREASURY_LIMIT_USDC` caps aggregate sponsored evidence spending.
 - Selected evidence prices are paid to registered source-owner wallets.
 - Unspent commission value remains in the treasury.
+- Customer payments credit the treasury's Gateway balance; author payouts debit
+  the separately funded agent balance. Treasury-to-agent replenishment is manual.
 - A failed research run releases its commission record for retry; settled USDC
   is not automatically reversed.
+
+See [mainnet economics](MAINNET.md#what-the-money-does) for break-even calculations
+and the launch validation procedure.
 
 ## Security Model
 

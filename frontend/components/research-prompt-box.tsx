@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowUp, ArrowUpRight, BrainCircuit, ChevronDown, CircleDollarSign, Microscope, Orbit, SlidersHorizontal } from "lucide-react";
 import { AnimatedResearchLoader } from "@/components/animated-research-loader";
 import { ResearchPaymentGate } from "@/components/research-payment-gate";
 import type { ResearchStrategy, TraceEvent, Usage } from "@/types";
@@ -20,6 +20,7 @@ import {
 } from "@/api";
 import { getSessionId, notifyUsageChanged } from "@/lib/browser-session";
 import { prepareAnswerOnboardingTour } from "@/lib/onboarding";
+import { useHydrated } from "@/lib/use-hydrated";
 import { useMaecenasWallet } from "@/components/wallet/maecenas-wallet-provider";
 
 type ResearchRequest = {
@@ -30,15 +31,16 @@ type ResearchRequest = {
 };
 
 const exampleQuestions = [
-  "Why are transformer models effective for modern AI systems?",
-  "What evidence supports CRISPR-Cas9 as a programmable gene-editing tool?",
-  "How does spaceflight affect microbial survival and behavior?"
+  { title: "Understand AI", description: "The ideas behind transformer models", question: "Why are transformer models effective for modern AI systems?", icon: BrainCircuit },
+  { title: "Explore gene editing", description: "What the evidence says about CRISPR", question: "What evidence supports CRISPR-Cas9 as a programmable gene-editing tool?", icon: Microscope },
+  { title: "Look beyond Earth", description: "How life adapts to spaceflight", question: "How does spaceflight affect microbial survival and behavior?", icon: Orbit }
 ];
 
 export function ResearchPromptBox() {
   const router = useRouter();
+  const hydrated = useHydrated();
   const { data: ledger } = useQuery({ queryKey: ["leaderboard"], queryFn: getLeaderboard, retry: false });
-  const featuredAnswerId = ledger?.recentPaymentStream[0]?.answerId;
+  const featuredAnswerId = hydrated ? ledger?.recentPaymentStream[0]?.answerId : undefined;
   const {
     address,
     authenticate,
@@ -48,7 +50,7 @@ export function ResearchPromptBox() {
     openWallet
   } = useMaecenasWallet();
   const [question, setQuestion] = useState("");
-  const [questionPlaceholder, setQuestionPlaceholder] = useState("");
+  const questionInput = useRef<HTMLTextAreaElement>(null);
   const [strategy, setStrategy] = useState<ResearchStrategy>("balanced");
   const [budgetUSDC, setBudgetUSDC] = useState("0.0050");
   const [fundingMode, setFundingMode] = useState<"grant" | "wallet">("grant");
@@ -71,32 +73,6 @@ export function ResearchPromptBox() {
         if (nextUsage.requiresPayment) setFundingMode("wallet");
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Could not load research access"));
-  }, []);
-
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setQuestionPlaceholder(exampleQuestions[0]);
-      return;
-    }
-
-    let questionIndex = 0;
-    let characterIndex = 0;
-    let timeout: number;
-    const type = () => {
-      const example = exampleQuestions[questionIndex];
-      setQuestionPlaceholder(example.slice(0, characterIndex));
-      if (characterIndex++ < example.length) {
-        timeout = window.setTimeout(type, 35);
-      } else {
-        timeout = window.setTimeout(() => {
-          questionIndex = (questionIndex + 1) % exampleQuestions.length;
-          characterIndex = 0;
-          type();
-        }, 1800);
-      }
-    };
-    type();
-    return () => window.clearTimeout(timeout);
   }, []);
 
   async function executeResearch(
@@ -146,7 +122,7 @@ export function ResearchPromptBox() {
 
   async function submitResearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!sessionId || !question.trim()) return;
+    if (stage || !sessionId || !question.trim()) return;
     const request = {
       clientRequestId: `req_${window.crypto.randomUUID().replaceAll("-", "")}`,
       question: question.trim(),
@@ -233,21 +209,11 @@ export function ResearchPromptBox() {
   }
 
   return (
-    <form onSubmit={submitResearch} className="roman-panel min-w-0 overflow-hidden p-4 sm:p-7">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="font-mono text-xs uppercase text-muted" htmlFor="question">
-          Research mandate
-        </label>
-        {usage ? (
-          <span className="font-mono text-xs text-muted">
-            {usage.freeSearchesRemaining > 0
-              ? `${usage.freeSearchesRemaining} patron-funded commissions left`
-              : `${usage.paidSearchPriceUSDC} USDC per commission`}
-          </span>
-        ) : null}
-      </div>
-
+    <div>
+    <form onSubmit={submitResearch} className="research-composer" aria-label="Research question">
+      <label className="sr-only" htmlFor="question">Research question</label>
       <textarea
+        ref={questionInput}
         id="question"
         data-tour="research-mandate"
         required
@@ -259,25 +225,14 @@ export function ResearchPromptBox() {
             event.currentTarget.form?.requestSubmit();
           }
         }}
-        rows={1}
-        placeholder={questionPlaceholder || "What should the forum investigate?"}
-        className="mt-4 min-h-20 w-full resize-y border-0 bg-transparent p-0 font-display text-xl leading-8 text-cream outline-none placeholder:text-dim sm:min-h-0 sm:text-3xl sm:leading-9"
+        rows={3}
+        placeholder="Ask anything. Follow the evidence."
+        className="block min-h-24 w-full resize-y border-0 bg-transparent p-0 text-base leading-7 text-cream outline-none placeholder:text-muted"
       />
 
-      <div className="mt-3 flex min-h-7 justify-end font-mono text-[10px]">
-        {featuredAnswerId ? (
-          <Link
-            href={`/answer/${featuredAnswerId}`}
-            className="inline-flex items-center gap-1 rounded-md border border-gold/25 bg-gold/10 px-2.5 py-1.5 text-gold hover:border-gold/50 hover:text-cream"
-          >
-            Watch a completed funded run <ArrowUpRight size={11} />
-          </Link>
-        ) : null}
-      </div>
-
-      <div className="mt-6 flex flex-col items-stretch gap-4 border-t border-marble/10 pt-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <div data-tour="research-funding" className="col-span-2 flex w-full overflow-hidden rounded-md border border-marble/10 bg-ink-2 font-mono text-[11px] sm:w-auto">
+      <div className="composer-toolbar">
+        <div className="composer-controls">
+          <div data-tour="research-funding" className="composer-funding">
             <button
               type="button"
               disabled={!usage?.freeSearchesRemaining}
@@ -286,7 +241,8 @@ export function ResearchPromptBox() {
                 setBudgetUSDC((current) => Math.min(Number(current), Number(usage?.freeEvidenceBudgetUSDC ?? "0.01")).toFixed(4));
                 setPaymentRequired(false);
               }}
-              className={`min-h-11 flex-1 px-3 py-2 transition ${fundingMode === "grant" ? "bg-marble/10 text-cream" : "text-muted hover:text-cream"} disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-0`}
+              aria-pressed={fundingMode === "grant"}
+              className={`composer-choice ${fundingMode === "grant" ? "composer-choice-active" : ""}`}
             >
               Patron grant
             </button>
@@ -296,34 +252,38 @@ export function ResearchPromptBox() {
                 setFundingMode("wallet");
                 setPaymentRequired(false);
               }}
-              className={`min-h-11 flex-1 px-3 py-2 transition ${fundingMode === "wallet" ? "bg-gold/15 text-gold" : "text-muted hover:text-cream"} sm:min-h-0`}
+              aria-pressed={fundingMode === "wallet"}
+              className={`composer-choice ${fundingMode === "wallet" ? "composer-choice-active" : ""}`}
             >
               Pay {usage?.paidSearchPriceUSDC ?? "0.05"} USDC
             </button>
           </div>
-          <label data-tour="research-posture" className="flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted sm:min-h-0">
-            Posture
+          <label data-tour="research-posture" className="composer-control">
+            <SlidersHorizontal size={14} aria-hidden="true" />
+            <span className="sr-only">Research posture</span>
             <select
               value={strategy}
               onChange={(event) => setStrategy(event.target.value as ResearchStrategy)}
-              className="bg-transparent text-cream outline-none"
+              className="w-20 cursor-pointer appearance-none bg-transparent text-muted outline-none"
             >
               <option value="conservative">Focused</option>
               <option value="balanced">Balanced</option>
               <option value="aggressive">Expansive</option>
             </select>
           </label>
-          <details data-tour="research-budget" className="group relative min-w-0">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted hover:text-cream sm:min-h-0">
-            Budget · <span className="text-gold">{budgetUSDC} USDC</span>
+          <details data-tour="research-budget" className="group relative">
+          <summary className="composer-control cursor-pointer list-none">
+            <CircleDollarSign size={14} aria-hidden="true" />
+            <span>Budget</span><ChevronDown size={12} aria-hidden="true" />
           </summary>
-            <div className="fixed inset-x-4 bottom-4 z-50 rounded-lg border border-marble/15 bg-panel-2 p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:bottom-full sm:left-0 sm:mb-2 sm:w-64 sm:p-3">
-              <div className="flex justify-between font-mono text-xs uppercase tracking-wider text-muted">
-                <span>Treasury limit</span>
+            <div className="composer-budget-panel absolute bottom-full right-0 z-30 mb-3 w-60 rounded-xl border border-marble/15 bg-panel-2 p-4">
+              <div className="flex justify-between text-xs text-muted">
+                <span>Evidence budget</span>
                 <span className="text-gold font-bold">{budgetUSDC} USDC</span>
               </div>
               <input
                 type="range"
+                aria-label="Evidence budget"
                 min="0.0001"
                 max={maximumBudgetUSDC}
                 step="0.0001"
@@ -331,25 +291,24 @@ export function ResearchPromptBox() {
                 onChange={(e) => setBudgetUSDC(Number(e.target.value).toFixed(4))}
                 className="mt-3 w-full accent-gold h-1 bg-marble/10 rounded-lg appearance-none cursor-pointer"
               />
-              <div className="mt-1 flex justify-between font-mono text-[9px] text-dim">
+              <div className="mt-2 flex justify-between text-[10px] text-muted">
                 <span>0.0001 min</span>
                 <span>{maximumBudgetUSDC} max</span>
               </div>
             </div>
           </details>
-          <span className="hidden rounded-md border border-marble/10 bg-ink-2 px-3 py-2 font-mono text-[11px] text-muted sm:inline">
-            Curated sources
-          </span>
         </div>
         <motion.button
           data-tour="research-submit"
           type="submit"
+          aria-label="Start research"
+          title="Start research"
           disabled={busy || !sessionId || !question.trim()}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="roman-button inline-flex min-h-12 w-full items-center justify-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink transition hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 sm:w-auto sm:min-w-32"
+          className="composer-submit"
         >
-          Commission research <ArrowRight size={15} />
+          <ArrowUp size={20} />
         </motion.button>
       </div>
 
@@ -384,11 +343,24 @@ export function ResearchPromptBox() {
           ) : null}
         </div>
       ) : null}
-      <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 border-t border-marble/10 pt-4 font-mono text-[9px] uppercase tracking-[0.12em] text-dim">
-        <span><i className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gold" />Archive online</span>
-        <span>Budget governed</span>
-        <span>Receipts recorded</span>
-      </div>
     </form>
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-dim">
+      <span>{usage ? usage.freeSearchesRemaining > 0 ? `${usage.freeSearchesRemaining} patron-funded searches left` : `${usage.paidSearchPriceUSDC} USDC per search` : "Cited answers. Transparent funding."}</span>
+      {featuredAnswerId ? <Link href={`/answer/${featuredAnswerId}`} className="inline-flex items-center gap-1 text-muted hover:text-gold">Explore a completed answer <ArrowUpRight size={12} /></Link> : null}
+    </div>
+    <section className="mt-8 sm:mt-10" aria-label="Suggested questions">
+      <p className="mb-3 text-xs text-muted">A little inspiration</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {exampleQuestions.map(({ title, description, question: example, icon: Icon }) => (
+          <button key={title} type="button" disabled={busy} className="question-suggestion"
+            onClick={() => { setQuestion(example); setPendingRequest(undefined); setPaymentRequired(false); setError(""); questionInput.current?.focus(); }}>
+            <Icon size={20} strokeWidth={1.5} className="mb-4 text-gold/75" />
+            <span className="block text-[13px] text-cream">{title}</span>
+            <span className="mt-1.5 block text-xs leading-5 text-muted">{description}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+    </div>
   );
 }

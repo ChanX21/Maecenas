@@ -3,36 +3,44 @@
 import { LogOut, WalletCards } from "lucide-react";
 import { useMaecenasWallet } from "@/components/wallet/maecenas-wallet-provider";
 
-export function WalletButton() {
+export function WalletButton({ compact = false, onOpen }: { compact?: boolean; onOpen?: () => void }) {
   const { address, logout, openWallet } = useMaecenasWallet();
+
+  function showWallet() {
+    onOpen?.();
+    openWallet();
+  }
 
   if (!address) {
     return (
       <button
         type="button"
-        onClick={openWallet}
-        className="inline-flex min-h-11 items-center gap-2 border border-marble/15 bg-panel px-3 py-2 font-mono text-[10px] uppercase text-muted transition hover:bg-marble/10 hover:text-cream sm:min-h-0 sm:text-[11px]"
+        onClick={showWallet}
+        aria-label="Connect wallet"
+        title={compact ? "Connect wallet" : undefined}
+        className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-marble/5 hover:text-cream ${compact ? "justify-center" : ""}`}
       >
-        <WalletCards size={14} />
-        <span className="sm:hidden">Connect</span>
-        <span className="hidden sm:inline">Connect with Dynamic</span>
+        <WalletCards size={20} strokeWidth={1.6} className="shrink-0" />
+        {!compact ? <span>Connect wallet</span> : null}
       </button>
     );
   }
 
   return (
-    <div className="flex items-center border border-marble/15 bg-panel">
+    <div className={`flex items-center rounded-lg bg-marble/[0.03] ${compact ? "flex-col" : ""}`}>
       <button
         type="button"
-        onClick={openWallet}
-        className="min-h-11 px-3 py-2 font-mono text-[11px] text-cream transition hover:bg-marble/10 sm:min-h-0"
+        onClick={showWallet}
+        aria-label="Wallet details"
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-xs text-cream transition hover:bg-marble/5"
       >
-        {`${address.slice(0, 6)}...${address.slice(-4)}`}
+        <WalletCards size={18} className="shrink-0 text-gold" />
+        {!compact ? `${address.slice(0, 6)}...${address.slice(-4)}` : null}
       </button>
       <button
         type="button"
         onClick={() => void logout()}
-        className="inline-flex h-11 w-11 items-center justify-center border-l border-marble/15 text-muted transition hover:bg-marble/10 hover:text-cream sm:h-9 sm:w-9"
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-marble/5 hover:text-cream"
         aria-label="Disconnect Dynamic wallet"
         title="Disconnect wallet"
       >

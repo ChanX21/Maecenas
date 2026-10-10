@@ -26,7 +26,7 @@ const config: Config = {
         danger: "#e4776b"
       },
       fontFamily: {
-        display: ["Georgia", "Cambria", "Times New Roman", "serif"],
+        display: ["var(--font-serif)", "Georgia", "Cambria", "Times New Roman", "serif"],
         serif: ["var(--font-serif)", "Georgia", "Cambria", "Times New Roman", "serif"],
         mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"]
