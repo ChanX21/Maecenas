@@ -36,6 +36,12 @@ const exampleQuestions = [
   { title: "Look beyond Earth", description: "How life adapts to spaceflight", question: "How does spaceflight affect microbial survival and behavior?", icon: Orbit }
 ];
 
+const researchStrategies: { value: ResearchStrategy; label: string }[] = [
+  { value: "conservative", label: "Focused" },
+  { value: "balanced", label: "Balanced" },
+  { value: "aggressive", label: "Expansive" }
+];
+
 export function ResearchPromptBox() {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -52,6 +58,15 @@ export function ResearchPromptBox() {
   const [question, setQuestion] = useState("");
   const questionInput = useRef<HTMLTextAreaElement>(null);
   const [strategy, setStrategy] = useState<ResearchStrategy>("balanced");
+  const [strategyOpen, setStrategyOpen] = useState(false);
+  const [strategyFocusIndex, setStrategyFocusIndex] = useState(1);
+  const strategyMenu = useRef<HTMLDivElement>(null);
+  const strategyTrigger = useRef<HTMLButtonElement>(null);
+  const strategyOptions = useRef<Array<HTMLButtonElement | null>>([]);
+  const selectedStrategyIndex = Math.max(0, researchStrategies.findIndex((option) => option.value === strategy));
+  const [budgetOpen, setBudgetOpen] = useState(false);
+  const budgetMenu = useRef<HTMLDivElement>(null);
+  const budgetTrigger = useRef<HTMLButtonElement>(null);
   const [budgetUSDC, setBudgetUSDC] = useState("0.0050");
   const [fundingMode, setFundingMode] = useState<"grant" | "wallet">("grant");
   const [sessionId, setSessionId] = useState("");
@@ -62,6 +77,32 @@ export function ResearchPromptBox() {
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [error, setError] = useState("");
   const [gatewayFundAmount, setGatewayFundAmount] = useState("");
+
+  useEffect(() => {
+    if (strategyOpen) strategyOptions.current[strategyFocusIndex]?.focus();
+  }, [strategyOpen, strategyFocusIndex]);
+
+  useEffect(() => {
+    if (!strategyOpen && !budgetOpen) return;
+    function closeOnOutsidePointer(event: PointerEvent) {
+      const target = event.target as Node;
+      if (strategyOpen && !strategyMenu.current?.contains(target)) setStrategyOpen(false);
+      if (budgetOpen && !budgetMenu.current?.contains(target)) setBudgetOpen(false);
+    }
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, [budgetOpen, strategyOpen]);
+
+  function openStrategyMenu(index = selectedStrategyIndex) {
+    setStrategyFocusIndex(index);
+    setStrategyOpen(true);
+  }
+
+  function moveStrategyFocus(index: number) {
+    const nextIndex = (index + researchStrategies.length) % researchStrategies.length;
+    setStrategyFocusIndex(nextIndex);
+    strategyOptions.current[nextIndex]?.focus();
+  }
 
   useEffect(() => {
     const id = getSessionId();
@@ -219,6 +260,10 @@ export function ResearchPromptBox() {
         required
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
+        onFocus={() => {
+          setBudgetOpen(false);
+          setStrategyOpen(false);
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
             event.preventDefault();
@@ -258,25 +303,111 @@ export function ResearchPromptBox() {
               Pay {usage?.paidSearchPriceUSDC ?? "0.05"} USDC
             </button>
           </div>
-          <label data-tour="research-posture" className="composer-control">
-            <SlidersHorizontal size={14} aria-hidden="true" />
-            <span className="sr-only">Research posture</span>
-            <select
-              value={strategy}
-              onChange={(event) => setStrategy(event.target.value as ResearchStrategy)}
-              className="w-20 cursor-pointer appearance-none bg-transparent text-muted outline-none"
+          <div ref={strategyMenu} data-tour="research-posture" className="relative">
+            <button
+              ref={strategyTrigger}
+              type="button"
+              aria-label={`Research posture: ${researchStrategies[selectedStrategyIndex].label}`}
+              aria-haspopup="listbox"
+              aria-expanded={strategyOpen}
+              aria-controls="research-strategy-options"
+              onClick={() => strategyOpen ? setStrategyOpen(false) : openStrategyMenu()}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                  event.preventDefault();
+                  openStrategyMenu(event.key === "ArrowUp" ? researchStrategies.length - 1 : selectedStrategyIndex);
+                }
+              }}
+              className={`composer-control composer-strategy-trigger ${strategyOpen ? "composer-control-active" : ""}`}
             >
-              <option value="conservative">Focused</option>
-              <option value="balanced">Balanced</option>
-              <option value="aggressive">Expansive</option>
-            </select>
-          </label>
-          <details data-tour="research-budget" className="group relative">
-          <summary className="composer-control cursor-pointer list-none">
-            <CircleDollarSign size={14} aria-hidden="true" />
-            <span>Budget</span><ChevronDown size={12} aria-hidden="true" />
-          </summary>
-            <div className="composer-budget-panel absolute bottom-full right-0 z-30 mb-3 w-60 rounded-xl border border-marble/15 bg-panel-2 p-4">
+              <SlidersHorizontal size={14} aria-hidden="true" />
+              <span>{researchStrategies[selectedStrategyIndex].label}</span>
+              <motion.span animate={{ rotate: strategyOpen ? 180 : 0 }} transition={{ duration: 0.16 }} className="inline-flex">
+                <ChevronDown size={12} aria-hidden="true" />
+              </motion.span>
+            </button>
+            <AnimatePresence>
+              {strategyOpen ? (
+                <motion.div
+                  id="research-strategy-options"
+                  role="listbox"
+                  aria-label="Research posture"
+                  initial={{ opacity: 0, y: 7, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 5, scale: 0.985 }}
+                  transition={{ duration: 0.16, ease: [0.2, 0.75, 0.25, 1] }}
+                  className="strategy-menu"
+                >
+                  {researchStrategies.map((option, index) => (
+                    <button
+                      key={option.value}
+                      ref={(element) => { strategyOptions.current[index] = element; }}
+                      type="button"
+                      role="option"
+                      aria-selected={strategy === option.value}
+                      tabIndex={strategyFocusIndex === index ? 0 : -1}
+                      onFocus={() => setStrategyFocusIndex(index)}
+                      onKeyDown={(event) => {
+                        if (event.key === "ArrowDown") {
+                          event.preventDefault();
+                          moveStrategyFocus(index + 1);
+                        } else if (event.key === "ArrowUp") {
+                          event.preventDefault();
+                          moveStrategyFocus(index - 1);
+                        } else if (event.key === "Home") {
+                          event.preventDefault();
+                          moveStrategyFocus(0);
+                        } else if (event.key === "End") {
+                          event.preventDefault();
+                          moveStrategyFocus(researchStrategies.length - 1);
+                        } else if (event.key === "Escape") {
+                          event.preventDefault();
+                          setStrategyOpen(false);
+                          strategyTrigger.current?.focus();
+                        } else if (event.key === "Tab") {
+                          setStrategyOpen(false);
+                        }
+                      }}
+                      onClick={() => {
+                        setStrategy(option.value);
+                        setStrategyOpen(false);
+                        window.requestAnimationFrame(() => strategyTrigger.current?.focus());
+                      }}
+                      className={`composer-strategy-option ${strategy === option.value ? "composer-strategy-option-active" : ""}`}
+                    >
+                      <span>{option.label}</span>
+                      {strategy === option.value ? <span aria-hidden="true" className="strategy-option-check">✓</span> : null}
+                    </button>
+                  ))}
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+          <div ref={budgetMenu} data-tour="research-budget" className="relative">
+            <button
+              ref={budgetTrigger}
+              id="research-budget-toggle"
+              type="button"
+              aria-expanded={budgetOpen}
+              aria-controls="research-budget-panel"
+              onClick={() => setBudgetOpen((open) => !open)}
+              className={`composer-control ${budgetOpen ? "composer-control-active" : ""}`}
+            >
+              <CircleDollarSign size={14} aria-hidden="true" />
+              <span>Budget</span><ChevronDown size={12} aria-hidden="true" className={`transition-transform duration-150 ${budgetOpen ? "rotate-180" : ""}`} />
+            </button>
+            <AnimatePresence>
+            {budgetOpen ? (
+            <motion.div
+              id="research-budget-panel"
+              role="group"
+              aria-labelledby="research-budget-toggle"
+              initial={{ opacity: 0, y: 7, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 5, scale: 0.99 }}
+              transition={{ duration: 0.15, ease: [0.2, 0.75, 0.25, 1] }}
+              className="composer-budget-panel absolute bottom-full right-0 z-30 mb-3 w-60 rounded-xl border border-marble/15 bg-panel-2 p-4"
+            >
               <div className="flex justify-between text-xs text-muted">
                 <span>Evidence budget</span>
                 <span className="text-gold font-bold">{budgetUSDC} USDC</span>
@@ -289,14 +420,22 @@ export function ResearchPromptBox() {
                 step="0.0001"
                 value={budgetUSDC}
                 onChange={(e) => setBudgetUSDC(Number(e.target.value).toFixed(4))}
-                className="mt-3 w-full accent-gold h-1 bg-marble/10 rounded-lg appearance-none cursor-pointer"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setBudgetOpen(false);
+                    budgetTrigger.current?.focus();
+                  }
+                }}
+                className="composer-budget-range mt-3 w-full accent-gold h-1 bg-marble/10 rounded-lg appearance-none cursor-pointer"
               />
               <div className="mt-2 flex justify-between text-[10px] text-muted">
                 <span>0.0001 min</span>
                 <span>{maximumBudgetUSDC} max</span>
               </div>
-            </div>
-          </details>
+            </motion.div>
+            ) : null}
+            </AnimatePresence>
+          </div>
         </div>
         <motion.button
           data-tour="research-submit"
