@@ -12,7 +12,7 @@ const initialForm = {
   authorName: "",
   sourceUrl: "",
   doiOrCanonicalUrl: "",
-  citationPriceUSDC: "0.0001",
+  citationPriceUSDC: "0.005",
   abstract: "",
   tags: "",
   evidenceText: "",
@@ -122,7 +122,8 @@ export function SourceRegistrationForm() {
               <div className="mt-2 flex flex-col gap-2">
                 <input
                   type="number"
-                  min="0.0001"
+                  min="0.001"
+                  max="0.0100"
                   step="0.0001"
                   value={form.citationPriceUSDC}
                   onChange={(e) => update("citationPriceUSDC", e.target.value)}
@@ -132,15 +133,15 @@ export function SourceRegistrationForm() {
                 <div>
                   <input
                     type="range"
-                    min="0.0001"
+                    min="0.001"
                     max="0.0100"
-                    step="0.0001"
+                    step="0.001"
                     value={form.citationPriceUSDC}
                     onChange={(e) => update("citationPriceUSDC", Number(e.target.value).toFixed(4))}
                     className="w-full accent-gold h-1 bg-marble/10 rounded-lg appearance-none cursor-pointer"
                   />
                   <div className="mt-1 flex justify-between font-mono text-[9px] text-dim">
-                    <span>0.0001 min</span>
+                    <span>0.001 min</span>
                     <span>0.0100 max</span>
                   </div>
                 </div>
@@ -218,7 +219,7 @@ export function SourceRegistrationForm() {
             exit={{ opacity: 0 }}
             className="mt-4 text-sm leading-6 text-muted"
           >
-            The forum checks every submission for duplicate URLs and evidence quality before it enters the public archive. Wallet ownership verification is not yet enabled.
+            The forum checks every submission, its signed payout wallet, source rights, duplicate URLs, and evidence quality before approval.
           </motion.p>
         )}
         </AnimatePresence>

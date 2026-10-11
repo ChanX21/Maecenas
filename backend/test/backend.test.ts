@@ -196,18 +196,22 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       ].join("\n")
     });
 
-    const submitted = await post("/api/sources", {
+    const sourceSubmission = {
       title: "Independent Nanopayment Evidence",
       authorName: "Test Source Owner",
       sourceUrl,
       walletAddress,
-      citationPriceUSDC: "0.0001",
+      citationPriceUSDC: "0.001",
       abstract: "Independent evidence about nanopayment authorization, settlement, and accountable source compensation.",
       evidenceText:
         "Nanopayment authorization lets software purchase one narrowly scoped evidence item while preserving a receipt that identifies the buyer, source owner, amount, and funded research session.",
       tags: "nanopayments, evidence, authorization",
       ownershipAttestation
-    });
+    };
+    const tooExpensive = await post("/api/sources", { ...sourceSubmission, citationPriceUSDC: "0.0101" });
+    assert.equal(tooExpensive.response.status, 400);
+    assert.equal(tooExpensive.body.error, "INVALID_USDC_AMOUNT");
+    const submitted = await post("/api/sources", sourceSubmission);
     assert.equal(submitted.response.status, 201);
     assert.equal(submitted.body.source.status, "pending");
     assert.equal(submitted.body.source.evidenceText, undefined);
@@ -320,7 +324,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       authorName: "Test Source Owner",
       sourceUrl,
       walletAddress,
-      citationPriceUSDC: "0.0001",
+      citationPriceUSDC: "0.001",
       abstract: "A duplicate source submission with enough abstract text to pass normal input validation.",
       evidenceText:
         "This evidence body is intentionally long enough to pass validation while reusing the same canonical source URL.",

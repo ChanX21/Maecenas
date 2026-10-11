@@ -262,8 +262,9 @@ async function routeRequest(context: RouteContext) {
     };
 
     validateUSDC(source.citationPriceUSDC, "citationPriceUSDC");
-    if (parseUSDCMicros(source.citationPriceUSDC) === 0) {
-      throw new HttpError(400, "INVALID_USDC_AMOUNT", "citationPriceUSDC must be greater than zero");
+    const citationPriceMicros = parseUSDCMicros(source.citationPriceUSDC);
+    if (citationPriceMicros < 1_000 || citationPriceMicros > 10_000) {
+      throw new HttpError(400, "INVALID_USDC_AMOUNT", "citationPriceUSDC must be between 0.001 and 0.01");
     }
     return sendJson(response, 201, { source: publicSource(await createSource(source)) });
   }

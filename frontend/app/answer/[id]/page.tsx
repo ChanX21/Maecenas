@@ -92,7 +92,9 @@ export default async function AnswerPage({ params }: PageProps) {
                         return source ? (
                           <a
                             key={sourceId}
-                            href={`#citation-${sourceId}`}
+                            href={source.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="rounded-md border border-marble/15 px-2 py-1 font-mono text-[10px] text-marble hover:border-gold/50"
                           >
                             {source.title}
@@ -130,6 +132,7 @@ export default async function AnswerPage({ params }: PageProps) {
                   <div>
                     <h3 className="text-base text-cream">{source.title}</h3>
                     <p className="mt-1 text-sm text-muted">{source.authorName}</p>
+                    {source.license ? <p className="mt-1 text-xs text-dim">{source.license}</p> : null}
                   </div>
                   <a
                     href={source.sourceUrl}
