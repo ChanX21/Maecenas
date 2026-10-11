@@ -7,7 +7,7 @@ import type { CitationPayment } from "@/types";
 export function DashboardEarningsTable({ receipts }: { receipts: CitationPayment[] }) {
   return (
     <section>
-      <h2 className="font-display text-2xl text-cream">Treasury history</h2>
+      <h2 className="font-display text-2xl text-cream">Earnings history</h2>
       {receipts.length ? (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[700px] border-collapse font-mono text-xs">
@@ -54,7 +54,7 @@ export function DashboardEarningsTable({ receipts }: { receipts: CitationPayment
           </table>
         </div>
       ) : (
-        <p className="mt-4 border-y border-marble/10 py-5 text-sm text-muted">No funded evidence records yet.</p>
+        <p className="mt-4 border-y border-marble/10 py-5 text-sm text-muted">No source payments yet.</p>
       )}
     </section>
   );

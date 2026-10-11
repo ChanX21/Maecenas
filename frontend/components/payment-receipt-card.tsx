@@ -46,8 +46,8 @@ export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
           
           <dl className="mt-8 space-y-4 font-mono text-xs">
             <Row label="Amount" value={`${receipt.amountUSDC} USDC`} />
-            <Row label="Recipient" value={receipt.recipientWallet} />
-            <Row label="Payer" value={receipt.payerAgent} />
+            <Row label="Payout wallet" value={receipt.recipientWallet} />
+            <Row label="Paid by" value={receipt.payerAgent} />
             <Row
               label="Funding"
               value={receipt.fundedBy === "user_paid_search" ? "Customer-paid search" : "Maecenas-funded search"}

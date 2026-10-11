@@ -17,8 +17,8 @@ export default async function ReceiptPage({ params }: PageProps) {
   return (
     <main className="home-grid min-h-[calc(100vh-65px)] px-4 py-14 sm:px-6 lg:px-8">
       <SectionHeading
-        eyebrow="The treasury ledger"
-        title="Proof of patronage."
+        eyebrow="Public payment record"
+        title="Verified source payment."
         copy="See why this evidence earned funding, who receives the value, and whether the settlement is test or live."
       />
       <div className="mx-auto mt-10 max-w-4xl">

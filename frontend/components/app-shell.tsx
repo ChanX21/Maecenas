@@ -16,7 +16,7 @@ const navigation = [
   { href: "/", label: "Research", icon: MessageSquare },
   { href: "/sources", label: "Source archive", icon: BookOpen },
   { href: "/agents", label: "Agents", icon: Bot },
-  { href: "/dashboard", label: "My treasury", icon: Wallet },
+  { href: "/dashboard", label: "My earnings", icon: Wallet },
   { href: "/leaderboard", label: "Public ledger", icon: ChartNoAxesCombined }
 ];
 

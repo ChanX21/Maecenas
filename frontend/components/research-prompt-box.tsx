@@ -111,7 +111,7 @@ export function ResearchPromptBox() {
       } else if (cause instanceof ApiError && cause.status === 409 && cause.data.error === "FREE_QUOTA_BUSY") {
         setFundingMode("wallet");
         setPaymentRequired(true);
-        setError(`${cause.message}. Pay ${usage?.paidSearchPriceUSDC ?? "0.05"} USDC to start another run now.`);
+        setError(`${cause.message}. Pay ${usage?.paidSearchPriceUSDC ?? "0.10"} USDC to start another run now.`);
       } else {
         setError(cause instanceof Error ? cause.message : "Research failed");
       }
@@ -183,7 +183,7 @@ export function ResearchPromptBox() {
       setGatewayFundAmount("");
       await executeResearch(request, { walletAddress: wallet, searchPaymentId: payment.searchPaymentId });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Treasury settlement failed");
+      setError(cause instanceof Error ? cause.message : "Payment failed");
       setStage("");
     }
   }
@@ -255,7 +255,7 @@ export function ResearchPromptBox() {
               aria-pressed={fundingMode === "wallet"}
               className={`composer-choice ${fundingMode === "wallet" ? "composer-choice-active" : ""}`}
             >
-              Pay {usage?.paidSearchPriceUSDC ?? "0.05"} USDC
+              Pay {usage?.paidSearchPriceUSDC ?? "0.10"} USDC
             </button>
           </div>
           <label data-tour="research-posture" className="composer-control">
@@ -324,8 +324,9 @@ export function ResearchPromptBox() {
             evidenceBudgetUSDC={budgetUSDC}
             isWalletConnected={Boolean(address)}
             mode={usage?.paymentMode ?? "mock"}
+            onConnectWallet={openWallet}
             onConfirm={confirmPayment}
-            priceUSDC={usage?.paidSearchPriceUSDC ?? "0.05"}
+            priceUSDC={usage?.paidSearchPriceUSDC ?? "0.10"}
           />
         ) : null}
       </AnimatePresence>

@@ -95,8 +95,8 @@ export function SourceRegistrationForm() {
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-medium text-cream">Contributor wallet</h2>
-              <p className="mt-1 text-sm text-muted">Treasury records and future settlements belong to this address.</p>
+              <h2 className="text-base font-medium text-cream">Payout wallet</h2>
+              <p className="mt-1 text-sm text-muted">Source earnings will be paid to and withdrawn through this address.</p>
             </div>
             <button
               data-tour="source-wallet"
@@ -165,7 +165,7 @@ export function SourceRegistrationForm() {
           className="border-t border-marble/10 pt-6"
         >
           <h2 className="font-display text-2xl text-cream">Fundable evidence</h2>
-          <p className="mt-2 text-sm text-muted">Maecenas unlocks this material only when it is selected and funded for a commission.</p>
+          <p className="mt-2 text-sm text-muted">Maecenas unlocks this material only when it is selected and paid for a search.</p>
           <TextArea label="Evidence text" value={form.evidenceText} onChange={(value) => update("evidenceText", value)} required rows={10} />
         </motion.section>
 

@@ -16,10 +16,10 @@ export function LeaderboardStats({ metrics, paymentMode }: LeaderboardStatsProps
   const cardFeeMultiple = averageUnlock ? Math.round(0.3 / averageUnlock) : 0;
   const labels: Record<string, string> = {
     sourcesRegistered: "Evidence Assets",
-    paidEvidenceUnlocks: "Funded Unlocks",
+    paidEvidenceUnlocks: "Paid Source Selections",
     totalUSDCDistributed: paymentMode === "real" ? "Gateway USDC Credited" : "Test Capital",
     contributorsRewarded: "Rewarded Contributors",
-    fundedCommissions: "Funded Commissions"
+    fundedCommissions: "Funded Searches"
   };
 
   return (
@@ -53,7 +53,7 @@ export function LeaderboardStats({ metrics, paymentMode }: LeaderboardStatsProps
         </div>
         <div className="mt-4 flex flex-wrap justify-between gap-3 border-t border-marble/10 pt-4 font-mono text-xs">
           <p className="text-muted">
-            Patron revenue <span className="text-cream">{metrics.paidSearchRevenueUSDC}</span>
+            Paid search revenue <span className="text-cream">{metrics.paidSearchRevenueUSDC}</span>
             <span className="mx-2 text-dim">→</span>
             evidence <span className="text-cream">{metrics.userPaidSourcePayoutsUSDC}</span>
             <span className="mx-2 text-dim">→</span>

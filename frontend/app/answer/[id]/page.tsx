@@ -26,8 +26,8 @@ export default async function AnswerPage({ params }: PageProps) {
   const trace = answer.decisionTraceJson;
   const sourceById = new Map(sources.map((source) => [source.id, source]));
   const content = answer.contentJson;
-  const fundingLabel = answer.paymentType === "user_paid" ? "User-paid research" : "Maecenas grant";
-  const paymentLabel = trace.paymentMode === "mock" ? "Test treasury" : "Circle Gateway";
+  const fundingLabel = answer.paymentType === "user_paid" ? "Customer-paid search" : "Free search";
+  const paymentLabel = trace.paymentMode === "mock" ? "Test payment" : "Circle Gateway";
   const paymentNetworkLabel = commissionPayment?.network === "eip155:5042002"
     ? "Arc Testnet"
     : commissionPayment?.network === "eip155:5042"

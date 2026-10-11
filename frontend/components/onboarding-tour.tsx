@@ -70,9 +70,9 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
     {
       element: '[data-tour="source-wallet"]',
       popover: {
-        title: "Connect the owner wallet",
+        title: "Connect the payout wallet",
         description:
-          "This address establishes ownership of the source record and is where eligible funding can later be withdrawn.",
+          "This address establishes ownership of the source record and receives earnings when the source is selected and paid.",
         side: "bottom",
         align: "end"
       }

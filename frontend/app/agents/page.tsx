@@ -15,9 +15,9 @@ const requestExample = `curl ${apiBase}/api/research \\
 const steps = [
   {
     icon: Bot,
-    title: "Commission",
+    title: "Request research",
     endpoint: "POST /api/research",
-    copy: "Send a question, evidence budget, research posture, and stable request ID."
+    copy: "Send a question, source payment budget, research posture, and stable request ID."
   },
   {
     icon: CircleDollarSign,
@@ -39,7 +39,7 @@ export default function AgentsPage() {
       <SectionHeading
         eyebrow="Agent interface"
         title="Maecenas is callable."
-        copy="Research agents can commission evidence-grounded work over HTTP, fund selected sources, and retrieve an auditable cited brief."
+        copy="Research agents can request evidence-grounded work over HTTP, pay selected sources, and retrieve an auditable cited brief."
       />
 
       <section className="mx-auto mt-10 grid max-w-6xl gap-4 md:grid-cols-3">

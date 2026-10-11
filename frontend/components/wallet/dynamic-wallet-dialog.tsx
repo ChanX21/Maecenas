@@ -82,7 +82,7 @@ export function DynamicWalletDialog({
           Dynamic embedded wallet
         </p>
         <h2 id="dynamic-wallet-title" className="mt-2 font-display text-3xl text-cream">
-          {address ? "Wallet ready" : "Enter the treasury"}
+          {address ? "Wallet ready" : "Connect your wallet"}
         </h2>
 
         {!isConfigured ? (

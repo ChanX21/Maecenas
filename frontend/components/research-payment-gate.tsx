@@ -1,12 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, FileKey2, Landmark, WalletCards } from "lucide-react";
+import { Check, WalletCards } from "lucide-react";
 
 type ResearchPaymentGateProps = {
   evidenceBudgetUSDC: string;
   isWalletConnected: boolean;
   mode: "mock" | "real";
+  onConnectWallet: () => void;
   onConfirm: () => void;
   priceUSDC: string;
 };
@@ -15,6 +16,7 @@ export function ResearchPaymentGate({
   evidenceBudgetUSDC,
   isWalletConnected,
   mode,
+  onConnectWallet,
   onConfirm,
   priceUSDC
 }: ResearchPaymentGateProps) {
@@ -33,30 +35,17 @@ export function ResearchPaymentGate({
           <div>
             <p className="flex items-center gap-2 font-medium text-cream">
               <WalletCards size={17} className="text-gold" />
-              {isRealPayment ? "Research access payment required" : "Start a test-funded research run"}
+              {isRealPayment ? "Pay for research" : "Start test research"}
             </p>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
               {isRealPayment
-                ? `${priceUSDC} USDC pays for this research run, including up to ${evidenceBudgetUSDC} USDC for selected evidence. Unspent funds remain with Maecenas.`
-                : `Test mode: no real USDC will move. Confirm to simulate the ${priceUSDC} USDC access payment, create a demo receipt, and start this research run.`}
+                ? `Search fee: ${priceUSDC} USDC. Up to ${evidenceBudgetUSDC} USDC may be paid to sources. Unused source budget stays with Maecenas to help cover AI and platform costs and is not refunded.`
+                : "No real USDC will move in test mode. Confirm to simulate a payment and start this search."}
             </p>
-            {isRealPayment ? (
-              <div className="mt-4 flex flex-wrap gap-2 font-mono text-[10px] uppercase text-muted">
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-marble/10 px-2 py-1">
-                  <span className="text-gold">402</span> Payment required
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-marble/10 px-2 py-1">
-                  <FileKey2 size={11} className="text-gold" /> EIP-712 authorization
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-marble/10 px-2 py-1">
-                  <Landmark size={11} className="text-gold" /> Circle Gateway receipt
-                </span>
-              </div>
-            ) : null}
           </div>
           <motion.button
             type="button"
-            onClick={onConfirm}
+            onClick={isWalletConnected ? onConfirm : onConnectWallet}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="roman-button inline-flex shrink-0 items-center justify-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink transition-colors hover:bg-gold-soft"
@@ -64,7 +53,7 @@ export function ResearchPaymentGate({
             <Check size={15} />
             {isWalletConnected
               ? isRealPayment
-                ? `Pay ${priceUSDC} USDC via x402`
+                ? `Pay ${priceUSDC} USDC`
                 : "Start test run"
               : "Connect wallet"}
           </motion.button>

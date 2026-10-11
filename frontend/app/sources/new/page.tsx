@@ -7,7 +7,7 @@ export default function NewSourcePage() {
       <SectionHeading
         eyebrow="Contributor portal"
         title="Put your evidence to work."
-        copy="Connect your wallet, publish the source record, and set an unlock price. Once approved, your research can earn funding from every commission it strengthens."
+        copy="Connect your payout wallet, publish the source record, and set a price. Once approved, your research can earn from every answer it strengthens."
       />
       <div className="mx-auto mt-10 max-w-6xl">
         <SourceRegistrationForm />
