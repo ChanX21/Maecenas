@@ -84,7 +84,7 @@ npm run source:review -- src_123 rejected "Duplicate or unverifiable evidence"
 ## Free And Paid Research
 
 The client persists `maecenas_session_id` in localStorage and sends it as
-`sessionId`. Call `GET /api/usage`, then `POST /api/research`. After five
+`sessionId`. Call `GET /api/usage`, then `POST /api/research`. After two
 completed free answers, authenticate the wallet, create
 `/api/payments/search-intent`, settle the returned x402 requirement, submit it
 to `/api/payments/search-proof`, and retry research with the returned
@@ -93,7 +93,7 @@ to `/api/payments/search-proof`, and retry research with the returned
 `PAYMENT_MODE=real` uses Circle Gateway and fails closed when treasury, agent
 wallet, signing secret, or public URL configuration is missing.
 
-Research requires `OPENAI_API_KEY`; `OPENAI_MODEL` defaults to `gpt-5-mini`.
+Research requires `OPENAI_API_KEY`; `OPENAI_MODEL` defaults to `gpt-6-luna`.
 Without a key the API returns `503 AI_NOT_CONFIGURED` and does not consume quota.
 
 ### Gateway funding

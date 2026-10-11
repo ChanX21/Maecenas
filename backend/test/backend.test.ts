@@ -9,10 +9,10 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
   process.env.SUPABASE_DATABASE_URL = process.env.TEST_DATABASE_URL;
   process.env.PAYMENT_MODE = "mock";
   process.env.AI_MODE = "test";
-  process.env.FREE_SEARCH_LIMIT = "5";
+  process.env.FREE_SEARCH_LIMIT = "2";
   process.env.FREE_SEARCH_BUDGET_USDC = "0.01";
-  process.env.PAID_SEARCH_PRICE_USDC = "0.01";
-  process.env.AUTHOR_POOL_BPS = "7000";
+  process.env.PAID_SEARCH_PRICE_USDC = "0.10";
+  process.env.AUTHOR_POOL_BPS = "5000";
   process.env.MAECENAS_TREASURY_WALLET_ADDRESS = "0x2222222222222222222222222222222222222222";
   process.env.ADMIN_TOKEN = "test_admin_token";
 
@@ -63,7 +63,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     let gatewaySettlementCalls = 0;
     let loseGatewayResponse = false;
     let providerStatus = "received";
-    let providerAmount = "10000";
+    let providerAmount = "100000";
     const batchHash = `0x${"ab".repeat(32)}`;
     globalThis.fetch = async (input, init) => {
       if (String(input) === "https://gateway-api-testnet.circle.com/v1/x402/transfers/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa") {
@@ -121,8 +121,8 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
         assert.equal(body.paymentProof, undefined);
         assert.equal(body.sessionId, undefined);
       }
-      providerAmount = "10001";
-      const mismatch = await (await fetch(`${base}/api/payments/${savedPayment!.id}/verify?amount=10001`)).json() as Record<string, any>;
+      providerAmount = "100001";
+      const mismatch = await (await fetch(`${base}/api/payments/${savedPayment!.id}/verify?amount=100001`)).json() as Record<string, any>;
       assert.equal(mismatch.settlement.verification, "mismatch", "Client expectations cannot override saved amounts");
       assert.equal(mismatch.settlement.batchExplorerUrl, undefined);
       process.env.MAECENAS_TREASURY_WALLET_ADDRESS = "0x2222222222222222222222222222222222222222";
@@ -245,6 +245,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     assert.equal(approved.body.source.status, "approved");
     const attempt = await store.reserveEvidencePaymentAttempt({
       paymentScope: "test-payment-scope",
+      fundedBy: "maecenas_sponsored",
       sourceId: submitted.body.source.id,
       amountUSDC: "0.0001",
       recipientWallet: walletAddress
@@ -253,6 +254,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     await assert.rejects(
       () => store.reserveEvidencePaymentAttempt({
         paymentScope: "test-payment-scope",
+        fundedBy: "maecenas_sponsored",
         sourceId: submitted.body.source.id,
         amountUSDC: "0.0001",
         recipientWallet: walletAddress
@@ -262,6 +264,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     await store.failEvidencePaymentAttempt(attempt.id);
     const retryAttempt = await store.reserveEvidencePaymentAttempt({
       paymentScope: "test-payment-scope",
+      fundedBy: "maecenas_sponsored",
       sourceId: submitted.body.source.id,
       amountUSDC: "0.0001",
       recipientWallet: walletAddress
@@ -281,6 +284,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     assert.equal(completedAttempt.status, "paid");
     assert.equal((await store.reserveEvidencePaymentAttempt({
       paymentScope: "test-payment-scope",
+      fundedBy: "maecenas_sponsored",
       sourceId: submitted.body.source.id,
       amountUSDC: "0.0001",
       recipientWallet: walletAddress
@@ -335,7 +339,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     assert.equal(duplicate.body.error, "SOURCE_ALREADY_REGISTERED");
 
     let firstAnswerId = "";
-    for (let index = 0; index < 5; index += 1) {
+    for (let index = 0; index < 2; index += 1) {
       const result = await post("/api/research", {
         sessionId,
         clientRequestId: `request_free_${index}`,
@@ -345,7 +349,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       });
       assert.equal(result.response.status, 200);
       assert.equal(result.body.paymentType, "free_sponsored");
-      assert.equal(result.body.freeSearchesRemaining, 4 - index);
+      assert.equal(result.body.freeSearchesRemaining, 1 - index);
       if (index === 0) firstAnswerId = result.body.answerId;
     }
 
@@ -373,7 +377,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
 
     const intent = await post("/api/payments/search-intent", { sessionId, walletAddress });
     assert.equal(intent.response.status, 201);
-    assert.equal(intent.body.amountUSDC, "0.01");
+    assert.equal(intent.body.amountUSDC, "0.1");
 
     const proofInput = {
       paymentIntentId: intent.body.paymentIntentId,
@@ -398,7 +402,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     });
     assert.equal(paid.response.status, 200);
     assert.equal(paid.body.paymentType, "user_paid");
-    assert.equal(paid.body.budget.max, "0.007");
+    assert.equal(paid.body.budget.max, "0.05");
     assert.ok(paid.body.receipts.every((receipt: Record<string, unknown>) => receipt.fundedBy === "user_paid_search"));
     assert.ok(paid.body.receipts.every((receipt: Record<string, unknown>) => receipt.receiptSignature));
     const receiptVerification = await fetch(`${base}/api/receipts/${paid.body.receipts[0].id}/verify`);
@@ -448,17 +452,32 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       walletAddress,
       searchPaymentId: secondPayment.id,
       clientRequestId: "request_paid_retry",
-      question: "This paid run fails after reservation",
+      question: "A different mandate can use the paid search credit",
       strategy: "balanced"
     });
     assert.equal(paidRetry.kind, "started");
     if (paidRetry.kind === "started") await store.failResearch(paidRetry.runId);
+    assert.equal((await store.findReusableSearchPayment(sessionId, walletAddress))?.id, secondPayment.id);
+    const interruptedPaidRun = await store.beginResearch({
+      sessionId,
+      walletAddress,
+      searchPaymentId: secondPayment.id,
+      clientRequestId: "request_paid_interrupted",
+      question: "This paid run is interrupted by a server restart",
+      strategy: "balanced"
+    });
+    assert.equal(interruptedPaidRun.kind, "started");
+    assert.equal(await store.recoverInterruptedResearchRuns(), 1);
+    if (interruptedPaidRun.kind === "started") {
+      assert.equal((await store.getResearchRunStatus(interruptedPaidRun.runId, sessionId))?.status, "failed");
+    }
+    assert.equal((await store.findReusableSearchPayment(sessionId, walletAddress))?.id, secondPayment.id);
 
     const usageResponse = await fetch(`${base}/api/usage?sessionId=${sessionId}&wallet=${walletAddress}`, {
       headers: { Authorization: `Bearer ${walletAuth}` }
     });
     const usage = (await usageResponse.json()) as Record<string, unknown>;
-    assert.equal(usage.freeSearchesUsed, 5);
+    assert.equal(usage.freeSearchesUsed, 2);
     assert.equal(usage.paidSearchesUsed, 1);
 
     const failedSession = "sess_failure_001";
@@ -473,7 +492,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     assert.equal((await store.getUsageBySession(failedSession))?.freeSearchesUsed, 0);
 
     const concurrentSession = "sess_concurrent_001";
-    const reservations = await Promise.all(Array.from({ length: 5 }, (_, index) =>
+    const reservations = await Promise.all(Array.from({ length: 2 }, (_, index) =>
       store.beginResearch({
         sessionId: concurrentSession,
         clientRequestId: `request_concurrent_${index}`,
@@ -485,7 +504,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       () =>
         store.beginResearch({
           sessionId: concurrentSession,
-          clientRequestId: "request_concurrent_5",
+          clientRequestId: "request_concurrent_2",
           question: "This reservation exceeds the quota",
           strategy: "balanced"
         }),
@@ -493,6 +512,23 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     );
     for (const reservation of reservations) {
       if (reservation.kind === "started") await store.failResearch(reservation.runId);
+    }
+
+    const previousFreeTotalLimit = process.env.FREE_SEARCH_TOTAL_LIMIT_USDC;
+    process.env.FREE_SEARCH_TOTAL_LIMIT_USDC = "0";
+    try {
+      await assert.rejects(
+        () => store.beginResearch({
+          sessionId: "sess_global_free_cap",
+          clientRequestId: "request_global_free_cap",
+          question: "The global author and AI subsidy is exhausted",
+          strategy: "balanced"
+        }),
+        (error: unknown) => error instanceof store.StoreError && error.code === "MISSING_WALLET_ADDRESS"
+      );
+    } finally {
+      if (previousFreeTotalLimit === undefined) delete process.env.FREE_SEARCH_TOTAL_LIMIT_USDC;
+      else process.env.FREE_SEARCH_TOTAL_LIMIT_USDC = previousFreeTotalLimit;
     }
 
     // A shared treasury must reserve across different sessions and retain uncertain payouts.
@@ -519,6 +555,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       const request = requests[winnerIndex];
       const attempt = await store.reserveEvidencePaymentAttempt({
         paymentScope: `${request.sessionId}:${request.clientRequestId}`,
+        fundedBy: "maecenas_sponsored",
         sourceId: submitted.body.source.id, amountUSDC: "0.0001", recipientWallet: walletAddress
       });
       await store.failResearch(winner.value.runId);
@@ -633,8 +670,8 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
       const incomplete = await (await fetch(`${base}/api/payments/${legacy!.id}/verify`)).json() as Record<string, any>;
       assert.equal(incomplete.settlement.verification, "incomplete");
       const historicalPayload = JSON.stringify({
-        accepted: { scheme: "exact", network: "eip155:5042002", payTo: paidReceipt.recipientWallet, amount: "10000" },
-        payload: { authorization: { from: walletAddress, to: paidReceipt.recipientWallet, value: "10000" } }
+        accepted: { scheme: "exact", network: "eip155:5042002", payTo: paidReceipt.recipientWallet, amount: "100000" },
+        payload: { authorization: { from: walletAddress, to: paidReceipt.recipientWallet, value: "100000" } }
       });
       await db`UPDATE search_payments SET payment_proof = ${historicalPayload} WHERE id = ${legacy!.id}`;
       const recovered = await store.getSearchPayment(legacy!.id);

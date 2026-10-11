@@ -33,7 +33,10 @@ receipt = {
 ledger = {"paymentMode": "real", "metrics": {
     "fundedCommissions": 53, "paidEvidenceUnlocks": 146, "contributorsRewarded": 18,
     "totalUSDCDistributed": "0.09751", "sourcesRegistered": 58,
-    "paidSearchRevenueUSDC": "0.04", "userPaidSourcePayoutsUSDC": "0.00884", "grossRetainedUSDC": "0.03116"
+    "paidSearchRevenueUSDC": "0.04", "userPaidSourcePayoutsUSDC": "0.00884", "grossRetainedUSDC": "0.03116",
+    "aiCostUSDC": "0.004", "customerCreditLiabilityUSDC": "0.10", "trackedContributionUSDC": "0.02716",
+    "monthlyInfraCostUSDC": "52", "monthlyOtherCostUSDC": "0", "monthlyNetUSDC": "-51.97284",
+    "sourcePayoutsUSDC": "0.00884", "paidCitations": 146
 }, "recentPaymentStream": [receipt], "topEarningSources": [
     {"sourceId": source["id"], "title": source["title"], "authorName": source["authorName"], "citations": 10, "earnedUSDC": "0.05"}
 ]}

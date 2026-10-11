@@ -19,6 +19,7 @@ import {
   failReservedSearchPayment,
   findAnswer,
   findReceipt,
+  findReusableSearchPayment,
   findSource,
   getOrCreateUsage,
   getResearchRunStatus,
@@ -27,6 +28,7 @@ import {
   listApprovedSourcesPage,
   listSources,
   readDb,
+  recordResearchAiUsage,
   reviewSource,
   reserveSearchPayment,
   StoreError
@@ -208,7 +210,7 @@ async function routeRequest(context: RouteContext) {
     const walletAddress = optionalWallet(url.searchParams.get("wallet"));
     if (walletAddress) requireWalletAuth(request, walletAddress);
     const usage = await getOrCreateUsage(sessionId, walletAddress, ipHash(request));
-    return sendJson(response, 200, usageResponse(usage));
+    return sendJson(response, 200, await usageResponse(usage));
   }
 
   if (method === "POST" && path === "/api/sources") {
@@ -491,7 +493,8 @@ async function routeRequest(context: RouteContext) {
         sessionId,
         walletAddress,
         searchPaymentId: reservation.searchPaymentId,
-        paymentType: reservation.paymentType
+        paymentType: reservation.paymentType,
+        onAiUsage: (usage) => recordResearchAiUsage(reservation.runId, usage)
       });
       const answer = await completeResearch(reservation.runId, result.answer, result.receipts);
       return sendResearchResponse(response, answer);
@@ -668,7 +671,7 @@ async function getUsageByAnswer(answer: Answer) {
 
 async function sendPaymentRequired(response: ServerResponse, sessionId: string) {
   const usage = await getOrCreateUsage(sessionId);
-  const price = process.env.PAID_SEARCH_PRICE_USDC ?? "0.05";
+  const price = process.env.PAID_SEARCH_PRICE_USDC ?? "0.10";
   return sendJson(response, 402, {
     error: "PAYMENT_REQUIRED",
     reason: "FREE_QUOTA_EXHAUSTED",
@@ -681,10 +684,13 @@ async function sendPaymentRequired(response: ServerResponse, sessionId: string) 
   });
 }
 
-function usageResponse(usage: UserUsage) {
+async function usageResponse(usage: UserUsage) {
   const remaining = process.env.DISABLE_RESEARCH_GUARDRAILS === "true"
     ? usage.freeSearchLimit
     : Math.max(0, usage.freeSearchLimit - usage.freeSearchesUsed);
+  const credit = usage.walletAddress
+    ? await findReusableSearchPayment(usage.sessionId, usage.walletAddress)
+    : undefined;
   return {
     sessionId: usage.sessionId,
     walletAddress: usage.walletAddress,
@@ -693,10 +699,11 @@ function usageResponse(usage: UserUsage) {
     freeSearchesRemaining: remaining,
     paidSearchesUsed: usage.paidSearchesUsed,
     requiresPayment: remaining === 0,
-    paidSearchPriceUSDC: process.env.PAID_SEARCH_PRICE_USDC ?? "0.05",
+    paidSearchPriceUSDC: process.env.PAID_SEARCH_PRICE_USDC ?? "0.10",
     paidEvidenceBudgetUSDC: configuredPaidEvidenceBudgetUSDC(),
     freeEvidenceBudgetUSDC: process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01",
-    paymentMode: process.env.PAYMENT_MODE === "real" ? "real" : "mock"
+    paymentMode: process.env.PAYMENT_MODE === "real" ? "real" : "mock",
+    availableSearchCredit: credit ? { searchPaymentId: credit.id, amountUSDC: credit.amountUSDC } : undefined
   };
 }
 

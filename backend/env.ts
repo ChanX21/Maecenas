@@ -3,6 +3,7 @@ import path from "path";
 import { getArcEnvironment } from "@/payments/arc-environment";
 import { validateCirclePaymentEnvironment } from "@/payments/circle-gateway";
 import { validateResearchEconomics } from "@/db/store";
+import { validateAiEconomics } from "@/agent/ai";
 
 export function validateEnvironment(): void {
   const environment = getArcEnvironment();
@@ -16,6 +17,7 @@ export function validateEnvironment(): void {
     if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is required on mainnet");
   }
   validateResearchEconomics();
+  validateAiEconomics();
   if (process.env.NODE_ENV === "production" && !process.env.TOKEN_SIGNING_SECRET) {
     throw new Error("TOKEN_SIGNING_SECRET is required in production");
   }

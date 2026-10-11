@@ -1,4 +1,4 @@
-import { generateStructured } from "@/agent/ai";
+import { emptyAiUsage, generateStructured, type AiBudget, type AiUsage } from "@/agent/ai";
 import type { CandidateSource, ResearchPlan, ResearchStrategy, ScoredSource } from "@/types";
 import { parseUSDC } from "@/utils/money";
 
@@ -43,11 +43,13 @@ export async function analyzeResearch(
   userQuestion: string,
   maxBudgetUSDC: string,
   strategy: ResearchStrategy,
-  candidates: CandidateSource[]
-): Promise<{ plan: ResearchPlan; scoredSources: ScoredSource[] }> {
-  const analysis =
+  candidates: CandidateSource[],
+  aiBudget: AiBudget,
+  onAiUsage?: (usage: AiUsage) => Promise<void>
+): Promise<{ plan: ResearchPlan; scoredSources: ScoredSource[]; usage: AiUsage }> {
+  const generated =
     process.env.AI_MODE === "test"
-      ? testAnalysis(userQuestion, candidates)
+      ? { value: testAnalysis(userQuestion, candidates), usage: emptyAiUsage() }
       : await generateStructured<ResearchAnalysis>(
           "research_analysis",
           analysisSchema,
@@ -70,8 +72,12 @@ export async function analyzeResearch(
               tags: source.tags,
               priceUSDC: source.priceUSDC
             }))
-          }
+          },
+          aiBudget,
+          Number(process.env.AI_PLANNING_MAX_OUTPUT_TOKENS ?? 2500),
+          onAiUsage
         );
+  const analysis = generated.value;
 
   const assessments = new Map(analysis.sourceAssessments.map((assessment) => [assessment.sourceId, assessment]));
   const scoredSources = candidates
@@ -104,7 +110,8 @@ export async function analyzeResearch(
       maxBudgetUSDC,
       strategy
     },
-    scoredSources
+    scoredSources,
+    usage: generated.usage
   };
 }
 

@@ -29,6 +29,20 @@
       "when": 1791304930394,
       "tag": "0003_commission_proof_context",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791650113850,
+      "tag": "0004_organic_gauntlet",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791704827321,
+      "tag": "0005_low_ikaris",
+      "breakpoints": true
     }
   ]
 }

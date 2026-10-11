@@ -1,0 +1,3 @@
+ALTER TABLE "evidence_payment_attempts" ADD COLUMN "search_payment_id" text;--> statement-breakpoint
+ALTER TABLE "evidence_payment_attempts" ADD COLUMN "funded_by" text;--> statement-breakpoint
+ALTER TABLE "evidence_payment_attempts" ADD CONSTRAINT "evidence_payment_attempts_search_payment_id_search_payments_id_fk" FOREIGN KEY ("search_payment_id") REFERENCES "public"."search_payments"("id") ON DELETE no action ON UPDATE no action;

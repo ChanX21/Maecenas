@@ -156,6 +156,16 @@ export function ResearchPromptBox() {
       }
       setStage("Authenticating Dynamic wallet...");
       const wallet = await authenticate();
+      const latestUsage = await getUsage(sessionId, wallet);
+      setUsage(latestUsage);
+      if (latestUsage.availableSearchCredit) {
+        setStage("Using your existing paid search credit...");
+        await executeResearch(request, {
+          walletAddress: wallet,
+          searchPaymentId: latestUsage.availableSearchCredit.searchPaymentId
+        });
+        return;
+      }
       setStage("Opening treasury request...");
       const intent = await createSearchPaymentIntent(sessionId, wallet, fundingMode === "wallet");
       if (intent.paymentMode === "real") {
@@ -191,7 +201,7 @@ export function ResearchPromptBox() {
   const busy = Boolean(stage);
   const canFundGateway = error.startsWith("Circle Gateway balance is too low.") && gatewayFundAmount;
   const maximumBudgetUSDC = fundingMode === "wallet"
-    ? usage?.paidEvidenceBudgetUSDC ?? "0.035"
+    ? usage?.paidEvidenceBudgetUSDC ?? "0.05"
     : usage?.freeEvidenceBudgetUSDC ?? "0.01";
 
   async function fundGatewayBalance() {
@@ -288,7 +298,11 @@ export function ResearchPromptBox() {
                 max={maximumBudgetUSDC}
                 step="0.0001"
                 value={budgetUSDC}
-                onChange={(e) => setBudgetUSDC(Number(e.target.value).toFixed(4))}
+                onChange={(e) => {
+                  const nextBudget = Number(e.target.value).toFixed(4);
+                  setBudgetUSDC(nextBudget);
+                  setPendingRequest((current) => current ? { ...current, budgetUSDC: nextBudget } : current);
+                }}
                 className="mt-3 w-full accent-gold h-1 bg-marble/10 rounded-lg appearance-none cursor-pointer"
               />
               <div className="mt-2 flex justify-between text-[10px] text-muted">

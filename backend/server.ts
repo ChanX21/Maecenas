@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { initNetra, shutdownNetra } from "@/observability/netra";
-import { initializeDatabase, seedDatabase } from "@/db/store";
+import { initializeDatabase, recoverInterruptedResearchRuns, seedDatabase } from "@/db/store";
 import { loadEnv, validateEnvironment } from "@/env";
 import { validateArcRpc } from "@/payments/circle-gateway";
 
@@ -22,6 +22,9 @@ const readiness = (async () => {
     handleRequest = (await import("@/http")).handleMaecenasRequest;
     startupStage = "initializing database";
     await initializeDatabase();
+    startupStage = "recovering interrupted research";
+    const recoveredRuns = await recoverInterruptedResearchRuns();
+    if (recoveredRuns) console.warn(JSON.stringify({ level: "warn", event: "research_runs_recovered", count: recoveredRuns }));
     startupStage = "seeding database";
     await seedDatabase();
     startupStage = "ready";

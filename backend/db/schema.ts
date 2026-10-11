@@ -138,6 +138,8 @@ export const evidencePaymentAttempts = pgTable(
   {
     id: text("id").primaryKey(),
     paymentScope: text("payment_scope").notNull(),
+    searchPaymentId: text("search_payment_id").references(() => searchPayments.id),
+    fundedBy: text("funded_by", { enum: ["maecenas_sponsored", "user_paid_search"] }),
     sourceId: text("source_id")
       .notNull()
       .references(() => sources.id),
@@ -183,6 +185,9 @@ export const researchRuns = pgTable(
     paymentType: text("payment_type", { enum: ["free_sponsored", "user_paid"] }).notNull(),
     searchPaymentId: text("search_payment_id").references(() => searchPayments.id),
     answerId: text("answer_id").references(() => answers.id),
+    aiInputTokens: integer("ai_input_tokens").notNull().default(0),
+    aiOutputTokens: integer("ai_output_tokens").notNull().default(0),
+    aiCostMicros: integer("ai_cost_micros").notNull().default(0),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull()
   },

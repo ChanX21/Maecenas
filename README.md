@@ -147,7 +147,7 @@ SUPABASE_DATABASE_URL=postgresql://postgres.PROJECT_REF:PASSWORD@REGION.pooler.s
 DATABASE_POOL_SIZE=5
 
 OPENAI_API_KEY=
-OPENAI_MODEL=gpt-5-mini
+OPENAI_MODEL=gpt-6-luna
 
 CORS_ORIGIN=http://localhost:3000
 APP_ORIGIN=http://localhost:3000
@@ -245,19 +245,20 @@ the contributor-owned `{ sources }` response.
 ## Funding Economics
 
 - `PAID_SEARCH_PRICE_USDC` sets the patron price for one commission and defaults
-  to the initial production hypothesis of `0.05` USDC.
-- `AUTHOR_POOL_BPS` caps paid evidence spending at 70% (`0.035` USDC at the
-  default price), while `PLATFORM_FEE_BPS` reserves the 10% platform share.
-- The remaining 20% is the operating allowance; profitability depends on measured
+  to the MVP production hypothesis of `0.10` USDC.
+- `AUTHOR_POOL_BPS` caps paid evidence spending at 50% (`0.05` USDC at the
+  default price), while `PLATFORM_FEE_BPS` reserves the 20% platform share.
+- The remaining 30% is the operating allowance; profitability depends on measured
   AI, infrastructure, gas and retry costs. The platform share is an accounting
   target, not an automatic transfer.
 - `SPONSORED_TREASURY_LIMIT_USDC` caps aggregate sponsored evidence spending.
+- `FREE_SEARCH_TOTAL_LIMIT_USDC` caps sponsored evidence plus reserved/recorded AI cost.
+- AI token usage and cost are saved per run and bounded by `AI_MAX_COST_USDC`.
 - Selected evidence prices are paid to registered source-owner wallets.
 - Unspent commission value remains in the treasury.
 - Customer payments credit the treasury's Gateway balance; author payouts debit
   the separately funded agent balance. Treasury-to-agent replenishment is manual.
-- A failed research run releases its commission record for retry; settled USDC
-  is not automatically reversed.
+- A failed research run leaves its confirmed payment as reusable customer credit.
 
 See [mainnet economics](MAINNET.md#what-the-money-does) for break-even calculations
 and the launch validation procedure.

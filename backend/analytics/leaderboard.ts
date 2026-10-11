@@ -43,6 +43,13 @@ export function buildLeaderboard(
     database.searchPayments,
     paymentMode
   );
+  const completedPaymentStatus = completedSearchPaymentStatus(paymentMode);
+  const activePaymentIds = new Set(
+    database.researchRuns.filter((run) => run.status === "processing" && run.searchPaymentId).map((run) => run.searchPaymentId!)
+  );
+  const unusedSearchPayments = database.searchPayments.filter(
+    (payment) => payment.status === completedPaymentStatus && !payment.usedForAnswerId && !activePaymentIds.has(payment.id)
+  );
   const registeredOwners = new Set(
     database.sources.map((source) => source.walletAddress.toLowerCase())
   );
@@ -70,14 +77,16 @@ export function buildLeaderboard(
     .sort((a, b) => Number(b.earnedUSDC) - Number(a.earnedUSDC))
     .slice(0, 8);
 
-  const sourcePayoutsUSDC = sumUSDC(
-    receipts.map((receipt) => receipt.amountUSDC)
-  );
-  const userPaidSourcePayoutsUSDC = sumUSDC(
-    receipts
-      .filter((receipt) => receipt.fundedBy === "user_paid_search")
-      .map((receipt) => receipt.amountUSDC)
-  );
+  const paidEvidenceAttempts = database.evidencePaymentCosts.filter((attempt) => attempt.status === "paid");
+  const paidSearchIds = new Set(database.searchPayments.map((payment) => payment.id));
+  const sourcePayoutsUSDC = paymentMode === "real"
+    ? sumUSDC(paidEvidenceAttempts.map((attempt) => attempt.amountUSDC))
+    : sumUSDC(receipts.map((receipt) => receipt.amountUSDC));
+  const userPaidSourcePayoutsUSDC = paymentMode === "real"
+    ? sumUSDC(paidEvidenceAttempts.filter((attempt) =>
+      attempt.fundedBy === "user_paid_search" || (!attempt.fundedBy && paidSearchIds.has(attempt.paymentScope))
+    ).map((attempt) => attempt.amountUSDC))
+    : sumUSDC(receipts.filter((receipt) => receipt.fundedBy === "user_paid_search").map((receipt) => receipt.amountUSDC));
   const paidSearchRevenueUSDC = sumUSDC(
     searchPayments.map((payment) => payment.amountUSDC)
   );
@@ -85,6 +94,28 @@ export function buildLeaderboard(
     0,
     parseUSDCMicros(paidSearchRevenueUSDC) - parseUSDCMicros(userPaidSourcePayoutsUSDC)
   ));
+  const aiCostUSDC = sumUSDC(database.researchRuns.map((run) => run.aiCostUSDC));
+  const customerCreditLiabilityUSDC = sumUSDC(unusedSearchPayments.map((payment) => payment.amountUSDC));
+  const trackedContributionUSDC = microsToUSDC(
+    parseUSDCMicros(paidSearchRevenueUSDC) -
+    parseUSDCMicros(sourcePayoutsUSDC) -
+    parseUSDCMicros(aiCostUSDC)
+  );
+  const month = new Date().toISOString().slice(0, 7);
+  const monthlyRevenueMicros = searchPayments
+    .filter((payment) => payment.createdAt.startsWith(month))
+    .reduce((total, payment) => total + parseUSDCMicros(payment.amountUSDC), 0);
+  const monthlyPayoutMicros = (paymentMode === "real" ? paidEvidenceAttempts : receipts)
+    .filter((payment) => payment.createdAt.startsWith(month))
+    .reduce((total, payment) => total + parseUSDCMicros(payment.amountUSDC), 0);
+  const monthlyAiMicros = database.researchRuns
+    .filter((run) => run.createdAt.startsWith(month))
+    .reduce((total, run) => total + parseUSDCMicros(run.aiCostUSDC), 0);
+  const monthlyInfraMicros = parseUSDCMicros(process.env.MONTHLY_INFRA_COST_USDC ?? "0");
+  const monthlyOtherMicros = parseUSDCMicros(process.env.MONTHLY_OTHER_COST_USDC ?? "0");
+  const monthlyNetUSDC = microsToUSDC(
+    monthlyRevenueMicros - monthlyPayoutMicros - monthlyAiMicros - monthlyInfraMicros - monthlyOtherMicros
+  );
 
   return {
     paymentMode,
@@ -107,6 +138,12 @@ export function buildLeaderboard(
       paidSearchRevenueUSDC,
       userPaidSourcePayoutsUSDC,
       grossRetainedUSDC,
+      aiCostUSDC,
+      customerCreditLiabilityUSDC,
+      trackedContributionUSDC,
+      monthlyInfraCostUSDC: microsToUSDC(monthlyInfraMicros),
+      monthlyOtherCostUSDC: microsToUSDC(monthlyOtherMicros),
+      monthlyNetUSDC,
       sourcePayoutsUSDC,
       paidCitations: receipts.length
     },

@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
-import { and, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres, { type Sql } from "postgres";
@@ -21,11 +21,13 @@ import type {
   Answer,
   CitationPayment,
   MaecenasDatabase,
+  ResearchRunCost,
   SearchPayment,
   SearchPaymentIntent,
   Source,
   UserUsage
 } from "@/types";
+import type { AiUsage } from "@/agent/ai";
 import { splitSettlementReference } from "@/payments/circle-gateway";
 import { getArcEnvironment, getArcNetwork } from "@/payments/arc-environment";
 import { recoverCommissionContext } from "@/payments/gateway-proof";
@@ -112,7 +114,7 @@ async function database(): Promise<Db> {
 }
 
 function freeSearchLimit(): number {
-  const value = Number(process.env.FREE_SEARCH_LIMIT ?? 5);
+  const value = Number(process.env.FREE_SEARCH_LIMIT ?? 2);
   if (!Number.isInteger(value) || value < 0) throw new Error("FREE_SEARCH_LIMIT must be a non-negative integer");
   return value;
 }
@@ -126,19 +128,19 @@ function paymentMode(): "mock" | "real" {
 }
 
 function paymentPriceMicros(): number {
-  const value = parseUSDCMicros(process.env.PAID_SEARCH_PRICE_USDC ?? "0.05");
+  const value = parseUSDCMicros(process.env.PAID_SEARCH_PRICE_USDC ?? "0.10");
   if (value === 0 || value > 2_147_483_647) throw new Error("PAID_SEARCH_PRICE_USDC must be positive and fit the database amount column");
   return value;
 }
 
 function platformFeeBps(): number {
-  const value = Number(process.env.PLATFORM_FEE_BPS ?? 1000);
+  const value = Number(process.env.PLATFORM_FEE_BPS ?? 2000);
   if (!Number.isInteger(value) || value < 0 || value > 10_000) throw new Error("PLATFORM_FEE_BPS must be between 0 and 10000");
   return value;
 }
 
 function authorPoolBps(): number {
-  const value = Number(process.env.AUTHOR_POOL_BPS ?? 7000);
+  const value = Number(process.env.AUTHOR_POOL_BPS ?? 5000);
   if (!Number.isInteger(value) || value < 0 || value + platformFeeBps() > 10_000) {
     throw new Error("AUTHOR_POOL_BPS and PLATFORM_FEE_BPS must total at most 10000");
   }
@@ -154,6 +156,10 @@ export function validateResearchEconomics(): void {
   configuredPaidEvidenceBudgetUSDC();
   parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01");
   parseUSDCMicros(process.env.SPONSORED_TREASURY_LIMIT_USDC ?? "1");
+  parseUSDCMicros(process.env.FREE_SEARCH_TOTAL_LIMIT_USDC ?? "1");
+  parseUSDCMicros(process.env.AI_MAX_COST_USDC ?? "0.015");
+  parseUSDCMicros(process.env.MONTHLY_INFRA_COST_USDC ?? "0");
+  parseUSDCMicros(process.env.MONTHLY_OTHER_COST_USDC ?? "0");
 }
 
 function mapSource(row: typeof sources.$inferSelect): Source {
@@ -261,9 +267,24 @@ function mapSearchPayment(row: typeof searchPayments.$inferSelect): SearchPaymen
   };
 }
 
+function mapResearchRunCost(row: typeof researchRuns.$inferSelect): ResearchRunCost {
+  return {
+    id: row.id,
+    status: row.status,
+    paymentType: row.paymentType,
+    searchPaymentId: row.searchPaymentId ?? undefined,
+    aiInputTokens: row.aiInputTokens,
+    aiOutputTokens: row.aiOutputTokens,
+    aiCostUSDC: microsToUSDC(row.aiCostMicros),
+    createdAt: row.createdAt
+  };
+}
+
 export type EvidencePaymentAttempt = {
   id: string;
   paymentScope: string;
+  searchPaymentId?: string;
+  fundedBy?: "maecenas_sponsored" | "user_paid_search";
   sourceId: string;
   amountUSDC: string;
   recipientWallet: string;
@@ -284,6 +305,8 @@ function mapEvidencePaymentAttempt(
   return {
     id: row.id,
     paymentScope: row.paymentScope,
+    searchPaymentId: row.searchPaymentId ?? undefined,
+    fundedBy: row.fundedBy ?? undefined,
     sourceId: row.sourceId,
     amountUSDC: microsToUSDC(row.amountMicros),
     recipientWallet: row.recipientWallet,
@@ -456,13 +479,15 @@ export async function consumeWalletAuthNonce(id: string, walletAddress: string):
 
 export async function readDb(): Promise<MaecenasDatabase> {
   const conn = await database();
-  const [sourceRows, answerRows, receiptRows, usageRows, intentRows, paymentRows] = await Promise.all([
+  const [sourceRows, answerRows, receiptRows, usageRows, intentRows, paymentRows, runRows, attemptRows] = await Promise.all([
     conn.select().from(sources).orderBy(desc(sources.createdAt)),
     conn.select().from(answers).orderBy(desc(answers.createdAt)),
     conn.select().from(citationPayments).orderBy(desc(citationPayments.createdAt)),
     conn.select().from(userUsages),
     conn.select().from(searchPaymentIntents),
-    conn.select().from(searchPayments)
+    conn.select().from(searchPayments),
+    conn.select().from(researchRuns),
+    conn.select().from(evidencePaymentAttempts)
   ]);
   return {
     sources: sourceRows.map(mapSource),
@@ -470,7 +495,19 @@ export async function readDb(): Promise<MaecenasDatabase> {
     receipts: receiptRows.map(mapReceipt),
     userUsages: usageRows.map(mapUsage),
     searchPaymentIntents: intentRows.map(mapIntent),
-    searchPayments: paymentRows.map(mapSearchPayment)
+    searchPayments: paymentRows.map(mapSearchPayment),
+    researchRuns: runRows.map(mapResearchRunCost),
+    evidencePaymentCosts: attemptRows.map((attempt) => ({
+      id: attempt.id,
+      paymentScope: attempt.paymentScope,
+      searchPaymentId: attempt.searchPaymentId ?? undefined,
+      fundedBy: attempt.fundedBy ?? undefined,
+      sourceId: attempt.sourceId,
+      amountUSDC: microsToUSDC(attempt.amountMicros),
+      status: attempt.status,
+      paymentId: attempt.paymentId ?? undefined,
+      createdAt: attempt.createdAt
+    }))
   };
 }
 
@@ -483,9 +520,11 @@ async function getOrCreateUsageInTransaction(
   const existing = (await tx.select().from(userUsages).where(eq(userUsages.sessionId, sessionId)).for("update").limit(1))[0];
   const now = new Date().toISOString();
   if (existing) {
-    if ((walletAddress && !existing.walletAddress) || (ipHash && !existing.ipHash)) {
+    const limit = freeSearchLimit();
+    if (existing.freeSearchLimit !== limit || (walletAddress && !existing.walletAddress) || (ipHash && !existing.ipHash)) {
       await tx.update(userUsages)
         .set({
+          freeSearchLimit: limit,
           walletAddress: existing.walletAddress ?? walletAddress,
           ipHash: existing.ipHash ?? ipHash,
           updatedAt: now
@@ -589,6 +628,8 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
         )
       )).length;
     const sponsoredLimitMicros = parseUSDCMicros(process.env.SPONSORED_TREASURY_LIMIT_USDC ?? "1");
+    const freeTotalLimitMicros = parseUSDCMicros(process.env.FREE_SEARCH_TOTAL_LIMIT_USDC ?? "1");
+    const aiCostLimitMicros = parseUSDCMicros(process.env.AI_MAX_COST_USDC ?? "0.015");
     const sponsoredSpentMicros = (await tx
       .select({ amountMicros: citationPayments.amountMicros })
       .from(citationPayments)
@@ -598,6 +639,14 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
       .select({ total: count() })
       .from(researchRuns)
       .where(and(eq(researchRuns.status, "processing"), eq(researchRuns.paymentType, "free_sponsored")));
+    const freeAiSpendMicros = (await tx
+      .select({ amountMicros: researchRuns.aiCostMicros })
+      .from(researchRuns)
+      .where(and(
+        eq(researchRuns.paymentType, "free_sponsored"),
+        inArray(researchRuns.status, ["completed", "failed"])
+      )))
+      .reduce((total, run) => total + run.amountMicros, 0);
     // Failed research can still have paid or uncertain payouts without answer receipts.
     const failedRunSpend = await tx
       .select({ amountMicros: evidencePaymentAttempts.amountMicros })
@@ -612,6 +661,13 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
     const sponsoredReservationMicros =
       globalProcessingFreeRuns * parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01") +
       failedRunSpend.reduce((total, attempt) => total + attempt.amountMicros, 0);
+    const freeRunReservationMicros = parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01") + aiCostLimitMicros;
+    const totalFreeSpentMicros = sponsoredSpentMicros +
+      failedRunSpend.reduce((total, attempt) => total + attempt.amountMicros, 0) +
+      freeAiSpendMicros;
+    const freeTotalRemainingMicros = disableLimits
+      ? freeRunReservationMicros
+      : Math.max(0, freeTotalLimitMicros - totalFreeSpentMicros - globalProcessingFreeRuns * freeRunReservationMicros);
     const sponsoredRemainingMicros = disableLimits
       ? parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01")
       : Math.max(0, sponsoredLimitMicros - sponsoredSpentMicros - sponsoredReservationMicros);
@@ -621,7 +677,7 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
     let budgetMicros: number;
     let searchPaymentId: string | undefined;
 
-    if (!input.searchPaymentId && freeQuotaAvailable && sponsoredRemainingMicros > 0) {
+    if (!input.searchPaymentId && freeQuotaAvailable && sponsoredRemainingMicros > 0 && freeTotalRemainingMicros >= freeRunReservationMicros) {
       paymentType = "free_sponsored";
       const funded = parseUSDCMicros(process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01");
       budgetMicros = input.requestedBudgetUSDC
@@ -659,19 +715,6 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
         .limit(1))[0];
       if (payment.usedForAnswerId || activeUse) {
         throw new StoreError("SEARCH_PAYMENT_ALREADY_USED", "Search payment has already funded an answer", 409);
-      }
-      const previousUse = (await tx
-        .select({ requestHash: researchRuns.requestHash })
-        .from(researchRuns)
-        .where(eq(researchRuns.searchPaymentId, payment.id))
-        .orderBy(desc(researchRuns.createdAt))
-        .limit(1))[0];
-      if (previousUse && previousUse.requestHash !== requestHash) {
-        throw new StoreError(
-          "SEARCH_PAYMENT_RETRY_MISMATCH",
-          "A failed paid commission may only be retried with the same research mandate",
-          409
-        );
       }
       paymentType = "user_paid";
       searchPaymentId = payment.id;
@@ -774,6 +817,19 @@ export async function completeResearch(runId: string, answer: Answer, receipts: 
   });
 }
 
+export async function recordResearchAiUsage(runId: string, usage: AiUsage): Promise<void> {
+  const costMicros = parseUSDCMicros(usage.costUSDC);
+  await (await database())
+    .update(researchRuns)
+    .set({
+      aiInputTokens: sql`${researchRuns.aiInputTokens} + ${usage.inputTokens}`,
+      aiOutputTokens: sql`${researchRuns.aiOutputTokens} + ${usage.outputTokens}`,
+      aiCostMicros: sql`${researchRuns.aiCostMicros} + ${costMicros}`,
+      updatedAt: new Date().toISOString()
+    })
+    .where(eq(researchRuns.id, runId));
+}
+
 export async function failResearch(runId: string): Promise<void> {
   await (await database()).transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('sponsored-treasury'))`);
@@ -781,6 +837,16 @@ export async function failResearch(runId: string): Promise<void> {
       .set({ status: "failed", updatedAt: new Date().toISOString() })
       .where(and(eq(researchRuns.id, runId), eq(researchRuns.status, "processing")));
   });
+}
+
+export async function recoverInterruptedResearchRuns(): Promise<number> {
+  // shortcut: the MVP runs one backend instance; use a persistent job queue before horizontal scaling.
+  const recovered = await (await database())
+    .update(researchRuns)
+    .set({ status: "failed", updatedAt: new Date().toISOString() })
+    .where(eq(researchRuns.status, "processing"))
+    .returning({ id: researchRuns.id });
+  return recovered.length;
 }
 
 export async function getResearchRunStatus(runId: string, sessionId: string): Promise<{
@@ -805,8 +871,21 @@ export async function listEvidencePaymentAttempts(paymentScope: string): Promise
   return rows.map(mapEvidencePaymentAttempt);
 }
 
+export async function listEvidencePaymentAttemptsForSearchPayment(searchPaymentId: string): Promise<EvidencePaymentAttempt[]> {
+  const rows = await (await database())
+    .select()
+    .from(evidencePaymentAttempts)
+    .where(or(
+      eq(evidencePaymentAttempts.searchPaymentId, searchPaymentId),
+      and(isNull(evidencePaymentAttempts.searchPaymentId), eq(evidencePaymentAttempts.paymentScope, searchPaymentId))
+    ));
+  return rows.map(mapEvidencePaymentAttempt);
+}
+
 export async function reserveEvidencePaymentAttempt(input: {
   paymentScope: string;
+  searchPaymentId?: string;
+  fundedBy: "maecenas_sponsored" | "user_paid_search";
   sourceId: string;
   amountUSDC: string;
   recipientWallet: string;
@@ -835,6 +914,8 @@ export async function reserveEvidencePaymentAttempt(input: {
     if (existing) {
       await tx.update(evidencePaymentAttempts)
         .set({
+          searchPaymentId: input.searchPaymentId,
+          fundedBy: input.fundedBy,
           amountMicros: parseUSDCMicros(input.amountUSDC),
           recipientWallet: input.recipientWallet,
           status: "pending",
@@ -857,6 +938,8 @@ export async function reserveEvidencePaymentAttempt(input: {
     const attempt = {
       id: makeId("epa"),
       paymentScope: input.paymentScope,
+      searchPaymentId: input.searchPaymentId,
+      fundedBy: input.fundedBy,
       sourceId: input.sourceId,
       amountMicros: parseUSDCMicros(input.amountUSDC),
       recipientWallet: input.recipientWallet,
@@ -1120,4 +1203,28 @@ export async function getSearchPaymentIntent(id: string): Promise<SearchPaymentI
 export async function getSearchPayment(id: string): Promise<SearchPayment | undefined> {
   const row = (await (await database()).select().from(searchPayments).where(eq(searchPayments.id, id)).limit(1))[0];
   return row ? mapSearchPayment(row) : undefined;
+}
+
+export async function findReusableSearchPayment(sessionId: string, walletAddress: string): Promise<SearchPayment | undefined> {
+  const conn = await database();
+  const expectedStatus = paymentMode() === "real" ? "paid" : "mock";
+  const candidates = await conn
+    .select()
+    .from(searchPayments)
+    .where(and(
+      eq(searchPayments.sessionId, sessionId),
+      eq(searchPayments.walletAddress, walletAddress),
+      eq(searchPayments.status, expectedStatus),
+      isNull(searchPayments.usedForAnswerId)
+    ))
+    .orderBy(desc(searchPayments.createdAt));
+  for (const payment of candidates) {
+    const active = (await conn
+      .select({ id: researchRuns.id })
+      .from(researchRuns)
+      .where(and(eq(researchRuns.searchPaymentId, payment.id), eq(researchRuns.status, "processing")))
+      .limit(1))[0];
+    if (!active) return mapSearchPayment(payment);
+  }
+  return undefined;
 }

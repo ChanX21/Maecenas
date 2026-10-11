@@ -18,8 +18,10 @@ test("mainnet rejects demo configuration and invalid economics before serving re
       MAECENAS_AGENT_PRIVATE_KEY: privateKey,
       MAECENAS_AGENT_WALLET_ADDRESS: privateKeyToAccount(privateKey).address,
       MAECENAS_TREASURY_WALLET_ADDRESS: "0x2222222222222222222222222222222222222222",
-      PAID_SEARCH_PRICE_USDC: "0.05", AUTHOR_POOL_BPS: "7000", PLATFORM_FEE_BPS: "1000",
-      FREE_SEARCH_LIMIT: "0", FREE_SEARCH_BUDGET_USDC: "0.01", SPONSORED_TREASURY_LIMIT_USDC: "0"
+      OPENAI_MODEL: "gpt-6-luna", AI_MAX_COST_USDC: "0.015",
+      PAID_SEARCH_PRICE_USDC: "0.10", AUTHOR_POOL_BPS: "5000", PLATFORM_FEE_BPS: "2000",
+      FREE_SEARCH_LIMIT: "2", FREE_SEARCH_BUDGET_USDC: "0.01", SPONSORED_TREASURY_LIMIT_USDC: "1",
+      FREE_SEARCH_TOTAL_LIMIT_USDC: "1"
     });
     assert.doesNotThrow(validateEnvironment);
     for (const [key, value, error] of [

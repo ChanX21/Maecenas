@@ -1,5 +1,5 @@
 import { runResearchAgent } from "@/agent/research-agent";
-import { completeResearch, failResearch } from "@/db/store";
+import { completeResearch, failResearch, recordResearchAiUsage } from "@/db/store";
 import type { ResearchStrategy, TraceEvent } from "@/types";
 
 type ResearchJob = {
@@ -44,7 +44,8 @@ async function run(job: ResearchJob): Promise<void> {
       onEvent: (event) => {
         const list = activeEvents.get(job.runId);
         if (list) list.push(event);
-      }
+      },
+      onAiUsage: (usage) => recordResearchAiUsage(job.runId, usage)
     });
     await completeResearch(job.runId, result.answer, result.receipts);
   } catch (error) {

@@ -121,7 +121,28 @@ const database: MaecenasDatabase = {
     searchPayment("search_mock", "mock", "answer_mock"),
     searchPayment("search_real", "paid", "answer_real"),
     searchPayment("search_failed", "failed")
-  ]
+  ],
+  researchRuns: [{
+    id: "run_real",
+    status: "completed",
+    paymentType: "user_paid",
+    searchPaymentId: "search_real",
+    aiInputTokens: 100,
+    aiOutputTokens: 50,
+    aiCostUSDC: "0.001",
+    createdAt: "2026-01-01T00:00:00.000Z"
+  }],
+  evidencePaymentCosts: [{
+    id: "attempt_paid",
+    paymentScope: "search_real",
+    searchPaymentId: "search_real",
+    fundedBy: "user_paid_search",
+    sourceId: "source_b",
+    amountUSDC: "0.0002",
+    status: "paid",
+    paymentId: "paid_receipt_paid",
+    createdAt: "2026-01-01T00:00:00.000Z"
+  }]
 };
 
 test("mock leaderboard includes only completed mock records", () => {
@@ -150,6 +171,8 @@ test("real leaderboard excludes mock, failed, and pending records", () => {
   assert.equal(leaderboard.metrics.paidSearchRevenueUSDC, "0.01");
   assert.equal(leaderboard.metrics.userPaidSourcePayoutsUSDC, "0.0002");
   assert.equal(leaderboard.metrics.grossRetainedUSDC, "0.0098");
+  assert.equal(leaderboard.metrics.aiCostUSDC, "0.001");
+  assert.equal(leaderboard.metrics.trackedContributionUSDC, "0.0088");
   assert.deepEqual(
     leaderboard.recentPaymentStream.map((item) => item.id),
     ["receipt_paid"]
@@ -172,4 +195,45 @@ test("leaderboard orders completed receipts newest first", () => {
     leaderboard.recentPaymentStream.map((item) => item.id),
     ["receipt_newer", "receipt_older"]
   );
+});
+
+test("reports unused paid credit and current-month net after configured costs", () => {
+  const previous = { ...process.env };
+  try {
+    process.env.MONTHLY_INFRA_COST_USDC = "0.005";
+    process.env.MONTHLY_OTHER_COST_USDC = "0.001";
+    const now = new Date().toISOString();
+    const completedPayment = searchPayment("search_current", "paid", "answer_real");
+    completedPayment.createdAt = now;
+    const credit = searchPayment("search_credit", "paid");
+    credit.createdAt = now;
+    const paidReceipt = receipt("receipt_current", "answer_real", "source_b", ownerB, "paid", "0.0002", "user_paid_search");
+    paidReceipt.createdAt = now;
+    const result = buildLeaderboard({
+      ...database,
+      receipts: [paidReceipt],
+      searchPayments: [completedPayment, credit],
+      evidencePaymentCosts: [{
+        id: "attempt_current",
+        paymentScope: completedPayment.id,
+        searchPaymentId: completedPayment.id,
+        fundedBy: "user_paid_search",
+        sourceId: "source_b",
+        amountUSDC: "0.0002",
+        status: "paid",
+        createdAt: now
+      }],
+      researchRuns: [{
+        ...database.researchRuns[0],
+        searchPaymentId: completedPayment.id,
+        aiCostUSDC: "0.001",
+        createdAt: now
+      }]
+    }, "real");
+
+    assert.equal(result.metrics.customerCreditLiabilityUSDC, "0.01");
+    assert.equal(result.metrics.monthlyNetUSDC, "0.0028");
+  } finally {
+    process.env = previous;
+  }
 });
