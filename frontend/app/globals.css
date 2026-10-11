@@ -41,7 +41,7 @@ a {
 }
 
 ::selection {
-  background: rgba(141, 216, 168, 0.35);
+  background: rgba(141, 216, 168, 0.2);
   color: #090b0a;
 }
 
@@ -67,7 +67,7 @@ a {
 
 :where(button, a, select, input, summary, textarea):focus-visible {
   outline: 2px solid #8dd8a8;
-  outline-offset: 4px;
+  outline-offset: 2px;
 }
 
 .app-shell { --sidebar-width: 248px; }
@@ -124,6 +124,7 @@ body:has(.mobile-sidebar[open]) { overflow: hidden; }
 .research-emblem span:last-child { margin-top: 22px; transform: rotate(9deg); }
 .research-composer { position: relative; min-width: 0; padding: 22px 22px 16px; border: 1px solid rgba(227, 231, 226, 0.16); border-radius: 20px; background: #151815; transition: border-color 150ms ease; }
 .research-composer:focus-within { border-color: rgba(141, 216, 168, 0.45); }
+.research-composer textarea:focus-visible { outline: none; }
 .composer-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 12px; }
 .composer-controls { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .composer-funding { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid rgba(227, 231, 226, 0.07); border-radius: 9px; }
