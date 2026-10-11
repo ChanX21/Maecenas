@@ -28,9 +28,9 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
     {
       element: '[data-tour="research-funding"]',
       popover: {
-        title: "Choose how to fund the commission",
+        title: "Choose how to pay for research",
         description:
-          "Use an available patron grant, or pay for an additional commission. You will always see the required amount before a paid run starts.",
+          "Use one of your free searches, or pay for another search. You will always see the required amount before a paid search starts.",
         side: "bottom",
         align: "start"
       }
@@ -48,9 +48,9 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
     {
       element: '[data-tour="research-budget"]',
       popover: {
-        title: "Cap the evidence budget",
+        title: "Set the source payment budget",
         description:
-          "This limits what the agent may allocate to evidence selected for the brief. It is separate from any access payment for the commission.",
+          "This limits what Maecenas may pay selected sources. On paid searches, unused source budget stays with Maecenas and is not refunded.",
         side: "bottom",
         align: "end"
       }
@@ -58,7 +58,7 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
     {
       element: '[data-tour="research-submit"]',
       popover: {
-        title: "Commission the brief",
+        title: "Start the research",
         description:
           "Maecenas evaluates the approved archive, returns cited findings, and records the funding trail behind the answer.",
         side: "top",
@@ -102,7 +102,7 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
       popover: {
         title: "Provide the fundable evidence",
         description:
-          "Add the material the research agent can assess. It is only unlocked when selected for a commission under the source terms.",
+          "Add the material the research agent can assess. It is only unlocked when selected for a search under the source terms.",
         side: "top",
         align: "start"
       }
@@ -122,9 +122,9 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
     {
       element: '[data-tour="answer-overview"]',
       popover: {
-        title: "See how the evidence budget was used",
+        title: "See how the source budget was used",
         description:
-          "The overview shows the commission's evidence budget, what was spent, and how many sources were considered or selected.",
+          "The overview shows the source payment budget, what was paid, and how many sources were reviewed or selected.",
         side: "bottom",
         align: "center"
       }
@@ -144,7 +144,7 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
       popover: {
         title: "Open the auditable trail",
         description:
-          "The research ledger explains source selection, sources that were passed over, and the treasury records behind funded evidence.",
+          "The research ledger explains which sources were paid or not selected and shows the payment records behind the answer.",
         side: "top",
         align: "start"
       }

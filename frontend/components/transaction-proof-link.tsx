@@ -112,7 +112,7 @@ function GatewayProofDialog({
   return (
     <>
       <button ref={trigger} type="button" onClick={() => setIsOpen(true)} className={className}>
-        Verify x402 with Circle <CircleDollarSign size={12} />
+        Verify payment with Circle <CircleDollarSign size={12} />
       </button>
       {isOpen ? (
         <dialog

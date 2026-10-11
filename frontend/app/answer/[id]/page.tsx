@@ -28,13 +28,18 @@ export default async function AnswerPage({ params }: PageProps) {
   const content = answer.contentJson;
   const fundingLabel = answer.paymentType === "user_paid" ? "User-paid research" : "Maecenas grant";
   const paymentLabel = trace.paymentMode === "mock" ? "Test treasury" : "Circle Gateway";
+  const paymentNetworkLabel = commissionPayment?.network === "eip155:5042002"
+    ? "Arc Testnet"
+    : commissionPayment?.network === "eip155:5042"
+      ? "Arc Mainnet"
+      : commissionPayment?.network;
 
   return (
     <main className="home-grid min-h-[calc(100vh-65px)] px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
         <div className="flex flex-col items-start justify-between gap-3 min-[400px]:flex-row min-[400px]:items-center">
           <Link href="/" className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted hover:text-cream">
-            <ArrowLeft size={14} /> Start another commission
+            <ArrowLeft size={14} /> Start another search
           </Link>
           <ShareAnswerButton answerId={id} prompt={answer.prompt} />
         </div>
@@ -58,12 +63,12 @@ export default async function AnswerPage({ params }: PageProps) {
           {commissionPayment ? (
             <div className="mt-4 grid gap-3 border-t border-marble/10 pt-4 font-mono text-xs sm:grid-cols-[1fr_auto] sm:items-center">
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-muted">
-                <span><span className="text-gold">x402</span> research commission</span>
+                <span>Search payment</span>
                 <span><span className="text-cream">{commissionPayment.amountUSDC} USDC</span></span>
-                <span>{commissionPayment.network}</span>
+                <span>Network: {paymentNetworkLabel}</span>
                 {commissionPayment.recipientWallet ? (
                   <span title={commissionPayment.recipientWallet}>
-                    To {commissionPayment.recipientWallet.slice(0, 8)}…{commissionPayment.recipientWallet.slice(-6)}
+                    Maecenas payment wallet: {commissionPayment.recipientWallet.slice(0, 8)}…{commissionPayment.recipientWallet.slice(-6)}
                   </span>
                 ) : null}
               </div>
@@ -150,7 +155,7 @@ export default async function AnswerPage({ params }: PageProps) {
               <AgentTrace events={trace.events} scoredSources={trace.scoredSources} />
             </section>
             <section>
-              <h2 className="font-display text-2xl text-cream">Passed over</h2>
+              <h2 className="font-display text-2xl text-cream">Not selected</h2>
               <div className="mt-4 divide-y divide-marble/10">
                 {trace.budgetDecision.skippedSources.map((source) => (
                   <div key={source.sourceId} className="py-3">

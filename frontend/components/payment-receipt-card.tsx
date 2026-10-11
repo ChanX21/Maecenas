@@ -49,8 +49,8 @@ export function PaymentReceiptCard({ receipt }: { receipt: CitationPayment }) {
             <Row label="Recipient" value={receipt.recipientWallet} />
             <Row label="Payer" value={receipt.payerAgent} />
             <Row
-              label="Patronage"
-              value={receipt.fundedBy === "user_paid_search" ? "Patron-funded commission" : "Maecenas research grant"}
+              label="Funding"
+              value={receipt.fundedBy === "user_paid_search" ? "Customer-paid search" : "Maecenas-funded search"}
             />
             <Row label="Status" value={citationPaymentStatusLabel(receipt)} />
             <Row label="Network" value={receipt.network ?? "not recorded"} />

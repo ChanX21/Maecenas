@@ -34,13 +34,15 @@ export function BudgetMeter({ budgetUSDC, spentUSDC, considered, purchased, skip
   return (
     <div className="space-y-4">
       <dl className="grid grid-cols-2 overflow-hidden sm:grid-cols-5">
-        <Metric label="Treasury limit" value={<><AnimatedNumber value={budget} isUSDC /> USDC</>} />
-        <Metric label="Funded" value={<AnimatedNumber value={purchased} />} />
-        <Metric label="Reviewed" value={<AnimatedNumber value={considered} />} />
-        <Metric label="Deployed" value={<span className="text-gold"><AnimatedNumber value={spent} isUSDC /> USDC</span>} />
-        <Metric label="Reserve" value={<><AnimatedNumber value={remaining} isUSDC /> USDC</>} detail={`${skipped} passed over`} />
+        <Metric label="Source payment budget" value={<><AnimatedNumber value={budget} isUSDC /> USDC</>} />
+        <Metric label="Sources paid" value={<AnimatedNumber value={purchased} />} />
+        <Metric label="Sources reviewed" value={<AnimatedNumber value={considered} />} />
+        <Metric label="Paid to sources" value={<span className="text-gold"><AnimatedNumber value={spent} isUSDC /> USDC</span>} />
+        <Metric label="Unused source budget" value={<><AnimatedNumber value={remaining} isUSDC /> USDC</>} detail={`${skipped} not selected`} />
       </dl>
-
+      <p className="px-2 text-[11px] leading-5 text-muted sm:px-4">
+        Unused source budget was not paid to sources. It stays with Maecenas to help cover AI and platform costs and is not a refundable balance.
+      </p>
     </div>
   );
 }

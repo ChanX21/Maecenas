@@ -37,9 +37,9 @@ ledger = {"paymentMode": "real", "metrics": {
 }, "recentPaymentStream": [receipt], "topEarningSources": [
     {"sourceId": source["id"], "title": source["title"], "authorName": source["authorName"], "citations": 10, "earnedUSDC": "0.05"}
 ]}
-usage = {"sessionId": "sess_ui_check", "freeSearchesRemaining": 5, "freeSearchesUsed": 0,
-         "freeSearchLimit": 5, "paidSearchesUsed": 0, "requiresPayment": False,
-         "paidSearchPriceUSDC": "0.01", "paidEvidenceBudgetUSDC": "0.007",
+usage = {"sessionId": "sess_ui_check", "freeSearchesRemaining": 2, "freeSearchesUsed": 0,
+         "freeSearchLimit": 2, "paidSearchesUsed": 0, "requiresPayment": False,
+         "paidSearchPriceUSDC": "0.10", "paidEvidenceBudgetUSDC": "0.05",
          "freeEvidenceBudgetUSDC": "0.01", "paymentMode": "real"}
 answer = {"id": "ans_ui_check", "prompt": receipt["userPrompt"], "response": "Attention helps models understand context.",
           "contentJson": {"summary": "Attention helps models understand how words relate to each other.",
@@ -104,7 +104,7 @@ try:
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.on("console", lambda message: print("BROWSER ERROR:", message.text[:1600]) if message.type == "error" else None)
         page.goto(args.base_url)
-        expect(page.get_by_text("5 patron-funded searches left", exact=True)).to_be_visible()
+        expect(page.get_by_text("2 free searches left", exact=True).last).to_be_visible()
         assert_no_browser_errors(errors, "initial research page")
         expect(page.get_by_role("button", name="Start research", exact=True)).to_be_disabled()
         page.screenshot(path="/tmp/maecenas-redesign-desktop.png", full_page=True)
@@ -121,14 +121,14 @@ try:
         assert not requests
         page.get_by_label("Research posture").select_option("aggressive")
         page.locator('[data-tour="research-budget"] summary').click()
-        expect(page.get_by_label("Evidence budget")).to_be_visible()
+        expect(page.get_by_label("Source payment budget")).to_be_visible()
         page.locator('[data-tour="research-budget"] summary').click()
         question.press("Enter")
         page.wait_for_url("**/answer/ans_ui_check")
         assert len(requests) == 1 and requests[0]["strategy"] == "aggressive"
         page.get_by_text("Open the research ledger", exact=True).click()
         expect(page.get_by_text("Funded sources already cover this evidence.", exact=True)).to_be_visible()
-        page.get_by_role("button", name="Verify x402 with Circle").click()
+        page.get_by_role("button", name="Verify payment with Circle").click()
         expect(page.get_by_role("dialog", name="Payment proof")).to_be_visible()
         page.keyboard.press("Escape")
         assert_no_browser_errors(errors, "desktop research and answer flow")
@@ -171,7 +171,7 @@ try:
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), f"Overflow at {width}px"
             page.locator('[data-tour="research-budget"] summary').click()
             assert_no_browser_errors(errors, f"responsive layout at {width}px")
-            bounds = page.get_by_label("Evidence budget").bounding_box()
+            bounds = page.get_by_label("Source payment budget").bounding_box()
             assert bounds and bounds["x"] >= 0 and bounds["x"] + bounds["width"] <= width
             page.locator('[data-tour="research-budget"] summary').click()
             if width == 390:

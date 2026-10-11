@@ -86,11 +86,11 @@ export function ResearchPromptBox() {
       const data = await runResearch({ sessionId, ...request, ...payment });
       let answerId = data.answerId;
       if (data.status === "processing" && data.runId) {
-        setStage("Research commission is in the queue...");
+        setStage("Research is in the queue...");
         for (let attempt = 0; attempt < 80; attempt += 1) {
           await new Promise((resolve) => window.setTimeout(resolve, 1500));
           const run = await getResearchRun(data.runId, sessionId);
-          if (run.status === "failed") throw new Error("Research commission failed");
+          if (run.status === "failed") throw new Error("Research failed");
           if (run.events) setEvents(run.events);
           if (run.status === "completed") {
             answerId = run.answerId;
@@ -113,7 +113,7 @@ export function ResearchPromptBox() {
         setPaymentRequired(true);
         setError(`${cause.message}. Pay ${usage?.paidSearchPriceUSDC ?? "0.05"} USDC to start another run now.`);
       } else {
-        setError(cause instanceof Error ? cause.message : "Research commission failed");
+        setError(cause instanceof Error ? cause.message : "Research failed");
       }
     } finally {
       setStage("");
@@ -244,7 +244,7 @@ export function ResearchPromptBox() {
               aria-pressed={fundingMode === "grant"}
               className={`composer-choice ${fundingMode === "grant" ? "composer-choice-active" : ""}`}
             >
-              Patron grant
+              Free search
             </button>
             <button
               type="button"
@@ -278,12 +278,12 @@ export function ResearchPromptBox() {
           </summary>
             <div className="composer-budget-panel absolute bottom-full right-0 z-30 mb-3 w-60 rounded-xl border border-marble/15 bg-panel-2 p-4">
               <div className="flex justify-between text-xs text-muted">
-                <span>Evidence budget</span>
+                <span>Source payment budget</span>
                 <span className="text-gold font-bold">{budgetUSDC} USDC</span>
               </div>
               <input
                 type="range"
-                aria-label="Evidence budget"
+                aria-label="Source payment budget"
                 min="0.0001"
                 max={maximumBudgetUSDC}
                 step="0.0001"
@@ -295,6 +295,9 @@ export function ResearchPromptBox() {
                 <span>0.0001 min</span>
                 <span>{maximumBudgetUSDC} max</span>
               </div>
+              <p className="mt-3 text-[10px] leading-4 text-muted">
+                Maximum paid to sources. On paid searches, unused source budget is not refunded.
+              </p>
             </div>
           </details>
         </div>
@@ -345,7 +348,7 @@ export function ResearchPromptBox() {
       ) : null}
     </form>
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-dim">
-      <span>{usage ? usage.freeSearchesRemaining > 0 ? `${usage.freeSearchesRemaining} patron-funded searches left` : `${usage.paidSearchPriceUSDC} USDC per search` : "Cited answers. Transparent funding."}</span>
+      <span>{usage ? usage.freeSearchesRemaining > 0 ? `${usage.freeSearchesRemaining} free searches left` : `Free searches used · ${usage.paidSearchPriceUSDC} USDC per search` : "Cited answers. Transparent funding."}</span>
       {featuredAnswerId ? <Link href={`/answer/${featuredAnswerId}`} className="inline-flex items-center gap-1 text-muted hover:text-gold">Explore a completed answer <ArrowUpRight size={12} /></Link> : null}
     </div>
     <section className="mt-8 sm:mt-10" aria-label="Suggested questions">
