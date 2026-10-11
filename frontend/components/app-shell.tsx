@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpRight, BookOpen, Bot, ChartNoAxesCombined, Menu, MessageSquare, PanelLeftClose, PanelLeftOpen, Plus, SquarePen, Wallet, X } from "lucide-react";
+import { ArrowUpRight, BookOpen, Bot, ChartNoAxesCombined, Check, Copy, Mail, Menu, MessageSquare, PanelLeftClose, PanelLeftOpen, Plus, SquarePen, Wallet, X } from "lucide-react";
 import { getLeaderboard } from "@/api";
 import { SessionStatus } from "@/components/session-status";
 import { TourMenu } from "@/components/tour-menu";
@@ -20,6 +20,8 @@ const navigation = [
   { href: "/leaderboard", label: "Public ledger", icon: ChartNoAxesCombined }
 ];
 
+const feedbackEmail = "maecenasResearchProtocol@proton.me";
+
 function Sidebar({ collapsed, onToggle, onNavigate, mobile = false }: {
   collapsed: boolean;
   onToggle: () => void;
@@ -27,11 +29,29 @@ function Sidebar({ collapsed, onToggle, onNavigate, mobile = false }: {
   mobile?: boolean;
 }) {
   const pathname = usePathname();
+  const [feedbackCopied, setFeedbackCopied] = useState(false);
   const hydrated = useHydrated();
   const { data: ledger } = useQuery({ queryKey: ["leaderboard"], queryFn: getLeaderboard, retry: false });
   const recentResearch = hydrated
     ? [...new Map(ledger?.recentPaymentStream.map((receipt) => [receipt.answerId, receipt])).values()].slice(0, 4)
     : [];
+  const feedbackHref = `mailto:${feedbackEmail}?subject=${encodeURIComponent("Maecenas feedback")}&body=${encodeURIComponent(`What would you like us to improve?\n\n\nPage: ${pathname}`)}`;
+
+  async function copyFeedbackEmail() {
+    try {
+      await navigator.clipboard.writeText(feedbackEmail);
+      setFeedbackCopied(true);
+    } catch {
+      const field = document.createElement("textarea");
+      field.value = feedbackEmail;
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      document.body.append(field);
+      field.select();
+      setFeedbackCopied(document.execCommand("copy"));
+      field.remove();
+    }
+  }
 
   return (
     <>
@@ -87,6 +107,19 @@ function Sidebar({ collapsed, onToggle, onNavigate, mobile = false }: {
             )) : <p className="px-3 text-xs leading-6 text-dim">Funded research will appear here.</p>}
           </section>
         ) : null}
+
+        <div className={`mt-5 flex items-center ${collapsed ? "justify-center" : "gap-1 border-t border-marble/[0.07] pt-5"}`}>
+          <a href={feedbackHref} onClick={onNavigate} className={`sidebar-link ${collapsed ? "w-auto" : "min-w-0 flex-1"}`} title={collapsed ? "Send feedback" : undefined}>
+            <Mail size={18} strokeWidth={1.6} className="shrink-0" />
+            <span className={collapsed ? "sr-only" : ""}>Send feedback</span>
+          </a>
+          {!collapsed ? (
+            <button type="button" className="shell-icon-button shrink-0" onClick={copyFeedbackEmail} aria-label="Copy feedback email">
+              {feedbackCopied ? <Check size={16} /> : <Copy size={16} />}
+            </button>
+          ) : null}
+        </div>
+        {!collapsed ? <p className="sr-only" aria-live="polite">{feedbackCopied ? "Feedback email copied" : ""}</p> : null}
       </div>
 
       <div className="sidebar-bottom">

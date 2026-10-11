@@ -108,6 +108,12 @@ try:
         page.on("console", lambda message: print("BROWSER ERROR:", message.text[:1600]) if message.type == "error" else None)
         page.goto(args.base_url)
         expect(page.get_by_text("2 free searches left", exact=True).last).to_be_visible()
+        feedback_link = page.get_by_role("link", name="Send feedback", exact=True).first
+        expect(feedback_link).to_be_visible()
+        assert feedback_link.get_attribute("href").startswith("mailto:maecenasResearchProtocol@proton.me?")
+        assert "Page%3A%20%2F" in feedback_link.get_attribute("href")
+        page.get_by_role("button", name="Copy feedback email", exact=True).first.click()
+        expect(page.get_by_text("Feedback email copied", exact=True).first).to_be_attached()
         assert_no_browser_errors(errors, "initial research page")
         expect(page.get_by_role("button", name="Start research", exact=True)).to_be_disabled()
         page.screenshot(path="/tmp/maecenas-redesign-desktop.png", full_page=True)
@@ -180,6 +186,7 @@ try:
             if width == 390:
                 page.screenshot(path="/tmp/maecenas-redesign-mobile.png", full_page=True)
         page.get_by_role("button", name="Open navigation").click()
+        expect(page.get_by_role("dialog", name="Navigation", exact=True).get_by_role("link", name="Send feedback", exact=True)).to_be_visible()
         page.get_by_role("dialog", name="Navigation", exact=True).get_by_role("button", name="Connect wallet", exact=True).click()
         expect(page.get_by_role("dialog", name="Navigation", exact=True)).not_to_be_visible()
         expect(page.get_by_role("dialog", name="Connect your wallet")).to_be_visible()
