@@ -48,9 +48,9 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
     {
       element: '[data-tour="research-budget"]',
       popover: {
-        title: "Set the source payment budget",
+        title: "Set the lister payment budget",
         description:
-          "This limits what Maecenas may pay selected sources. On paid searches, unused source budget stays with Maecenas and is not refunded.",
+          "This limits what Maecenas may pay selected listers.",
         side: "bottom",
         align: "end"
       }
@@ -72,7 +72,7 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
       popover: {
         title: "Connect the payout wallet",
         description:
-          "This address establishes ownership of the source record and receives earnings when the source is selected and paid.",
+          "This address identifies the lister and receives earnings when the listed evidence is selected and paid.",
         side: "bottom",
         align: "end"
       }
@@ -80,9 +80,9 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
     {
       element: '[data-tour="source-record"]',
       popover: {
-        title: "Create a trustworthy source record",
+        title: "Create a trustworthy listing",
         description:
-          "Add the public details researchers need to identify and evaluate the work: its title, publisher, canonical link, license, and context.",
+          "Add the details needed to evaluate the work and your listing: title, author or publisher, canonical link, license, and context.",
         side: "top",
         align: "start"
       }
@@ -92,7 +92,7 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
       popover: {
         title: "Set the unlock price",
         description:
-          "This is what the source earns when it is selected as funded evidence. It is not an upfront fee charged to you.",
+          "This is what you earn as the lister when the evidence is selected and paid. Listing is free.",
         side: "bottom",
         align: "start"
       }
@@ -102,7 +102,7 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
       popover: {
         title: "Provide the fundable evidence",
         description:
-          "Add the material the research agent can assess. It is only unlocked when selected for a search under the source terms.",
+          "Add material you control or are authorized to distribute. It is unlocked only when selected for a search under the listing terms.",
         side: "top",
         align: "start"
       }
@@ -110,9 +110,9 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
     {
       element: '[data-tour="source-submit"]',
       popover: {
-        title: "Submit for review",
+        title: "Submit the listing for review",
         description:
-          "New submissions begin in review. Once approved, the evidence can enter the archive and become eligible for funding.",
+          "Maecenas checks the lister wallet, distribution rights, source quality, and terms. Approved evidence becomes eligible for paid selection.",
         side: "top",
         align: "start"
       }
@@ -124,7 +124,7 @@ const tourSteps: Record<OnboardingTourName, DriveStep[]> = {
       popover: {
         title: "See how the source budget was used",
         description:
-          "The overview shows the source payment budget, what was paid, and how many sources were reviewed or selected.",
+          "The overview shows the lister payment budget, what was paid to listers, and how many sources were reviewed or selected.",
         side: "bottom",
         align: "center"
       }

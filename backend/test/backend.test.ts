@@ -12,7 +12,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
   process.env.FREE_SEARCH_LIMIT = "2";
   process.env.FREE_SEARCH_BUDGET_USDC = "0.01";
   process.env.PAID_SEARCH_PRICE_USDC = "0.10";
-  process.env.AUTHOR_POOL_BPS = "5000";
+  process.env.LISTER_POOL_BPS = "6000";
   process.env.MAECENAS_TREASURY_WALLET_ADDRESS = "0x2222222222222222222222222222222222222222";
   process.env.ADMIN_TOKEN = "test_admin_token";
 
@@ -189,10 +189,10 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     const sourceUrl = "https://example.org/independent-nanopayment-evidence";
     const ownershipAttestation = await account.signMessage({
       message: [
-        "Maecenas source ownership attestation",
+        "Maecenas evidence listing attestation",
         `Wallet: ${walletAddress}`,
         `Source: ${sourceUrl}`,
-        "I attest that I control or am authorized to register this research source."
+        "I attest that I control or am authorized to list and distribute this research evidence under the stated terms."
       ].join("\n")
     });
 
@@ -402,7 +402,7 @@ test("free quota, mock payment, idempotency, and funding links", { skip: !proces
     });
     assert.equal(paid.response.status, 200);
     assert.equal(paid.body.paymentType, "user_paid");
-    assert.equal(paid.body.budget.max, "0.05");
+    assert.equal(paid.body.budget.max, "0.06");
     assert.ok(paid.body.receipts.every((receipt: Record<string, unknown>) => receipt.fundedBy === "user_paid_search"));
     assert.ok(paid.body.receipts.every((receipt: Record<string, unknown>) => receipt.receiptSignature));
     const receiptVerification = await fetch(`${base}/api/receipts/${paid.body.receipts[0].id}/verify`);

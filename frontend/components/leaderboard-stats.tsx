@@ -17,7 +17,7 @@ export function LeaderboardStats({ metrics, paymentMode }: LeaderboardStatsProps
     sourcesRegistered: "Evidence Assets",
     paidEvidenceUnlocks: "Paid Source Selections",
     totalUSDCDistributed: paymentMode === "real" ? "Gateway USDC Credited" : "Test Capital",
-    contributorsRewarded: "Rewarded Contributors",
+    contributorsRewarded: "Rewarded Listers",
     fundedCommissions: "Funded Searches"
   };
 
@@ -54,7 +54,7 @@ export function LeaderboardStats({ metrics, paymentMode }: LeaderboardStatsProps
           <p className="text-muted">
             Paid search revenue <span className="text-cream">{metrics.paidSearchRevenueUSDC}</span>
             <span className="mx-2 text-dim">→</span>
-            all evidence <span className="text-cream">{metrics.sourcePayoutsUSDC}</span>
+            lister payouts <span className="text-cream">{metrics.sourcePayoutsUSDC}</span>
             <span className="mx-2 text-dim">→</span>
             AI <span className="text-cream">{metrics.aiCostUSDC}</span>
             <span className="mx-2 text-dim">→</span>

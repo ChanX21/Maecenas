@@ -139,16 +139,16 @@ function platformFeeBps(): number {
   return value;
 }
 
-function authorPoolBps(): number {
-  const value = Number(process.env.AUTHOR_POOL_BPS ?? 5000);
+function listerPoolBps(): number {
+  const value = Number(process.env.LISTER_POOL_BPS ?? process.env.AUTHOR_POOL_BPS ?? 6000);
   if (!Number.isInteger(value) || value < 0 || value + platformFeeBps() > 10_000) {
-    throw new Error("AUTHOR_POOL_BPS and PLATFORM_FEE_BPS must total at most 10000");
+    throw new Error("LISTER_POOL_BPS and PLATFORM_FEE_BPS must total at most 10000");
   }
   return value;
 }
 
 export function configuredPaidEvidenceBudgetUSDC(): string {
-  return microsToUSDC(basisPointShare(paymentPriceMicros(), authorPoolBps()));
+  return microsToUSDC(basisPointShare(paymentPriceMicros(), listerPoolBps()));
 }
 
 export function validateResearchEconomics(): void {
@@ -718,7 +718,7 @@ export async function beginResearch(input: BeginResearchInput): Promise<BeginRes
       }
       paymentType = "user_paid";
       searchPaymentId = payment.id;
-      const evidenceBudget = basisPointShare(payment.amountMicros, authorPoolBps());
+      const evidenceBudget = basisPointShare(payment.amountMicros, listerPoolBps());
       budgetMicros = input.requestedBudgetUSDC
         ? Math.min(parseUSDCMicros(input.requestedBudgetUSDC), evidenceBudget)
         : evidenceBudget;

@@ -70,7 +70,10 @@ export function ResearchPromptBox() {
       .then((nextUsage) => {
         setUsage(nextUsage);
         setPaymentRequired(nextUsage.requiresPayment);
-        if (nextUsage.requiresPayment) setFundingMode("wallet");
+        if (nextUsage.requiresPayment) {
+          setFundingMode("wallet");
+          setBudgetUSDC(nextUsage.paidEvidenceBudgetUSDC);
+        }
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Could not load research access"));
   }, []);
@@ -107,6 +110,8 @@ export function ResearchPromptBox() {
         const nextUsage = await getUsage(sessionId);
         setUsage(nextUsage);
         setFundingMode("wallet");
+        setBudgetUSDC(nextUsage.paidEvidenceBudgetUSDC);
+        setPendingRequest((current) => current ? { ...current, budgetUSDC: nextUsage.paidEvidenceBudgetUSDC } : current);
         setPaymentRequired(true);
       } else if (cause instanceof ApiError && cause.status === 409 && cause.data.error === "FREE_QUOTA_BUSY") {
         setFundingMode("wallet");
@@ -201,8 +206,11 @@ export function ResearchPromptBox() {
   const busy = Boolean(stage);
   const canFundGateway = error.startsWith("Circle Gateway balance is too low.") && gatewayFundAmount;
   const maximumBudgetUSDC = fundingMode === "wallet"
-    ? usage?.paidEvidenceBudgetUSDC ?? "0.05"
+    ? usage?.paidEvidenceBudgetUSDC ?? "0.06"
     : usage?.freeEvidenceBudgetUSDC ?? "0.01";
+  const paidListerSharePercent = usage?.paidSearchPriceUSDC
+    ? Math.round((Number(usage.paidEvidenceBudgetUSDC) / Number(usage.paidSearchPriceUSDC)) * 100)
+    : 60;
 
   async function fundGatewayBalance() {
     if (!gatewayFundAmount) return;
@@ -260,6 +268,7 @@ export function ResearchPromptBox() {
               type="button"
               onClick={() => {
                 setFundingMode("wallet");
+                setBudgetUSDC(usage?.paidEvidenceBudgetUSDC ?? "0.06");
                 setPaymentRequired(false);
               }}
               aria-pressed={fundingMode === "wallet"}
@@ -288,7 +297,7 @@ export function ResearchPromptBox() {
           </summary>
             <div className="composer-budget-panel absolute bottom-full right-0 z-30 mb-3 w-60 rounded-xl border border-marble/15 bg-panel-2 p-4">
               <div className="flex justify-between text-xs text-muted">
-                <span>Source payment budget</span>
+                <span>Lister payment budget</span>
                 <span className="text-gold font-bold">{budgetUSDC} USDC</span>
               </div>
               <input
@@ -310,7 +319,7 @@ export function ResearchPromptBox() {
                 <span>{maximumBudgetUSDC} max</span>
               </div>
               <p className="mt-3 text-[10px] leading-4 text-muted">
-                Maximum paid to sources. On paid searches, unused source budget is not refunded.
+                Up to {paidListerSharePercent}% of a paid search can go to listers. Actual payouts depend on the evidence selected.
               </p>
             </div>
           </details>

@@ -50,16 +50,16 @@ export function walletAuthMessage(walletAddress: string, nonce: string, expiresA
     `Origin: ${origin}`,
     `Nonce: ${nonce}`,
     `Expires: ${expiresAt}`,
-    "Purpose: authenticate source ownership and treasury access"
+    "Purpose: authenticate lister access and treasury actions"
   ].join("\n");
 }
 
-export function sourceOwnershipMessage(walletAddress: string, sourceUrl: string): string {
+export function sourceListingMessage(walletAddress: string, sourceUrl: string): string {
   return [
-    "Maecenas source ownership attestation",
+    "Maecenas evidence listing attestation",
     `Wallet: ${walletAddress.toLowerCase()}`,
     `Source: ${sourceUrl}`,
-    "I attest that I control or am authorized to register this research source."
+    "I attest that I control or am authorized to list and distribute this research evidence under the stated terms."
   ].join("\n");
 }
 

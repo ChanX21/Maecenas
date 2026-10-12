@@ -43,7 +43,7 @@ import {
   GatewayWithdrawalError,
   type GatewayBurnIntent
 } from "@/payments/gateway-withdrawal";
-import { createAuthToken, sourceOwnershipMessage, verifyReceiptSignature, verifyToken, verifyWalletSignature } from "@/security";
+import { createAuthToken, sourceListingMessage, verifyReceiptSignature, verifyToken, verifyWalletSignature } from "@/security";
 import type { Answer, PublicSource, ResearchStrategy, Source, UserUsage } from "@/types";
 import { makeId } from "@/utils/ids";
 import { microsToUSDC, parseUSDCMicros, sumUSDC } from "@/utils/money";
@@ -228,8 +228,8 @@ async function routeRequest(context: RouteContext) {
     const evidenceText = String(body.evidenceText).trim();
     const sourceUrl = requireHttpUrl(body.sourceUrl, "sourceUrl");
     const ownershipAttestation = String(body.ownershipAttestation ?? "");
-    if (!(await verifyWalletSignature(authenticatedWallet, sourceOwnershipMessage(authenticatedWallet, sourceUrl), ownershipAttestation))) {
-      throw new HttpError(401, "INVALID_SOURCE_ATTESTATION", "Sign the source ownership attestation before submitting");
+    if (!(await verifyWalletSignature(authenticatedWallet, sourceListingMessage(authenticatedWallet, sourceUrl), ownershipAttestation))) {
+      throw new HttpError(401, "INVALID_SOURCE_ATTESTATION", "Sign the lister authorization attestation before submitting");
     }
     if (title.length > 200 || authorName.length > 120) {
       throw new HttpError(400, "INVALID_SOURCE", "Source title or author name is too long");
@@ -623,7 +623,7 @@ async function routeRequest(context: RouteContext) {
       throw new HttpError(400, "INVALID_WITHDRAWAL_INTENT", "Circle Gateway withdrawal intent is required");
     }
     if (!/^0x[a-fA-F0-9]{130}$/.test(signature)) {
-      throw new HttpError(400, "INVALID_WITHDRAWAL_SIGNATURE", "A 65-byte creator wallet signature is required");
+      throw new HttpError(400, "INVALID_WITHDRAWAL_SIGNATURE", "A 65-byte lister wallet signature is required");
     }
     return sendJson(
       response,

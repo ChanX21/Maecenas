@@ -24,7 +24,7 @@ export function LiveLedgerMetrics() {
     <>
       <Metric value={metrics?.fundedCommissions ?? "—"} label="Funded searches" />
       <Metric value={metrics?.paidEvidenceUnlocks ?? "—"} label="Evidence unlocks" />
-      <Metric value={metrics?.contributorsRewarded ?? "—"} label="Contributors rewarded" />
+      <Metric value={metrics?.contributorsRewarded ?? "—"} label="Listers rewarded" />
       <Metric value={metrics ? `${metrics.totalUSDCDistributed} USDC` : "—"} label={capitalLabel} />
     </>
   );

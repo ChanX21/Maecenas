@@ -24,7 +24,7 @@ export function SourceRegistrationForm() {
     address,
     authenticate,
     openWallet,
-    signSourceOwnership
+    signSourceListing
   } = useMaecenasWallet();
   const [form, setForm] = useState(initialForm);
   const [createdSource, setCreatedSource] = useState<Source>();
@@ -57,7 +57,7 @@ export function SourceRegistrationForm() {
     setError("");
     try {
       const authenticatedWallet = await authenticate();
-      const ownershipAttestation = await signSourceOwnership(form.sourceUrl);
+      const ownershipAttestation = await signSourceListing(form.sourceUrl);
       const { source } = await registerSource({
         ...form,
         walletAddress: authenticatedWallet,
@@ -68,7 +68,7 @@ export function SourceRegistrationForm() {
       setShowToast(true);
       setTimeout(() => setShowToast(false), 5000);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Evidence submission failed");
+      setError(cause instanceof Error ? cause.message : "Evidence listing failed");
     } finally {
       setBusy(false);
     }
@@ -96,7 +96,7 @@ export function SourceRegistrationForm() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-medium text-cream">Payout wallet</h2>
-              <p className="mt-1 text-sm text-muted">Source earnings will be paid to and withdrawn through this address.</p>
+              <p className="mt-1 text-sm text-muted">Your earnings will be credited to and withdrawn through this address.</p>
             </div>
             <button
               data-tour="source-wallet"
@@ -111,10 +111,13 @@ export function SourceRegistrationForm() {
         </motion.section>
 
         <motion.section data-tour="source-record" variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <h2 className="font-display text-2xl text-cream">Public source record</h2>
+          <h2 className="font-display text-2xl text-cream">Evidence listing</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            You do not need to be the work&apos;s author. You must control it or be authorized to list and distribute the evidence under the stated terms.
+          </p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <TextField label="Title" value={form.title} onChange={(value) => update("title", value)} required />
-            <TextField label="Author or publisher" value={form.authorName} onChange={(value) => update("authorName", value)} required />
+            <TextField label="Work author or publisher" value={form.authorName} onChange={(value) => update("authorName", value)} required />
             <TextField label="Source URL" type="url" value={form.sourceUrl} onChange={(value) => update("sourceUrl", value)} required />
             <TextField label="DOI or canonical URL" value={form.doiOrCanonicalUrl} onChange={(value) => update("doiOrCanonicalUrl", value)} />
             <div data-tour="source-price" className="block">
@@ -166,7 +169,7 @@ export function SourceRegistrationForm() {
           className="border-t border-marble/10 pt-6"
         >
           <h2 className="font-display text-2xl text-cream">Fundable evidence</h2>
-          <p className="mt-2 text-sm text-muted">Maecenas unlocks this material only when it is selected and paid for a search.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Provide the material covered by your listing rights. Maecenas unlocks it only when the evidence is selected and paid for a search.</p>
           <TextArea label="Evidence text" value={form.evidenceText} onChange={(value) => update("evidenceText", value)} required rows={10} />
         </motion.section>
 
@@ -180,7 +183,7 @@ export function SourceRegistrationForm() {
           className="roman-button inline-flex min-h-12 w-full items-center justify-center gap-2 bg-gold px-5 py-3 font-mono text-xs font-semibold uppercase text-ink transition-colors hover:bg-gold-soft disabled:opacity-50 sm:w-auto"
         >
           <Save size={15} />
-          {busy ? "Sending to the forum..." : address ? "Submit to the forum" : "Connect with Dynamic"}
+          {busy ? "Submitting listing..." : address ? "Submit listing for review" : "Connect with Dynamic"}
         </motion.button>
         {error ? <p role="alert" className="border border-danger/40 bg-danger/10 p-3 text-sm text-red-200">{error}</p> : null}
       </motion.form>
@@ -191,7 +194,7 @@ export function SourceRegistrationForm() {
         transition={{ delay: 0.4 }}
         className="roman-panel h-fit p-5 sm:p-6 lg:sticky lg:top-24"
       >
-        <h2 className="font-mono text-xs uppercase text-muted">Forum review</h2>
+        <h2 className="font-mono text-xs uppercase text-muted">Listing review</h2>
         <AnimatePresence mode="wait">
         {createdSource ? (
           <motion.div 
@@ -201,9 +204,9 @@ export function SourceRegistrationForm() {
             className="mt-4 overflow-hidden"
           >
             <CheckCircle2 size={24} className="text-gold" />
-            <p className="mt-3 text-lg text-cream">Entered into review</p>
+            <p className="mt-3 text-lg text-cream">Listing entered into review</p>
             <p className="mt-2 text-sm leading-6 text-muted">
-              The source enters the funded archive after an administrator approves it.
+              After approval, the listing enters the funded archive and can earn when its evidence is purchased.
             </p>
             <dl className="mt-5 space-y-4 font-mono text-xs">
               <Result label="Source ID" value={createdSource.id} />
@@ -219,7 +222,7 @@ export function SourceRegistrationForm() {
             exit={{ opacity: 0 }}
             className="mt-4 text-sm leading-6 text-muted"
           >
-            The forum checks every submission, its signed payout wallet, source rights, duplicate URLs, and evidence quality before approval.
+            Maecenas checks every listing, the lister&apos;s signed payout wallet, distribution rights, duplicate URLs, and evidence quality before approval.
           </motion.p>
         )}
         </AnimatePresence>
@@ -235,7 +238,7 @@ export function SourceRegistrationForm() {
           >
             <CheckCircle2 size={18} className="text-gold" />
             <span className="font-mono text-xs uppercase tracking-wider text-cream">
-              Source added to Archive Pending
+              Listing submitted · Review pending
             </span>
           </motion.div>
         )}

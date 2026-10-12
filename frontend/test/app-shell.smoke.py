@@ -42,7 +42,7 @@ ledger = {"paymentMode": "real", "metrics": {
 ]}
 usage = {"sessionId": "sess_ui_check", "freeSearchesRemaining": 2, "freeSearchesUsed": 0,
          "freeSearchLimit": 2, "paidSearchesUsed": 0, "requiresPayment": False,
-         "paidSearchPriceUSDC": "0.10", "paidEvidenceBudgetUSDC": "0.05",
+         "paidSearchPriceUSDC": "0.10", "paidEvidenceBudgetUSDC": "0.06",
          "freeEvidenceBudgetUSDC": "0.01", "paymentMode": "real"}
 answer = {"id": "ans_ui_check", "prompt": receipt["userPrompt"], "response": "Attention helps models understand context.",
           "contentJson": {"summary": "Attention helps models understand how words relate to each other.",

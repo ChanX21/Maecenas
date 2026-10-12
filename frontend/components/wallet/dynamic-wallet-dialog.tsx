@@ -5,7 +5,8 @@ import {
   useSendEmailOTP,
   useVerifyOTP
 } from "@dynamic-labs-sdk/react-hooks";
-import { CheckCircle2, LoaderCircle, Mail, WalletCards, X } from "lucide-react";
+import { Check, CheckCircle2, CircleDollarSign, Copy, ExternalLink, LoaderCircle, Mail, WalletCards, X } from "lucide-react";
+import { arcEnvironment, arcName } from "@/lib/arc-environment";
 
 type DynamicWalletDialogProps = {
   address: string;
@@ -28,6 +29,8 @@ export function DynamicWalletDialog({
 }: DynamicWalletDialogProps) {
   const [emailInput, setEmailInput] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
+  const [showFunding, setShowFunding] = useState(false);
+  const [addressCopied, setAddressCopied] = useState(false);
   const {
     data: otpVerification,
     error: sendError,
@@ -59,6 +62,15 @@ export function DynamicWalletDialog({
 
   const visibleError =
     error ?? sendError?.message ?? verifyError?.message;
+
+  async function copyAddress() {
+    try {
+      await navigator.clipboard.writeText(address);
+      setAddressCopied(true);
+    } catch {
+      setAddressCopied(false);
+    }
+  }
 
   return (
     <div
@@ -98,6 +110,51 @@ export function DynamicWalletDialog({
                 <p className="mt-1 truncate font-mono text-[11px] text-muted">{address}</p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setShowFunding((visible) => !visible)}
+              aria-expanded={showFunding}
+              aria-controls="dynamic-wallet-funding"
+              className="roman-button mt-4 flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 px-5 py-3 font-mono text-xs font-semibold uppercase text-gold"
+            >
+              <CircleDollarSign size={16} /> Fund wallet
+            </button>
+            {showFunding ? (
+              <div id="dynamic-wallet-funding" className="mt-3 border border-marble/10 bg-ink-2 p-4">
+                <p className="text-sm font-medium text-cream">Send USDC to this wallet</p>
+                <p className="mt-2 text-xs leading-5 text-muted">
+                  Use {arcName} only. USDC also pays the network fee, so keep slightly more than the search price available.
+                </p>
+                <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-xs">
+                  <dt className="text-dim">Network</dt><dd className="text-right text-cream">{arcName}</dd>
+                  <dt className="text-dim">Asset</dt><dd className="text-right text-cream">USDC</dd>
+                </dl>
+                <div className="mt-4 rounded-lg border border-marble/10 bg-ink px-3 py-3">
+                  <p className="break-all font-mono text-[11px] leading-5 text-muted">{address}</p>
+                  <button
+                    type="button"
+                    onClick={copyAddress}
+                    className="mt-3 inline-flex min-h-9 items-center gap-2 font-mono text-[10px] uppercase text-gold hover:text-cream"
+                  >
+                    {addressCopied ? <Check size={14} /> : <Copy size={14} />}
+                    {addressCopied ? "Address copied" : "Copy address"}
+                  </button>
+                </div>
+                {arcEnvironment === "mainnet" ? (
+                  <a
+                    href="https://portal.arc.io/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center gap-1.5 text-xs text-gold hover:text-cream"
+                  >
+                    Get USDC through Arc Portal <ExternalLink size={13} />
+                  </a>
+                ) : null}
+                <p className="mt-4 text-[11px] leading-5 text-danger">
+                  Do not send USDC on another network. Paid research moves the required amount into Circle Gateway when you confirm payment.
+                </p>
+              </div>
+            ) : null}
             <button
               type="button"
               onClick={onClose}

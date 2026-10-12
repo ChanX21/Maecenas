@@ -42,7 +42,7 @@ export function OwnerDashboard() {
         }
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load contributor earnings");
+      setError(cause instanceof Error ? cause.message : "Could not load earnings");
     } finally {
       setBusy(false);
     }
@@ -108,7 +108,7 @@ export function OwnerDashboard() {
       <div className="roman-panel mx-auto mt-10 max-w-2xl p-8 text-center sm:p-12">
         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gold/10 text-gold"><WalletCards size={20} /></span>
         <p className="mx-auto mt-5 max-w-xl text-lg leading-7 text-muted">
-          Connect your payout wallet to manage sources, check approval status, and withdraw earnings.
+          Connect your lister payout wallet to manage listings, check approval status, and withdraw earnings.
         </p>
         <button
           onClick={connect}
@@ -128,18 +128,18 @@ export function OwnerDashboard() {
         <button onClick={openWallet} className="font-mono text-xs uppercase text-gold">Wallet details</button>
       </div>
 
-      {busy ? <p className="mt-8 text-sm text-muted">Loading contributor earnings...</p> : null}
+      {busy ? <p className="mt-8 text-sm text-muted">Loading earnings...</p> : null}
       {dashboard ? (
         <>
           <dl className="mt-5 grid overflow-hidden rounded-xl border border-marble/10 bg-panel/65 sm:grid-cols-3">
-            <Metric label="Evidence assets" value={String(sources.length)} />
+            <Metric label="Evidence listings" value={String(sources.length)} />
             <Metric label="Paid selections" value={String(dashboard.totalCitationsReceived)} />
             <Metric
               label="Available earnings"
               value={`${dashboard.totalUSDCEarned} USDC`}
               detail={
                 dashboard.paymentMode === "real"
-                  ? "USDC earned from paid source selections; withdraw it to your payout wallet"
+                  ? "USDC earned when your listed evidence is selected; withdraw it to your payout wallet"
                   : "Test records are not settled funds"
               }
             />
@@ -184,8 +184,8 @@ export function OwnerDashboard() {
           ) : null}
 
           <section className="roman-panel mt-5 p-5 sm:p-7">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Contributor assets</p>
-            <h2 className="mt-2 font-display text-2xl text-cream">Evidence portfolio</h2>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Lister portfolio</p>
+            <h2 className="mt-2 font-display text-2xl text-cream">Your evidence listings</h2>
             <motion.div 
               initial="hidden"
               animate="show"
@@ -212,7 +212,7 @@ export function OwnerDashboard() {
                     {source.status}
                   </span>
                 </motion.div>
-              )) : <p className="py-5 text-sm text-muted">No evidence submitted from this wallet.</p>}
+              )) : <p className="py-5 text-sm text-muted">No evidence listed from this wallet.</p>}
             </motion.div>
           </section>
 

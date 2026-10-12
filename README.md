@@ -246,17 +246,19 @@ the contributor-owned `{ sources }` response.
 
 - `PAID_SEARCH_PRICE_USDC` sets the patron price for one commission and defaults
   to the MVP production hypothesis of `0.10` USDC.
-- `AUTHOR_POOL_BPS` caps paid evidence spending at 50% (`0.05` USDC at the
+- `LISTER_POOL_BPS` caps paid evidence spending at 60% (`0.06` USDC at the
   default price), while `PLATFORM_FEE_BPS` reserves the 20% platform share.
-- The remaining 30% is the operating allowance; profitability depends on measured
+- Existing deployments may still set `AUTHOR_POOL_BPS`; the backend accepts it
+  as a fallback until `LISTER_POOL_BPS` is configured.
+- The remaining 20% is the operating allowance; profitability depends on measured
   AI, infrastructure, gas and retry costs. The platform share is an accounting
   target, not an automatic transfer.
 - `SPONSORED_TREASURY_LIMIT_USDC` caps aggregate sponsored evidence spending.
 - `FREE_SEARCH_TOTAL_LIMIT_USDC` caps sponsored evidence plus reserved/recorded AI cost.
 - AI token usage and cost are saved per run and bounded by `AI_MAX_COST_USDC`.
-- Selected evidence prices are paid to registered source-owner wallets.
+- Selected evidence prices are paid to registered lister wallets.
 - Unspent commission value remains in the treasury.
-- Customer payments credit the treasury's Gateway balance; author payouts debit
+- Customer payments credit the treasury's Gateway balance; lister payouts debit
   the separately funded agent balance. Treasury-to-agent replenishment is manual.
 - A failed research run leaves its confirmed payment as reusable customer credit.
 

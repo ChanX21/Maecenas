@@ -7,7 +7,7 @@ export default function AdminPage() {
       <SectionHeading
         eyebrow="Curator access"
         title="Review the archive."
-        copy="Approve evidence only after checking provenance, ownership, licensing, and research quality."
+        copy="Approve evidence only after checking provenance, lister authorization, licensing, and research quality."
       />
       <AdminSourceReview />
     </main>

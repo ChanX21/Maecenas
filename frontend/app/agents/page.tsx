@@ -17,7 +17,7 @@ const steps = [
     icon: Bot,
     title: "Request research",
     endpoint: "POST /api/research",
-    copy: "Send a question, source payment budget, research posture, and stable request ID."
+    copy: "Send a question, lister payment budget, research posture, and stable request ID."
   },
   {
     icon: CircleDollarSign,

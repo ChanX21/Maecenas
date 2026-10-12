@@ -39,7 +39,7 @@ export function ResearchPaymentGate({
             </p>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
               {isRealPayment
-                ? `Search fee: ${priceUSDC} USDC. Up to ${evidenceBudgetUSDC} USDC may be paid to sources. Unused source budget stays with Maecenas to help cover AI and platform costs and is not refunded.`
+                ? `Search fee: ${priceUSDC} USDC. Up to ${evidenceBudgetUSDC} USDC may be paid to listers. Actual payouts depend on the evidence selected.`
                 : "No real USDC will move in test mode. Confirm to simulate a payment and start this search."}
             </p>
           </div>

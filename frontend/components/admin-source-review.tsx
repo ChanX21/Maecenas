@@ -68,7 +68,7 @@ export function AdminSourceReview() {
               <h2 className="mt-2 font-display text-2xl text-cream">{source.title}</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{source.abstract}</p>
               <p className="mt-3 font-mono text-[10px] uppercase text-gold">
-                {source.ownershipAttestation ? "Wallet ownership attestation present" : "Ownership attestation missing"}
+                {source.ownershipAttestation ? "Lister authorization attestation present" : "Lister authorization attestation missing"}
               </p>
               <details className="mt-4 max-w-2xl rounded-md border border-marble/10 bg-ink-2 p-3">
                 <summary className="cursor-pointer font-mono text-[10px] uppercase text-gold">Inspect protected evidence</summary>

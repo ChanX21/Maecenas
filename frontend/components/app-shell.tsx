@@ -16,7 +16,7 @@ const navigation = [
   { href: "/", label: "Research", icon: MessageSquare },
   { href: "/sources", label: "Source archive", icon: BookOpen },
   { href: "/agents", label: "Agents", icon: Bot },
-  { href: "/dashboard", label: "My earnings", icon: Wallet },
+  { href: "/dashboard", label: "Earnings", icon: Wallet },
   { href: "/leaderboard", label: "Public ledger", icon: ChartNoAxesCombined }
 ];
 
@@ -87,12 +87,12 @@ function Sidebar({ collapsed, onToggle, onNavigate, mobile = false }: {
         </nav>
 
         <div className="mt-7 border-t border-marble/[0.07] pt-5">
-          {!collapsed ? <p className="sidebar-section-label">Contribute</p> : null}
-          <Link href="/sources/new" onClick={onNavigate} title={collapsed ? "Publish evidence" : undefined}
+          {!collapsed ? <p className="sidebar-section-label">For listers</p> : null}
+          <Link href="/sources/new" onClick={onNavigate} title={collapsed ? "List evidence" : undefined}
             aria-current={pathname === "/sources/new" ? "page" : undefined}
             className={`sidebar-link ${pathname === "/sources/new" ? "sidebar-link-active" : ""}`}>
             <SquarePen size={19} strokeWidth={1.6} className="shrink-0" />
-            <span className={collapsed ? "sr-only" : ""}>Publish evidence</span>
+            <span className={collapsed ? "sr-only" : ""}>List evidence</span>
           </Link>
         </div>
 
@@ -125,7 +125,7 @@ function Sidebar({ collapsed, onToggle, onNavigate, mobile = false }: {
       <div className="sidebar-bottom">
         {!collapsed ? (
           <Link href="/sources/new" onClick={onNavigate} className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-gold/15 bg-gold/5 p-3.5">
-            <span><span className="block text-xs text-cream">Good evidence deserves credit.</span><span className="mt-1 block text-[11px] text-muted">Add your research to the archive</span></span>
+            <span><span className="block text-xs text-cream">Useful evidence can earn.</span><span className="mt-1 block text-[11px] text-muted">List authorized work in the archive</span></span>
             <ArrowUpRight size={15} className="shrink-0 text-gold" />
           </Link>
         ) : (
@@ -144,7 +144,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const title = pathname.startsWith("/answer/") ? "Research brief"
     : pathname.startsWith("/receipts/") ? "Payment record"
-    : pathname === "/sources/new" ? "Publish evidence"
+    : pathname === "/sources/new" ? "List evidence"
     : pathname === "/admin" ? "Source review"
     : navigation.find((item) => item.href === pathname)?.label ?? "Research";
 

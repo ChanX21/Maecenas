@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { privateKeyToAccount } from "viem/accounts";
 import { validateEnvironment } from "@/env";
-import { seedDatabase } from "@/db/store";
+import { configuredPaidEvidenceBudgetUSDC, seedDatabase } from "@/db/store";
 import { validateArcRpc } from "@/payments/circle-gateway";
 
 test("mainnet rejects demo configuration and invalid economics before serving requests", async () => {
@@ -19,11 +19,12 @@ test("mainnet rejects demo configuration and invalid economics before serving re
       MAECENAS_AGENT_WALLET_ADDRESS: privateKeyToAccount(privateKey).address,
       MAECENAS_TREASURY_WALLET_ADDRESS: "0x2222222222222222222222222222222222222222",
       OPENAI_MODEL: "gpt-6-luna", AI_MAX_COST_USDC: "0.015",
-      PAID_SEARCH_PRICE_USDC: "0.10", AUTHOR_POOL_BPS: "5000", PLATFORM_FEE_BPS: "2000",
+      PAID_SEARCH_PRICE_USDC: "0.10", LISTER_POOL_BPS: "6000", PLATFORM_FEE_BPS: "2000",
       FREE_SEARCH_LIMIT: "2", FREE_SEARCH_BUDGET_USDC: "0.01", SPONSORED_TREASURY_LIMIT_USDC: "1",
       FREE_SEARCH_TOTAL_LIMIT_USDC: "1"
     });
     assert.doesNotThrow(validateEnvironment);
+    assert.equal(configuredPaidEvidenceBudgetUSDC(), "0.06");
     for (const [key, value, error] of [
       ["PAYMENT_MODE", "reel", /PAYMENT_MODE/],
       ["PAYMENT_MODE", "mock", /PAYMENT_MODE=real/],
@@ -33,7 +34,7 @@ test("mainnet rejects demo configuration and invalid economics before serving re
       ["OPENAI_API_KEY", "", /OPENAI_API_KEY/],
       ["PAID_SEARCH_PRICE_USDC", "0", /PAID_SEARCH_PRICE/],
       ["PAID_SEARCH_PRICE_USDC", "2147.483648", /PAID_SEARCH_PRICE/],
-      ["AUTHOR_POOL_BPS", "9500", /total at most/],
+      ["LISTER_POOL_BPS", "8500", /total at most/],
       ["FREE_SEARCH_LIMIT", "-1", /FREE_SEARCH_LIMIT/],
       ["FREE_SEARCH_BUDGET_USDC", "NaN", /USDC amount/]
     ] as const) {
@@ -42,6 +43,14 @@ test("mainnet rejects demo configuration and invalid economics before serving re
       assert.throws(validateEnvironment, error);
       process.env[key] = saved;
     }
+    const listerPool = process.env.LISTER_POOL_BPS;
+    delete process.env.LISTER_POOL_BPS;
+    delete process.env.AUTHOR_POOL_BPS;
+    assert.equal(configuredPaidEvidenceBudgetUSDC(), "0.06", "default lister pool is 60% of the paid-search price");
+    process.env.AUTHOR_POOL_BPS = "5000";
+    assert.equal(configuredPaidEvidenceBudgetUSDC(), "0.05", "legacy deployments retain their configured pool until migrated");
+    process.env.LISTER_POOL_BPS = listerPool;
+    delete process.env.AUTHOR_POOL_BPS;
     assert.equal(await seedDatabase(), 0, "mainnet must not connect to the DB to seed demo payout addresses");
   } finally {
     process.env = previous;

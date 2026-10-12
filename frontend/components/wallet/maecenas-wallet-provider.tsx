@@ -42,7 +42,7 @@ import {
   dynamicClient,
   isDynamicConfigured
 } from "@/lib/dynamic-client";
-import { signSourceOwnership as createSourceAttestation } from "@/lib/source-attestation";
+import { signSourceListing as createSourceAttestation } from "@/lib/source-attestation";
 import type { GatewayBurnIntent, SearchPaymentIntentResponse } from "@/types";
 import { DynamicWalletDialog } from "@/components/wallet/dynamic-wallet-dialog";
 
@@ -60,7 +60,7 @@ type MaecenasWalletContextValue = {
   logout: () => Promise<void>;
   openWallet: () => void;
   signGatewayWithdrawal: (burnIntent: GatewayBurnIntent) => Promise<string>;
-  signSourceOwnership: (sourceUrl: string) => Promise<string>;
+  signSourceListing: (sourceUrl: string) => Promise<string>;
 };
 
 const MaecenasWalletContext = createContext<MaecenasWalletContextValue | null>(null);
@@ -171,7 +171,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     return authenticateBackendWallet(account.address, signWithWallet);
   }, [requireWallet, signWithWallet]);
 
-  const signSourceOwnership = useCallback(async (sourceUrl: string) => {
+  const signSourceListing = useCallback(async (sourceUrl: string) => {
     const account = requireWallet();
     await authenticateBackendWallet(account.address, signWithWallet);
     return createSourceAttestation(sourceUrl, account.address, signWithWallet);
@@ -244,7 +244,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     logout: handleLogout,
     openWallet: () => setWalletOpen(true),
     signGatewayWithdrawal,
-    signSourceOwnership
+    signSourceListing
   }), [
     address,
     authenticate,
@@ -254,7 +254,7 @@ export function MaecenasWalletProvider({ children }: { children: React.ReactNode
     handleLogout,
     initStatus,
     signGatewayWithdrawal,
-    signSourceOwnership
+    signSourceListing
   ]);
 
   return (
