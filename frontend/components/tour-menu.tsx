@@ -6,8 +6,8 @@ import { CircleHelp } from "lucide-react";
 import { requestOnboardingTour, type OnboardingTourName } from "@/lib/onboarding";
 
 const tourLabels: Record<OnboardingTourName, string> = {
-  research: "Commission research",
-  contribute: "Publish evidence",
+  research: "Research a question",
+  contribute: "List evidence",
   answer: "Understand a brief"
 };
 

@@ -19,6 +19,7 @@ import {
   failReservedSearchPayment,
   findAnswer,
   findReceipt,
+  findReusableSearchPayment,
   findSource,
   getOrCreateUsage,
   getResearchRunStatus,
@@ -27,6 +28,7 @@ import {
   listApprovedSourcesPage,
   listSources,
   readDb,
+  recordResearchAiUsage,
   reviewSource,
   reserveSearchPayment,
   StoreError
@@ -41,7 +43,7 @@ import {
   GatewayWithdrawalError,
   type GatewayBurnIntent
 } from "@/payments/gateway-withdrawal";
-import { createAuthToken, sourceOwnershipMessage, verifyReceiptSignature, verifyToken, verifyWalletSignature } from "@/security";
+import { createAuthToken, sourceListingMessage, verifyReceiptSignature, verifyToken, verifyWalletSignature } from "@/security";
 import type { Answer, PublicSource, ResearchStrategy, Source, UserUsage } from "@/types";
 import { makeId } from "@/utils/ids";
 import { microsToUSDC, parseUSDCMicros, sumUSDC } from "@/utils/money";
@@ -208,7 +210,7 @@ async function routeRequest(context: RouteContext) {
     const walletAddress = optionalWallet(url.searchParams.get("wallet"));
     if (walletAddress) requireWalletAuth(request, walletAddress);
     const usage = await getOrCreateUsage(sessionId, walletAddress, ipHash(request));
-    return sendJson(response, 200, usageResponse(usage));
+    return sendJson(response, 200, await usageResponse(usage));
   }
 
   if (method === "POST" && path === "/api/sources") {
@@ -226,8 +228,8 @@ async function routeRequest(context: RouteContext) {
     const evidenceText = String(body.evidenceText).trim();
     const sourceUrl = requireHttpUrl(body.sourceUrl, "sourceUrl");
     const ownershipAttestation = String(body.ownershipAttestation ?? "");
-    if (!(await verifyWalletSignature(authenticatedWallet, sourceOwnershipMessage(authenticatedWallet, sourceUrl), ownershipAttestation))) {
-      throw new HttpError(401, "INVALID_SOURCE_ATTESTATION", "Sign the source ownership attestation before submitting");
+    if (!(await verifyWalletSignature(authenticatedWallet, sourceListingMessage(authenticatedWallet, sourceUrl), ownershipAttestation))) {
+      throw new HttpError(401, "INVALID_SOURCE_ATTESTATION", "Sign the lister authorization attestation before submitting");
     }
     if (title.length > 200 || authorName.length > 120) {
       throw new HttpError(400, "INVALID_SOURCE", "Source title or author name is too long");
@@ -262,8 +264,9 @@ async function routeRequest(context: RouteContext) {
     };
 
     validateUSDC(source.citationPriceUSDC, "citationPriceUSDC");
-    if (parseUSDCMicros(source.citationPriceUSDC) === 0) {
-      throw new HttpError(400, "INVALID_USDC_AMOUNT", "citationPriceUSDC must be greater than zero");
+    const citationPriceMicros = parseUSDCMicros(source.citationPriceUSDC);
+    if (citationPriceMicros < 1_000 || citationPriceMicros > 10_000) {
+      throw new HttpError(400, "INVALID_USDC_AMOUNT", "citationPriceUSDC must be between 0.001 and 0.01");
     }
     return sendJson(response, 201, { source: publicSource(await createSource(source)) });
   }
@@ -490,7 +493,8 @@ async function routeRequest(context: RouteContext) {
         sessionId,
         walletAddress,
         searchPaymentId: reservation.searchPaymentId,
-        paymentType: reservation.paymentType
+        paymentType: reservation.paymentType,
+        onAiUsage: (usage) => recordResearchAiUsage(reservation.runId, usage)
       });
       const answer = await completeResearch(reservation.runId, result.answer, result.receipts);
       return sendResearchResponse(response, answer);
@@ -619,7 +623,7 @@ async function routeRequest(context: RouteContext) {
       throw new HttpError(400, "INVALID_WITHDRAWAL_INTENT", "Circle Gateway withdrawal intent is required");
     }
     if (!/^0x[a-fA-F0-9]{130}$/.test(signature)) {
-      throw new HttpError(400, "INVALID_WITHDRAWAL_SIGNATURE", "A 65-byte creator wallet signature is required");
+      throw new HttpError(400, "INVALID_WITHDRAWAL_SIGNATURE", "A 65-byte lister wallet signature is required");
     }
     return sendJson(
       response,
@@ -667,7 +671,7 @@ async function getUsageByAnswer(answer: Answer) {
 
 async function sendPaymentRequired(response: ServerResponse, sessionId: string) {
   const usage = await getOrCreateUsage(sessionId);
-  const price = process.env.PAID_SEARCH_PRICE_USDC ?? "0.05";
+  const price = process.env.PAID_SEARCH_PRICE_USDC ?? "0.10";
   return sendJson(response, 402, {
     error: "PAYMENT_REQUIRED",
     reason: "FREE_QUOTA_EXHAUSTED",
@@ -680,10 +684,13 @@ async function sendPaymentRequired(response: ServerResponse, sessionId: string) 
   });
 }
 
-function usageResponse(usage: UserUsage) {
+async function usageResponse(usage: UserUsage) {
   const remaining = process.env.DISABLE_RESEARCH_GUARDRAILS === "true"
     ? usage.freeSearchLimit
     : Math.max(0, usage.freeSearchLimit - usage.freeSearchesUsed);
+  const credit = usage.walletAddress
+    ? await findReusableSearchPayment(usage.sessionId, usage.walletAddress)
+    : undefined;
   return {
     sessionId: usage.sessionId,
     walletAddress: usage.walletAddress,
@@ -692,10 +699,11 @@ function usageResponse(usage: UserUsage) {
     freeSearchesRemaining: remaining,
     paidSearchesUsed: usage.paidSearchesUsed,
     requiresPayment: remaining === 0,
-    paidSearchPriceUSDC: process.env.PAID_SEARCH_PRICE_USDC ?? "0.05",
+    paidSearchPriceUSDC: process.env.PAID_SEARCH_PRICE_USDC ?? "0.10",
     paidEvidenceBudgetUSDC: configuredPaidEvidenceBudgetUSDC(),
     freeEvidenceBudgetUSDC: process.env.FREE_SEARCH_BUDGET_USDC ?? "0.01",
-    paymentMode: process.env.PAYMENT_MODE === "real" ? "real" : "mock"
+    paymentMode: process.env.PAYMENT_MODE === "real" ? "real" : "mock",
+    availableSearchCredit: credit ? { searchPaymentId: credit.id, amountUSDC: credit.amountUSDC } : undefined
   };
 }
 

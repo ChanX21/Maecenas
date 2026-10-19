@@ -41,6 +41,12 @@ export type LeaderboardResponse = {
     paidSearchRevenueUSDC: string;
     userPaidSourcePayoutsUSDC: string;
     grossRetainedUSDC: string;
+    aiCostUSDC: string;
+    customerCreditLiabilityUSDC: string;
+    trackedContributionUSDC: string;
+    monthlyInfraCostUSDC: string;
+    monthlyOtherCostUSDC: string;
+    monthlyNetUSDC: string;
     sourcePayoutsUSDC: string;
     paidCitations: number;
   };

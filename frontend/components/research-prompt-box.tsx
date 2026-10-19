@@ -116,7 +116,10 @@ export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (ac
       .then((nextUsage) => {
         setUsage(nextUsage);
         setPaymentRequired(nextUsage.requiresPayment);
-        if (nextUsage.requiresPayment) setFundingMode("wallet");
+        if (nextUsage.requiresPayment) {
+          setFundingMode("wallet");
+          setBudgetUSDC(nextUsage.paidEvidenceBudgetUSDC);
+        }
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Could not load research access"));
   }, []);
@@ -132,11 +135,11 @@ export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (ac
       const data = await runResearch({ sessionId, ...request, ...payment });
       let answerId = data.answerId;
       if (data.status === "processing" && data.runId) {
-        setStage("Research commission is in the queue...");
+        setStage("Research is in the queue...");
         for (let attempt = 0; attempt < 80; attempt += 1) {
           await new Promise((resolve) => window.setTimeout(resolve, 1500));
           const run = await getResearchRun(data.runId, sessionId);
-          if (run.status === "failed") throw new Error("Research commission failed");
+          if (run.status === "failed") throw new Error("Research failed");
           if (run.events) setEvents(run.events);
           if (run.status === "completed") {
             answerId = run.answerId;
@@ -153,13 +156,15 @@ export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (ac
         const nextUsage = await getUsage(sessionId);
         setUsage(nextUsage);
         setFundingMode("wallet");
+        setBudgetUSDC(nextUsage.paidEvidenceBudgetUSDC);
+        setPendingRequest((current) => current ? { ...current, budgetUSDC: nextUsage.paidEvidenceBudgetUSDC } : current);
         setPaymentRequired(true);
       } else if (cause instanceof ApiError && cause.status === 409 && cause.data.error === "FREE_QUOTA_BUSY") {
         setFundingMode("wallet");
         setPaymentRequired(true);
-        setError(`${cause.message}. Pay ${usage?.paidSearchPriceUSDC ?? "0.05"} USDC to start another run now.`);
+        setError(`${cause.message}. Pay ${usage?.paidSearchPriceUSDC ?? "0.10"} USDC to start another run now.`);
       } else {
-        setError(cause instanceof Error ? cause.message : "Research commission failed");
+        setError(cause instanceof Error ? cause.message : "Research failed");
       }
     } finally {
       setStage("");
@@ -203,6 +208,16 @@ export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (ac
       }
       setStage("Authenticating Dynamic wallet...");
       const wallet = await authenticate();
+      const latestUsage = await getUsage(sessionId, wallet);
+      setUsage(latestUsage);
+      if (latestUsage.availableSearchCredit) {
+        setStage("Using your existing paid search credit...");
+        await executeResearch(request, {
+          walletAddress: wallet,
+          searchPaymentId: latestUsage.availableSearchCredit.searchPaymentId
+        });
+        return;
+      }
       setStage("Opening treasury request...");
       const intent = await createSearchPaymentIntent(sessionId, wallet, fundingMode === "wallet");
       if (intent.paymentMode === "real") {
@@ -230,7 +245,7 @@ export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (ac
       setGatewayFundAmount("");
       await executeResearch(request, { walletAddress: wallet, searchPaymentId: payment.searchPaymentId });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Treasury settlement failed");
+      setError(cause instanceof Error ? cause.message : "Payment failed");
       setStage("");
     }
   }
@@ -238,8 +253,11 @@ export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (ac
   const busy = Boolean(stage);
   const canFundGateway = error.startsWith("Circle Gateway balance is too low.") && gatewayFundAmount;
   const maximumBudgetUSDC = fundingMode === "wallet"
-    ? usage?.paidEvidenceBudgetUSDC ?? "0.035"
+    ? usage?.paidEvidenceBudgetUSDC ?? "0.06"
     : usage?.freeEvidenceBudgetUSDC ?? "0.01";
+  const paidListerSharePercent = usage?.paidSearchPriceUSDC
+    ? Math.round((Number(usage.paidEvidenceBudgetUSDC) / Number(usage.paidSearchPriceUSDC)) * 100)
+    : 60;
 
   async function fundGatewayBalance() {
     if (!gatewayFundAmount) return;
@@ -278,8 +296,9 @@ export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (ac
                 evidenceBudgetUSDC={budgetUSDC}
                 isWalletConnected={Boolean(address)}
                 mode={usage?.paymentMode ?? "mock"}
+                onConnectWallet={openWallet}
                 onConfirm={confirmPayment}
-                priceUSDC={usage?.paidSearchPriceUSDC ?? "0.05"}
+                priceUSDC={usage?.paidSearchPriceUSDC ?? "0.10"}
               />
             ) : null}
           </AnimatePresence>
@@ -345,18 +364,19 @@ export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (ac
               aria-pressed={fundingMode === "grant"}
               className={`composer-choice ${fundingMode === "grant" ? "composer-choice-active" : ""}`}
             >
-              Patron grant
+              Free search
             </button>
             <button
               type="button"
               onClick={() => {
                 setFundingMode("wallet");
+                setBudgetUSDC(usage?.paidEvidenceBudgetUSDC ?? "0.06");
                 setPaymentRequired(false);
               }}
               aria-pressed={fundingMode === "wallet"}
               className={`composer-choice ${fundingMode === "wallet" ? "composer-choice-active" : ""}`}
             >
-              Pay {usage?.paidSearchPriceUSDC ?? "0.05"} USDC
+              Pay {usage?.paidSearchPriceUSDC ?? "0.10"} USDC
             </button>
           </div>
           <div ref={strategyMenu} data-tour="research-posture" className="relative">
@@ -465,17 +485,21 @@ export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (ac
               className="composer-budget-panel absolute bottom-full right-0 z-30 mb-3 w-60 rounded-xl border border-marble/15 bg-panel-2 p-4"
             >
               <div className="flex justify-between text-xs text-muted">
-                <span>Evidence budget</span>
+                <span>Lister payment budget</span>
                 <span className="text-gold font-bold">{budgetUSDC} USDC</span>
               </div>
               <input
                 type="range"
-                aria-label="Evidence budget"
+                aria-label="Source payment budget"
                 min="0.0001"
                 max={maximumBudgetUSDC}
                 step="0.0001"
                 value={budgetUSDC}
-                onChange={(e) => setBudgetUSDC(Number(e.target.value).toFixed(4))}
+                onChange={(e) => {
+                  const nextBudget = Number(e.target.value).toFixed(4);
+                  setBudgetUSDC(nextBudget);
+                  setPendingRequest((current) => current ? { ...current, budgetUSDC: nextBudget } : current);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
                     setBudgetOpen(false);
@@ -488,6 +512,9 @@ export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (ac
                 <span>0.0001 min</span>
                 <span>{maximumBudgetUSDC} max</span>
               </div>
+              <p className="mt-3 text-[10px] leading-4 text-muted">
+                Up to {paidListerSharePercent}% of a paid search can go to listers. Actual payouts depend on the evidence selected.
+              </p>
             </motion.div>
             ) : null}
             </AnimatePresence>
@@ -509,7 +536,7 @@ export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (ac
 
     </form>
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-dim">
-      <span>{usage ? usage.freeSearchesRemaining > 0 ? `${usage.freeSearchesRemaining} patron-funded searches left` : `${usage.paidSearchPriceUSDC} USDC per search` : "Cited answers. Transparent funding."}</span>
+      <span>{usage ? usage.freeSearchesRemaining > 0 ? `${usage.freeSearchesRemaining} free searches left` : `Free searches used · ${usage.paidSearchPriceUSDC} USDC per search` : "Cited answers. Transparent funding."}</span>
       {featuredAnswerId ? <Link href={`/answer/${featuredAnswerId}`} className="inline-flex items-center gap-1 text-muted hover:text-gold">Explore a completed answer <ArrowUpRight size={12} /></Link> : null}
     </div>
     <section className="mt-8 sm:mt-10" aria-label="Suggested questions">

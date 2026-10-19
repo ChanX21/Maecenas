@@ -23,11 +23,11 @@ export default async function SourcesPage({ searchParams }: PageProps) {
       <SectionHeading
         eyebrow="The source archive"
         title="Evidence worth funding."
-        copy="Explore approved research assets. Protected evidence is funded only when it earns a place in a research commission."
+        copy="Explore approved evidence listings. Maecenas pays the lister only when protected evidence is selected for a research answer."
       />
       <div className="mt-7 flex justify-center">
         <ButtonLink href="/sources/new" variant="primary">
-          Publish evidence
+          List evidence
         </ButtonLink>
       </div>
       <div className="mx-auto mt-10 grid max-w-7xl gap-4 md:grid-cols-2 xl:grid-cols-3">

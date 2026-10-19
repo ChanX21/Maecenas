@@ -13,13 +13,12 @@ export function LeaderboardStats({ metrics, paymentMode }: LeaderboardStatsProps
   const averageUnlock = metrics.paidEvidenceUnlocks
     ? parseUSDC(metrics.totalUSDCDistributed) / metrics.paidEvidenceUnlocks
     : 0;
-  const cardFeeMultiple = averageUnlock ? Math.round(0.3 / averageUnlock) : 0;
   const labels: Record<string, string> = {
     sourcesRegistered: "Evidence Assets",
-    paidEvidenceUnlocks: "Funded Unlocks",
+    paidEvidenceUnlocks: "Paid Source Selections",
     totalUSDCDistributed: paymentMode === "real" ? "Gateway USDC Credited" : "Test Capital",
-    contributorsRewarded: "Rewarded Contributors",
-    fundedCommissions: "Funded Commissions"
+    contributorsRewarded: "Rewarded Listers",
+    fundedCommissions: "Funded Searches"
   };
 
   return (
@@ -48,20 +47,21 @@ export function LeaderboardStats({ metrics, paymentMode }: LeaderboardStatsProps
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Economic proof</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <Proof label="Average evidence unlock" value={`${formatUSDC(averageUnlock)} USDC`} />
-          <Proof label="Paid commission revenue" value={`${metrics.paidSearchRevenueUSDC} USDC`} />
-          <Proof label="Paid-run evidence payouts" value={`${metrics.userPaidSourcePayoutsUSDC} USDC`} />
+          <Proof label="AI cost recorded" value={`${metrics.aiCostUSDC} USDC`} />
+          <Proof label="Customer credit available" value={`${metrics.customerCreditLiabilityUSDC} USDC`} />
         </div>
         <div className="mt-4 flex flex-wrap justify-between gap-3 border-t border-marble/10 pt-4 font-mono text-xs">
           <p className="text-muted">
-            Patron revenue <span className="text-cream">{metrics.paidSearchRevenueUSDC}</span>
+            Paid search revenue <span className="text-cream">{metrics.paidSearchRevenueUSDC}</span>
             <span className="mx-2 text-dim">→</span>
-            evidence <span className="text-cream">{metrics.userPaidSourcePayoutsUSDC}</span>
+            lister payouts <span className="text-cream">{metrics.sourcePayoutsUSDC}</span>
             <span className="mx-2 text-dim">→</span>
-            gross retained <span className="text-gold">{metrics.grossRetainedUSDC} USDC</span>
+            AI <span className="text-cream">{metrics.aiCostUSDC}</span>
+            <span className="mx-2 text-dim">→</span>
+            tracked contribution <span className="text-gold">{metrics.trackedContributionUSDC} USDC</span>
           </p>
           <p className="text-muted">
-            {cardFeeMultiple ? `${cardFeeMultiple}× smaller than a $0.30 fixed card fee` : "Awaiting funded unlocks"}
-            <span className="ml-2 text-dim">· before AI and infrastructure costs</span>
+            This month after configured infrastructure and other costs: <span className="text-gold">{metrics.monthlyNetUSDC} USDC</span>
           </p>
         </div>
       </div>

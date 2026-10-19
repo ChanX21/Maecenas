@@ -67,7 +67,7 @@ lib/backend-wallet-auth.ts
                          Maecenas backend nonce authentication
 lib/circle-payment.ts    Circle x402 EIP-712 signing adapter
 lib/source-attestation.ts
-                         Contributor ownership signatures
+                         Lister authorization signatures
 lib/browser-session.ts   Browser session and backend auth token storage
 ```
 

@@ -1,7 +1,5 @@
-import { AgentError, generateStructured } from "@/agent/ai";
+import { AgentError, emptyAiUsage, generateStructured, type AiBudget, type AiUsage } from "@/agent/ai";
 import type { AnswerContent, BudgetDecision, ResearchPlan, UnlockedEvidence } from "@/types";
-
-type GroundedEvidence = Omit<UnlockedEvidence, "receipt">;
 
 const answerSchema = {
   type: "object",
@@ -30,16 +28,18 @@ const answerSchema = {
 
 export async function synthesizeAnswer(
   plan: ResearchPlan,
-  unlockedEvidence: GroundedEvidence[],
-  budgetDecision: BudgetDecision
-): Promise<AnswerContent> {
+  unlockedEvidence: UnlockedEvidence[],
+  budgetDecision: BudgetDecision,
+  aiBudget: AiBudget,
+  onAiUsage?: (usage: AiUsage) => Promise<void>
+): Promise<{ content: AnswerContent; usage: AiUsage }> {
   if (unlockedEvidence.length === 0) {
     throw new AgentError("NO_EVIDENCE_SELECTED", "No registered evidence met the research threshold", 422);
   }
 
-  const generated =
+  const generatedResult =
     process.env.AI_MODE === "test"
-      ? testAnswer(plan, unlockedEvidence)
+      ? { value: testAnswer(plan, unlockedEvidence), usage: emptyAiUsage() }
       : await generateStructured<AnswerContent>(
           "grounded_research_answer",
           answerSchema,
@@ -61,10 +61,14 @@ export async function synthesizeAnswer(
               sourceId: source.sourceId,
               title: source.title,
               authorName: source.authorName,
-              evidenceText: source.evidenceText
+              evidenceText: source.evidenceText.slice(0, Number(process.env.AI_EVIDENCE_CHARS_PER_SOURCE ?? 4000))
             }))
-          }
+          },
+          aiBudget,
+          Number(process.env.AI_SYNTHESIS_MAX_OUTPUT_TOKENS ?? 2000),
+          onAiUsage
         );
+  const generated = generatedResult.value;
 
   const allowedIds = new Set(unlockedEvidence.map((source) => source.sourceId));
   const content: AnswerContent = {
@@ -79,7 +83,7 @@ export async function synthesizeAnswer(
   if (!content.summary || content.sections.some((section) => !section.body || section.citations.length === 0)) {
     throw new AgentError("AI_INVALID_CITATIONS", "The model did not return a fully grounded answer", 502);
   }
-  return content;
+  return { content, usage: generatedResult.usage };
 }
 
 export function answerContentToText(content: AnswerContent): string {
@@ -90,7 +94,7 @@ export function answerContentToText(content: AnswerContent): string {
   ].join("\n\n");
 }
 
-function testAnswer(plan: ResearchPlan, evidence: GroundedEvidence[]): AnswerContent {
+function testAnswer(plan: ResearchPlan, evidence: UnlockedEvidence[]): AnswerContent {
   return {
     summary: `Evidence-grounded answer to: ${plan.userQuestion}`,
     sections: [

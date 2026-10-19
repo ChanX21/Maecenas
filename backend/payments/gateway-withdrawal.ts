@@ -284,7 +284,7 @@ export async function executeGatewayWithdrawal(wallet: string, burnIntent: Gatew
       signature: signature as Hex
     });
     if (!signatureValid) {
-      throw new GatewayWithdrawalError(400, "INVALID_WITHDRAWAL_SIGNATURE", "Creator wallet signature is invalid");
+      throw new GatewayWithdrawalError(400, "INVALID_WITHDRAWAL_SIGNATURE", "Lister wallet signature is invalid");
     }
 
     const transfer = await gatewayRequest("/transfer", [{ burnIntent, signature }]) as {

@@ -32,11 +32,11 @@ export function SessionStatus() {
     <div className="hidden items-center gap-2 text-xs text-muted sm:flex">
       <CircleDollarSign size={14} className="text-gold" />
       {usage.freeSearchesRemaining > 0 ? (
-        <span>{usage.freeSearchesRemaining} patron grants left</span>
+        <span>{usage.freeSearchesRemaining} free searches left</span>
       ) : address ? (
-        <span>Dynamic wallet ready</span>
+        <span>Pay with wallet</span>
       ) : (
-        <span>Fund with wallet</span>
+        <span>Connect wallet for paid research</span>
       )}
     </div>
   );

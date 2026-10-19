@@ -84,7 +84,7 @@ npm run source:review -- src_123 rejected "Duplicate or unverifiable evidence"
 ## Free And Paid Research
 
 The client persists `maecenas_session_id` in localStorage and sends it as
-`sessionId`. Call `GET /api/usage`, then `POST /api/research`. After five
+`sessionId`. Call `GET /api/usage`, then `POST /api/research`. After two
 completed free answers, authenticate the wallet, create
 `/api/payments/search-intent`, settle the returned x402 requirement, submit it
 to `/api/payments/search-proof`, and retry research with the returned
@@ -93,7 +93,7 @@ to `/api/payments/search-proof`, and retry research with the returned
 `PAYMENT_MODE=real` uses Circle Gateway and fails closed when treasury, agent
 wallet, signing secret, or public URL configuration is missing.
 
-Research requires `OPENAI_API_KEY`; `OPENAI_MODEL` defaults to `gpt-5-mini`.
+Research requires `OPENAI_API_KEY`; `OPENAI_MODEL` defaults to `gpt-6-luna`.
 Without a key the API returns `503 AI_NOT_CONFIGURED` and does not consume quota.
 
 ### Gateway funding
@@ -118,17 +118,17 @@ return `Cache-Control: no-store`. Records are isolated by the active
 - `mock` reports only completed mock receipts.
 - `real` reports only successfully paid Circle Gateway receipts.
 - Pending and failed receipts never contribute to payout totals.
-- Registered source owners and contributors who actually received a completed
+- Registered lister wallets and listers who actually received a completed
   payment are reported separately.
 
 Circle Gateway nanopayments are signed off-chain and settled in batches. The
 per-payment UUID returned by Gateway is stored as `paymentId`; `txHash` is only
-set when Circle returns a real 32-byte EVM transaction hash. Creator earnings
-first appear in the creator's Gateway balance and only appear in the ordinary
-Arc wallet after that creator withdraws. Seed source wallets are demo addresses,
-so only sources registered with a wallet controlled by the creator can withdraw.
+set when Circle returns a real 32-byte EVM transaction hash. Lister earnings
+first appear in the lister's Gateway balance and only appear in the ordinary
+Arc wallet after that lister withdraws. Seed source wallets are demo addresses,
+so only listings registered with a wallet controlled by the lister can withdraw.
 
-Authenticated creators can call `GET /api/gateway/withdrawal-quote` and sign
+Authenticated listers can call `GET /api/gateway/withdrawal-quote` and sign
 the returned EIP-712 burn intent, then submit it to `POST /api/gateway/withdraw`.
 The backend sponsors the Arc mint transaction and returns its Arc transaction
 hash. Circle's estimated transfer fee must be covered by the Gateway balance.

@@ -113,6 +113,29 @@ export type SearchPaymentIntent = {
   createdAt: string;
 };
 
+export type ResearchRunCost = {
+  id: string;
+  status: "processing" | "completed" | "failed";
+  paymentType: "free_sponsored" | "user_paid";
+  searchPaymentId?: string;
+  aiInputTokens: number;
+  aiOutputTokens: number;
+  aiCostUSDC: string;
+  createdAt: string;
+};
+
+export type EvidencePaymentCost = {
+  id: string;
+  paymentScope: string;
+  searchPaymentId?: string;
+  fundedBy?: "maecenas_sponsored" | "user_paid_search";
+  sourceId: string;
+  amountUSDC: string;
+  status: "pending" | "paid" | "failed";
+  paymentId?: string;
+  createdAt: string;
+};
+
 export type ResearchPlan = {
   userQuestion: string;
   subquestions: string[];
@@ -201,4 +224,6 @@ export type MaecenasDatabase = {
   userUsages: UserUsage[];
   searchPaymentIntents: SearchPaymentIntent[];
   searchPayments: SearchPayment[];
+  researchRuns: ResearchRunCost[];
+  evidencePaymentCosts: EvidencePaymentCost[];
 };

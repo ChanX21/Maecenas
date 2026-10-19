@@ -17,7 +17,7 @@ export default async function LeaderboardPage() {
         title="Capital follows useful evidence."
         copy={
           leaderboard.paymentMode === "real"
-            ? "Live Circle Gateway credits from completed research runs. Creators withdraw available balances to their wallets."
+            ? "Live Circle Gateway credits from completed research runs. Listers withdraw available earnings to their payout wallets."
             : "Test-mode research activity. No displayed payment represents settled USDC."
         }
       />

@@ -185,6 +185,7 @@ export type Usage = {
   paidEvidenceBudgetUSDC: string;
   freeEvidenceBudgetUSDC: string;
   paymentMode: "mock" | "real";
+  availableSearchCredit?: { searchPaymentId: string; amountUSDC: string };
 };
 
 export type SearchPaymentIntentResponse = {

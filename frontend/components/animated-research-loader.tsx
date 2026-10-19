@@ -13,7 +13,7 @@ export function AnimatedResearchLoader({ stage, events = [] }: { stage: string; 
   const researchPhrases = [
     "Scouting the approved archive...",
     "Ranking evidence by research fit...",
-    "Allocating the commission treasury...",
+    "Allocating source payments...",
     "Drafting the cited brief...",
   ];
   const [phraseIndex, setPhraseIndex] = useState(0);

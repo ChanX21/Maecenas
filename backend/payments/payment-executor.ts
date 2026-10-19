@@ -78,6 +78,8 @@ export async function createEvidencePayment(
     if (!paymentScope) throw new Error("paymentScope is required for real evidence payouts");
     const attempt = await reserveEvidencePaymentAttempt({
       paymentScope,
+      searchPaymentId,
+      fundedBy,
       sourceId: source.id,
       amountUSDC: source.citationPriceUSDC,
       recipientWallet: source.walletAddress

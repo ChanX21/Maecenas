@@ -34,13 +34,12 @@ export function BudgetMeter({ budgetUSDC, spentUSDC, considered, purchased, skip
   return (
     <div className="space-y-4">
       <dl className="grid grid-cols-2 overflow-hidden sm:grid-cols-5">
-        <Metric label="Treasury limit" value={<><AnimatedNumber value={budget} isUSDC /> USDC</>} />
-        <Metric label="Funded" value={<AnimatedNumber value={purchased} />} />
-        <Metric label="Reviewed" value={<AnimatedNumber value={considered} />} />
-        <Metric label="Deployed" value={<span className="text-gold"><AnimatedNumber value={spent} isUSDC /> USDC</span>} />
-        <Metric label="Reserve" value={<><AnimatedNumber value={remaining} isUSDC /> USDC</>} detail={`${skipped} passed over`} />
+        <Metric label="Lister payment budget" value={<><AnimatedNumber value={budget} isUSDC /> USDC</>} />
+        <Metric label="Listers paid" value={<AnimatedNumber value={purchased} />} />
+        <Metric label="Sources reviewed" value={<AnimatedNumber value={considered} />} />
+        <Metric label="Paid to listers" value={<span className="text-gold"><AnimatedNumber value={spent} isUSDC /> USDC</span>} />
+        <Metric label="Unused lister budget" value={<><AnimatedNumber value={remaining} isUSDC /> USDC</>} detail={`${skipped} not selected`} />
       </dl>
-
     </div>
   );
 }

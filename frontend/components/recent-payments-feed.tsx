@@ -10,7 +10,7 @@ export function RecentPaymentsFeed({ receipts }: { receipts: CitationPayment[] }
   return (
     <div className="roman-panel p-5 sm:p-7">
       <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Latest activity</p>
-      <h2 className="mt-2 font-display text-3xl text-cream">Treasury pulse</h2>
+      <h2 className="mt-2 font-display text-3xl text-cream">Recent source payments</h2>
       <motion.div 
         initial="hidden"
         animate="show"
@@ -21,7 +21,7 @@ export function RecentPaymentsFeed({ receipts }: { receipts: CitationPayment[] }
         className="mt-5 divide-y divide-marble/10 border-y border-marble/10"
       >
         {receipts.length === 0 ? (
-          <p className="text-sm text-muted">No treasury activity yet.</p>
+          <p className="text-sm text-muted">No source payments yet.</p>
         ) : (
           receipts.map((receipt) => (
             <motion.div 
@@ -30,7 +30,7 @@ export function RecentPaymentsFeed({ receipts }: { receipts: CitationPayment[] }
               className="py-4"
             >
               <p className="font-mono text-sm text-cream">
-                Funded {receipt.amountUSDC} USDC for &ldquo;{receipt.sourceTitle}&rdquo;
+                Paid {receipt.amountUSDC} USDC for &ldquo;{receipt.sourceTitle}&rdquo;
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs uppercase text-dim">
                 <span>{citationPaymentStatusLabel(receipt)}</span>

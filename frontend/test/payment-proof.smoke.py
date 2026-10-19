@@ -48,7 +48,7 @@ with sync_playwright() as p:
 
     page.route("**/api/receipts/*/verify", fulfill)
     page.goto(f"{args.base_url}/receipts/{args.receipt_id}")
-    trigger = page.get_by_role("button", name="Verify x402 with Circle")
+    trigger = page.get_by_role("button", name="Verify payment with Circle")
     trigger.click()
     dialog = page.get_by_role("dialog")
     expect(dialog).to_be_visible()

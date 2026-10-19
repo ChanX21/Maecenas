@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import { allocateBudget } from "@/agent/budget-allocator";
+import { createAiBudget, type AiUsage } from "@/agent/ai";
 import { analyzeResearch } from "@/agent/query-planner";
 import { scoutSources } from "@/agent/source-scout";
 import { answerContentToText, synthesizeAnswer } from "@/agent/answer-synthesizer";
 import { traceEvent } from "@/agent/trace";
-import { listEvidencePaymentAttempts, listSources } from "@/db/store";
+import { listEvidencePaymentAttempts, listEvidencePaymentAttemptsForSearchPayment, listSources } from "@/db/store";
 import { setNetraResearchContext, SpanType, withNetraSpan } from "@/observability/netra";
 import { createEvidencePayment, getPaymentMode, requestProtectedEvidence } from "@/payments/payment-executor";
 import type { Answer, ResearchStrategy, ResearchTrace, Source, TraceEvent, UnlockedEvidence } from "@/types";
@@ -20,6 +22,7 @@ type RunResearchInput = {
   searchPaymentId?: string;
   paymentType: "free_sponsored" | "user_paid";
   onEvent?: (event: TraceEvent) => void;
+  onAiUsage?: (usage: AiUsage) => Promise<void>;
 };
 
 export async function runResearchAgent(input: RunResearchInput): Promise<{ answer: Answer; receipts: Answer["decisionTraceJson"]["receipts"] }> {
@@ -65,24 +68,43 @@ async function runResearchAgentCore(input: RunResearchInput): Promise<{ answer: 
   };
 
   const candidates = scoutSources(input.question, allSources);
+  const aiBudget = createAiBudget();
   pushEvent(traceEvent("scout", "Archive scouted", `${candidates.length} candidate sources surfaced.`));
 
-  const { plan, scoredSources } = await analyzeResearch(input.question, input.budgetUSDC, input.strategy, candidates);
+  const { plan, scoredSources } = await analyzeResearch(
+    input.question,
+    input.budgetUSDC,
+    input.strategy,
+    candidates,
+    aiBudget,
+    input.onAiUsage
+  );
   pushEvent(traceEvent("plan", "Mandate mapped", `${plan.subquestions.length} subquestions and ${plan.evidenceNeeds.length} evidence needs defined.`));
   pushEvent(traceEvent("score", "Evidence ranked", `Leading score: ${scoredSources[0]?.finalScore ?? 0}.`));
 
   const sourceById = new Map<string, Source>(allSources.map((source) => [source.id, source]));
-  const paymentScope = input.searchPaymentId ?? `${input.sessionId}:${input.clientRequestId}`;
-  const previousAttempts = getPaymentMode() === "real"
-    ? await listEvidencePaymentAttempts(paymentScope)
-    : [];
-  if (previousAttempts.some((attempt) => attempt.status === "pending")) {
+  const mandateHash = createHash("sha256")
+    .update(`${input.question}\n${input.strategy}\n${input.budgetUSDC}`)
+    .digest("hex")
+    .slice(0, 16);
+  const paymentScope = input.searchPaymentId
+    ? `${input.searchPaymentId}:${mandateHash}`
+    : `${input.sessionId}:${input.clientRequestId}`;
+  const allPaymentAttempts = getPaymentMode() !== "real"
+    ? []
+    : input.searchPaymentId
+      ? await listEvidencePaymentAttemptsForSearchPayment(input.searchPaymentId)
+      : await listEvidencePaymentAttempts(paymentScope);
+  if (allPaymentAttempts.some((attempt) => attempt.status === "pending")) {
     throw new Error("An evidence payment has unknown settlement status and must be reconciled before retrying");
   }
+  const previousAttempts = allPaymentAttempts.filter((attempt) => attempt.paymentScope === paymentScope);
   const previousPaid = previousAttempts.filter((attempt) => attempt.status === "paid" && attempt.evidence);
   const previousSourceIds = new Set(previousPaid.map((attempt) => attempt.sourceId));
-  const previousSpendMicros = previousPaid.reduce((total, attempt) => total + parseUSDCMicros(attempt.amountUSDC), 0);
-  const remainingBudgetUSDC = microsToUSDC(Math.max(0, parseUSDCMicros(input.budgetUSDC) - previousSpendMicros));
+  const totalPaidMicros = allPaymentAttempts
+    .filter((attempt) => attempt.status === "paid")
+    .reduce((total, attempt) => total + parseUSDCMicros(attempt.amountUSDC), 0);
+  const remainingBudgetUSDC = microsToUSDC(Math.max(0, parseUSDCMicros(input.budgetUSDC) - totalPaidMicros));
   const newBudgetDecision = allocateBudget(
     scoredSources.filter((source) => !previousSourceIds.has(source.sourceId)),
     remainingBudgetUSDC,
@@ -116,27 +138,6 @@ async function runResearchAgentCore(input: RunResearchInput): Promise<{ answer: 
     )
   );
 
-  const plannedEvidence = budgetDecision.selectedSources.flatMap((selected) => {
-    const previous = previousPaid.find((attempt) => attempt.sourceId === selected.sourceId);
-    if (previous?.evidence) {
-      return [{
-        sourceId: previous.sourceId,
-        title: previous.evidence.title,
-        authorName: previous.evidence.authorName,
-        evidenceText: previous.evidence.evidenceText,
-        citationPriceUSDC: previous.amountUSDC
-      }];
-    }
-    const source = sourceById.get(selected.sourceId);
-    return source ? [{
-      sourceId: source.id,
-      title: source.title,
-      authorName: source.authorName,
-      evidenceText: source.evidenceText,
-      citationPriceUSDC: source.citationPriceUSDC
-    }] : [];
-  });
-  const contentJson = await synthesizeAnswer(plan, plannedEvidence, budgetDecision);
   const unlockedEvidence: UnlockedEvidence[] = [];
 
   for (const selected of budgetDecision.selectedSources) {
@@ -180,6 +181,13 @@ async function runResearchAgentCore(input: RunResearchInput): Promise<{ answer: 
   }
 
   const receipts = unlockedEvidence.map((evidence) => evidence.receipt);
+  const { content: contentJson } = await synthesizeAnswer(
+    plan,
+    unlockedEvidence,
+    budgetDecision,
+    aiBudget,
+    input.onAiUsage
+  );
 
   const response = answerContentToText(contentJson);
   pushEvent(traceEvent("synthesis", "Research brief delivered", `The brief draws on ${unlockedEvidence.length} funded evidence sources.`));
