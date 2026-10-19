@@ -1,20 +1,31 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, BookOpen, ScanLine, Sparkles } from "lucide-react";
 import { ResearchPromptBox } from "@/components/research-prompt-box";
 import { LiveLedgerMetrics, LiveLedgerStream } from "@/components/live-ledger";
 
 export default function HomePage() {
+  const [researchActive, setResearchActive] = useState(false);
+
   return (
     <main className="research-home">
-      <section className="research-start" aria-labelledby="research-heading">
-        <div className="research-emblem" aria-hidden="true">
-          <span><BookOpen size={21} strokeWidth={1.4} /></span>
-          <span><Sparkles size={25} strokeWidth={1.3} /></span>
-          <span><ScanLine size={21} strokeWidth={1.4} /></span>
+      <section className={`research-start${researchActive ? " research-start-active" : ""}`} aria-labelledby={researchActive ? undefined : "research-heading"}>
+        {!researchActive ? (
+          <>
+            <div className="research-emblem" aria-hidden="true">
+              <span><BookOpen size={21} strokeWidth={1.4} /></span>
+              <span><Sparkles size={25} strokeWidth={1.3} /></span>
+              <span><ScanLine size={21} strokeWidth={1.4} /></span>
+            </div>
+            <h1 id="research-heading" className="font-serif text-[2.3rem] leading-[1.15] tracking-[-0.02em] text-cream sm:text-[2.75rem]">Where will your curiosity take you?</h1>
+            <p className="mx-auto mt-4 max-w-md text-[15px] leading-7 text-muted">Ask a question. Fund the best evidence.<br className="hidden sm:block" /> Get an answer you can follow back to its source.</p>
+          </>
+        ) : null}
+        <div className={researchActive ? "text-left" : "mt-9 text-left sm:mt-10"}>
+          <ResearchPromptBox onActivityChange={setResearchActive} />
         </div>
-        <h1 id="research-heading" className="font-serif text-[2.3rem] leading-[1.15] tracking-[-0.02em] text-cream sm:text-[2.75rem]">Where will your curiosity take you?</h1>
-        <p className="mx-auto mt-4 max-w-md text-[15px] leading-7 text-muted">Ask a question. Fund the best evidence.<br className="hidden sm:block" /> Get an answer you can follow back to its source.</p>
-        <div className="mt-9 text-left sm:mt-10"><ResearchPromptBox /></div>
       </section>
 
       <section className="research-activity" aria-label="Research activity">

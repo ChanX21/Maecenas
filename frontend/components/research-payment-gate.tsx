@@ -28,7 +28,7 @@ export function ResearchPaymentGate({
       animate={{ opacity: 1, height: "auto", filter: "blur(0px)" }}
       exit={{ opacity: 0, height: 0, filter: "blur(4px)" }}
       transition={{ type: "spring", bounce: 0.3 }}
-      className="mt-5 overflow-hidden"
+      className="mt-0 overflow-hidden"
     >
       <div className="rounded-xl border border-gold/30 bg-gold/5 p-4 shadow-[0_10px_30px_rgba(212,175,55,0.05)]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
