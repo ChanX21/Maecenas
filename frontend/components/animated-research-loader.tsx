@@ -33,7 +33,7 @@ export function AnimatedResearchLoader({ stage, events = [] }: { stage: string; 
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
       transition={{ type: "spring", bounce: 0, duration: 0.6 }}
-      className={`mt-6 flex flex-col gap-4 rounded-xl border p-5 transition-all duration-700 ${
+      className={`mt-0 flex flex-col gap-4 rounded-xl border p-5 transition-all duration-700 ${
         isPayment 
           ? "border-gold/30 bg-gold/10"
           : "border-marble/15 bg-ink-2"

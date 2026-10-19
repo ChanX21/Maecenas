@@ -42,7 +42,7 @@ const researchStrategies: { value: ResearchStrategy; label: string }[] = [
   { value: "aggressive", label: "Expansive" }
 ];
 
-export function ResearchPromptBox() {
+export function ResearchPromptBox({ onActivityChange }: { onActivityChange?: (active: boolean) => void } = {}) {
   const router = useRouter();
   const hydrated = useHydrated();
   const { data: ledger } = useQuery({ queryKey: ["leaderboard"], queryFn: getLeaderboard, retry: false });
@@ -77,6 +77,11 @@ export function ResearchPromptBox() {
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [error, setError] = useState("");
   const [gatewayFundAmount, setGatewayFundAmount] = useState("");
+  const researchActive = Boolean(stage || paymentRequired);
+
+  useEffect(() => {
+    onActivityChange?.(researchActive);
+  }, [onActivityChange, researchActive]);
 
   useEffect(() => {
     if (strategyOpen) strategyOptions.current[strategyFocusIndex]?.focus();
@@ -171,6 +176,7 @@ export function ResearchPromptBox() {
       budgetUSDC
     };
     setPendingRequest(request);
+    setQuestion("");
     if (fundingMode === "wallet" || usage?.requiresPayment || paymentRequired) {
       setPaymentRequired(true);
       return;
@@ -251,6 +257,56 @@ export function ResearchPromptBox() {
 
   return (
     <div>
+    <AnimatePresence initial={false}>
+      {stage || paymentRequired || error ? (
+        <motion.div
+          key="research-status-area"
+          initial={{ opacity: 0, height: 0, y: 8 }}
+          animate={{ opacity: 1, height: "auto", y: 0 }}
+          exit={{ opacity: 0, height: 0, y: 6 }}
+          transition={{ duration: 0.22, ease: [0.2, 0.75, 0.25, 1] }}
+          className="research-status-area"
+          role="region"
+          aria-label="Research status"
+          aria-live="polite"
+        >
+          <AnimatePresence mode="wait">
+            {stage ? <AnimatedResearchLoader key="research-loader" stage={stage} events={events} /> : null}
+            {!stage && paymentRequired ? (
+              <ResearchPaymentGate
+                key="payment-box"
+                evidenceBudgetUSDC={budgetUSDC}
+                isWalletConnected={Boolean(address)}
+                mode={usage?.paymentMode ?? "mock"}
+                onConfirm={confirmPayment}
+                priceUSDC={usage?.paidSearchPriceUSDC ?? "0.05"}
+              />
+            ) : null}
+          </AnimatePresence>
+
+          {error ? (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              role="alert"
+              className="research-status-error border border-danger/40 bg-danger/10 p-3 text-sm text-red-200"
+            >
+              <p>{error}</p>
+              {canFundGateway ? (
+                <button
+                  type="button"
+                  onClick={fundGatewayBalance}
+                  disabled={busy}
+                  className="mt-3 roman-button inline-flex items-center justify-center bg-gold px-4 py-2 font-mono text-[11px] font-semibold uppercase text-ink transition hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Fund Gateway {gatewayFundAmount} USDC
+                </button>
+              ) : null}
+            </motion.div>
+          ) : null}
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
     <form onSubmit={submitResearch} className="research-composer" aria-label="Research question">
       <label className="sr-only" htmlFor="question">Research question</label>
       <textarea
@@ -451,37 +507,6 @@ export function ResearchPromptBox() {
         </motion.button>
       </div>
 
-      <AnimatePresence mode="wait">
-        {stage && <AnimatedResearchLoader key="research-loader" stage={stage} events={events} />}
-
-        {!stage && paymentRequired ? (
-          <ResearchPaymentGate
-            key="payment-box"
-            evidenceBudgetUSDC={budgetUSDC}
-            isWalletConnected={Boolean(address)}
-            mode={usage?.paymentMode ?? "mock"}
-            onConfirm={confirmPayment}
-            priceUSDC={usage?.paidSearchPriceUSDC ?? "0.05"}
-          />
-        ) : null}
-      </AnimatePresence>
-
-
-      {error ? (
-        <div role="alert" className="mt-4 border border-danger/40 bg-danger/10 p-3 text-sm text-red-200">
-          <p>{error}</p>
-          {canFundGateway ? (
-            <button
-              type="button"
-              onClick={fundGatewayBalance}
-              disabled={busy}
-              className="mt-3 roman-button inline-flex items-center justify-center bg-gold px-4 py-2 font-mono text-[11px] font-semibold uppercase text-ink transition hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Fund Gateway {gatewayFundAmount} USDC
-            </button>
-          ) : null}
-        </div>
-      ) : null}
     </form>
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-dim">
       <span>{usage ? usage.freeSearchesRemaining > 0 ? `${usage.freeSearchesRemaining} patron-funded searches left` : `${usage.paidSearchPriceUSDC} USDC per search` : "Cited answers. Transparent funding."}</span>
